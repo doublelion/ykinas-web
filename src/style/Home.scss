@@ -1,0 +1,93 @@
+@use '../style/variables' as *;
+
+// 페이지별 내부 스타일 (Home.js)
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero {
+  padding: 12rem 0 8rem;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeInUp 1.2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+  animation-delay: 0.5s; // 헤더 로드 후 자연스럽게 시작
+  h2 {
+    // font-size: clamp(2.5rem, 6vw, 4rem);
+    font-size: 4rem;
+    font-weight: 800;
+    line-height: 1.1;
+    span {
+      color: $primary-color;
+    }
+  }
+  p {
+    margin-top: 1.5rem;
+    color: $text-primary;
+    font-size: 1.5rem;
+  }
+}
+
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  margin: 6rem 0 0;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+
+  .service-card {
+    position: relative; // 가상 요소의 기준점
+    background: $card-bg;
+    padding: 3rem 2rem;
+    border-radius: 2.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.1); // 기본 테두리를 살짝 선명하게
+    overflow: hidden; // 가상 요소가 넘치지 않게
+    transition: 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+
+    // 하단 강조선 (평소엔 너비 0)
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      width: 0;
+      height: 2px;
+      background: $primary-color;
+      transition: 0.4s ease;
+      transform: translateX(-50%);
+      box-shadow: 0 0 10px $primary-color; // 은은한 발광 효과
+    }
+
+    &:hover {
+      transform: translateY(-10px);
+      background: rgba(255, 255, 255, 0.03);
+
+      &::after {
+        width: 100%; // 중앙에서 양옆으로 펴지는 효과
+      }
+    }
+
+    svg {
+      stroke-width: 1.5;
+      stroke: rgba(255, 255, 255, 0.9);
+    }
+
+    h3 {
+      margin: 1.5rem 0 0.5rem;
+      font-size: 1.5rem;
+    }
+    p {
+      color: $text-gray;
+    }
+  }
+}

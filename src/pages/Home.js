@@ -1,8 +1,14 @@
 import React from 'react';
-import { Monitor, ShoppingCart, ArrowRight } from 'lucide-react';
+import { Monitor, ShoppingCart} from 'lucide-react';
 import Map from '../components/Map'; // 지도 컴포넌트 (있을 경우)
+import Button from '../components/Button'; // 경로 확인 필요
+import '../style/Home.scss'
 
 function Home() {
+  const handleInquiry = () => {
+    window.location.href = '/Contact'; 
+  };
+
   return (
     <div className="home-container">
       {/* 히어로 섹션 */}
@@ -12,9 +18,10 @@ function Home() {
           와이키나스는 홈페이지 제작부터 쇼핑몰 구축까지, 
           귀사의 비즈니스를 디지털로 전환하는 최적의 파트너입니다.
         </p>
-        <button className="cta-button">
-          프로젝트 문의하기 <ArrowRight size={18} />
-        </button>
+        <Button 
+          text="프로젝트 문의하기" 
+          onClick={handleInquiry} 
+        />
       </header>
 
       {/* 서비스 섹션 */}

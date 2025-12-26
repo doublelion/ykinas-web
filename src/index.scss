@@ -1,13 +1,65 @@
+@use './style/variables' as *;
+
+// index.scss 또는 전역 스타일 파일
+
+// 1. 전역 초기화
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html {
+  font-size: clamp(50%, 0.5vw + 44%, 62.5%); 
+}
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  background-color: $bg-black;
+  color: #ffffff;
+  
+  /* 폰트 설정의 핵심 순서 */
+  /* 1. 영문/숫자는 D-DIN (한글 없음) */
+  /* 2. 한글 및 공통은 Pretendard */
+  /* 3. 나머지는 시스템 기본 폰트 */
+  font-family: 'D-DIN', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+
+  font-size: 1.6rem; // 16px 기준
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  
+  word-break: keep-all; // 한글 단어 끊김 방지
+}
+/* 영문 폰트: D-DIN */
+@font-face {
+  font-family: 'D-DIN';
+  src: url('./assets/fonts/D-DIN-Bold.woff') format('woff');
+  font-weight: bold;
+  font-style: normal;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* 한글 폰트: Pretendard (CDN 방식 추천, 혹은 로컬 파일) */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
+.d-din {
+  font-family: 'D-DIN', sans-serif;
+  letter-spacing: 0.05rem; // 영문은 자간을 살짝 넓히면 더 세련돼 보임
+  text-transform: uppercase; // SpaceX 스타일은 주로 대문자 사용
+}
+
+/* 일반적인 한글 본문 가독성 강조 */
+p, span, label {
+  font-weight: 400;
+  letter-spacing: -0.01em; // 한글은 자간을 살짝 좁히는 게 가독성이 좋음
+}
+
+// 적용
+h1, h2, .nav-item {
+  font-family: 'D-DIN', sans-serif;
+  letter-spacing: 0.1rem; // DIN 계열은 자간을 살짝 넓히면 훨씬 고급스럽습니다.
+  text-transform: uppercase; 
+}
+
+button {
+  border: none;
+  padding: 0;
 }

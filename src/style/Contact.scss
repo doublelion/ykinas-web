@@ -1,0 +1,118 @@
+@use '../style/variables' as *;
+
+.contact-section {
+  padding: 12rem 2rem;
+  background: #000;
+  color: #fff;
+
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .contact-header {
+    text-align: center;
+    margin-bottom: 6rem;
+
+    .sub-title {
+      font-family: 'D-DIN-Bold', sans-serif;
+      color: #007bff; // 세련된 블루
+      letter-spacing: 0.4rem;
+      font-size: 1.4rem;
+    }
+
+    .main-title {
+      font-size: clamp(3.2rem, 5vw, 4.2rem);
+      margin: 1.5rem 0;
+      font-weight: 700;
+    }
+
+    .desc {
+      color: #888;
+      line-height: 1.8;
+      font-size: 1.7rem;
+      word-break: keep-all;
+    }
+  }
+
+  .contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 4rem;
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+
+      label {
+        font-size: 1.3rem;
+        color: #bbb;
+        margin-bottom: 1rem;
+        font-weight: 500;
+      }
+
+      input,
+      select,
+      textarea {
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        padding: 1.2rem 0;
+        color: #fff;
+        font-size: 1.6rem;
+        transition: 0.3s;
+
+        &:focus {
+          outline: none;
+          border-bottom-color: #007bff;
+        }
+      }
+
+      select option {
+        background: #111;
+      }
+    }
+
+    .agreement-group {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-size: 1.4rem;
+      color: #888;
+      input {
+        width: 1.8rem;
+        height: 1.8rem;
+        cursor: pointer;
+      }
+    }
+
+    .submit-btn {
+      height: 6rem;
+      background: transparent;
+      border: 1px solid #fff;
+      color: #fff;
+      font-family: 'D-DIN-Bold', sans-serif;
+      font-size: 1.8rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      transition: 0.4s;
+
+      &:hover {
+        background: #fff;
+        color: #000;
+      }
+    }
+  }
+}
