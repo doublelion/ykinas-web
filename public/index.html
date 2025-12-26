@@ -40,5 +40,16 @@
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
+      <form name="project-inquiry" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="text" name="name" />
+      <input type="text" name="contact" />
+      <select name="type">
+        <option value="consulting"></option>
+        <option value="software"></option>
+        <option value="maintenance"></option>
+      </select>
+      <textarea name="message"></textarea>
+      <input type="checkbox" name="agreement" />
+    </form>
   </body>
 </html>
