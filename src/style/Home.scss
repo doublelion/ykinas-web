@@ -34,12 +34,12 @@
 
 .service-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 2rem;
   margin: 6rem 0 0;
 
   @media (max-width: 1024px) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
   @media (max-width: 640px) {
     grid-template-columns: 1fr;
@@ -90,4 +90,22 @@
       color: $text-gray;
     }
   }
+}
+
+.custom-overlay {
+  position: relative;
+  transform: translate3d(0, -100%, 0);
+  -webkit-transform: translate3d(0, -100%, 0);
+}
+
+.custom-overlay-box {
+  background: #111;
+  color: #fff;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.12);
+  min-width: 220px;
 }

@@ -1,19 +1,18 @@
 // YKINAS Brand Colors
-// $primary-color: #00f2ff;
-// $primary-color: #007bff;  // 세련된 테크 블루
-// $primary-color: #e0e0e0;
-// $primary-color: #a5d8ff;
+$cyan-color: #00f2ff;
+$blue-color: #007bff;  // 세련된 테크 블루
+$skyblue-color: #a5d8ff;
 $primary-color: #e0e0e0;
-$bg-color: #050505;       // 완전 검정보다 약간의 깊이감이 있는 검정
-$text-main: #e0e0e0;      // 본문 텍스트
-$text-dim: #888888;       // 설명글이나 덜 중요한 텍스트
 
-// $bg-black: #0a0a0a;
+//$bg-black: #0a0a0a;
+$bg-color: #050505;       // 완전 검정보다 약간의 깊이감이 있는 검정
 $bg-black: #000;
 $card-bg: #111;
 $border-color: #222;
 
 // Text Colors
+$text-main: #e0e0e0;      // 본문 텍스트
+$text-dim: #888888;       // 설명글이나 덜 중요한 텍스트
 $text-white: #fff;
 $text-primary: #e0e0e0;
 $text-gray: #888;

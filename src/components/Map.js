@@ -30,57 +30,57 @@ function Map() {
         // 주소 팝업 (InfoWindow)
         const infoWindow = new kakao.maps.InfoWindow({
           content: `
-  <div style="position:relative;">
-    <div style="
-      background:#111;
-      color:#fff;
-      padding:14px 16px;
-      border-radius:10px;
-      font-size:14px;
-      line-height:1.5;
-      box-shadow:0 10px 30px rgba(0,0,0,0.6);
-      border:1px solid rgba(255,255,255,0.12);
-      min-width:220px;
-    ">
-      <strong style="
-        display:block;
-        font-size:15px;
-        margin-bottom:6px;
-        letter-spacing:0.05em;
-      ">
-        YKINAS
-      </strong>
-      인천 부평구 시장로 33<br/>
-      한남시티프라자 7층
-      <a 
-  href="https://map.kakao.com/link/to/와이키나스,37.49394,126.72572"
-  target="_blank"
-  style="
-    display:inline-block;
-    margin-top:8px;
-    font-size:13px;
-    color:#7dd3fc;
-    text-decoration:none;
-  "
->
-  길찾기 →
-</a>
-    </div>
+          <div style="position:relative;">
+            <div style="
+              background:#111;
+              color:#fff;
+              padding:14px 16px;
+              border-radius:10px;
+              font-size:14px;
+              line-height:1.5;
+              box-shadow:0 10px 30px rgba(0,0,0,0.6);
+              border:1px solid rgba(255,255,255,0.12);
+              min-width:220px;
+            ">
+              <strong style="
+                display:block;
+                font-size:15px;
+                margin-bottom:6px;
+                letter-spacing:0.05em;
+              ">
+                YKINAS
+              </strong>
+              인천 부평구 시장로 33<br/>
+              한남시티프라자 7층
+              <a 
+          href="https://map.kakao.com/link/to/와이키나스,37.49394,126.72572"
+          target="_blank"
+          style="
+            display:inline-block;
+            margin-top:8px;
+            font-size:13px;
+            color:#7dd3fc;
+            text-decoration:none;
+          "
+        >
+          길찾기 →
+        </a>
+            </div>
 
-    <!-- 꼬리 -->
-    <div style="
-      position:absolute;
-      bottom:-8px;
-      left:50%;
-      transform:translateX(-50%);
-      width:0;
-      height:0;
-      border-left:8px solid transparent;
-      border-right:8px solid transparent;
-      border-top:8px solid #111;
-    "></div>
-  </div>
-  `,
+            <!-- 꼬리 -->
+            <div style="
+              position:absolute;
+              bottom:-8px;
+              left:50%;
+              transform:translateX(-50%);
+              width:0;
+              height:0;
+              border-left:8px solid transparent;
+              border-right:8px solid transparent;
+              border-top:8px solid #111;
+            "></div>
+          </div>
+          `,
           position: companyPos,
         });
 
