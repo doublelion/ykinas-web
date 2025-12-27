@@ -37,7 +37,7 @@ function Header() {
         
         <div className="mobile-links">
           <Link to="/portfolio" onClick={closeMenu}>포트폴리오</Link>
-          <Link to="/Contact" onClick={closeMenu}>프로젝트 의뢰</Link>
+          <Link to="/contact" onClick={closeMenu}>프로젝트 의뢰</Link>
         </div>
       </nav>
     </header>

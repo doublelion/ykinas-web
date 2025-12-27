@@ -6,7 +6,7 @@ import '../style/Home.scss';
 
 function Home() {
   const handleInquiry = () => {
-    window.location.href = '/Contact';
+    window.location.href = '/contact';
   };
 
   return (
@@ -22,7 +22,7 @@ function Home() {
         </p>
         <Button text="프로젝트 문의하기" onClick={handleInquiry} />
       </header>
-      
+
       {/* 서비스 섹션 */}
       <section id="services" className="service-grid">
         <div className="service-card">
