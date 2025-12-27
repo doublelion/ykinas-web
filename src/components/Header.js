@@ -12,7 +12,7 @@ function Header() {
     <header className="header">
       <div className="header-inner">
         <Link to="/" className="logo" onClick={() => setIsOpen(false)}>YKINAS</Link>
-        {/* <Link to="/" className="logo" onClick={() => setIsOpen(false)}><img src='../public/logo512.png' alt="YKINAS Logo"></img></Link> */}
+        {/* <Link to="/" className="logo" onClick={() => setIsOpen(false)}><img src='/logo512.png' alt="YKINAS Logo"></img></Link> */}
         {/* 데스크탑 메뉴 */}
         <nav className="nav-desktop">
           <Link to="/portfolio">포트폴리오</Link>
