@@ -52,6 +52,7 @@
     .input-group {
       display: flex;
       flex-direction: column;
+      position: relative; // 포커스 바 애니메이션을 위함
 
       label {
         font-size: 1.3rem;
@@ -68,8 +69,10 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.15);
         padding: 1.2rem 0;
         color: #fff;
-        font-size: 1.6rem;
+        font-size: 1.6rem; // iOS 줌 방지 최소 크기
         transition: 0.3s;
+        border-radius: 0;
+        -webkit-appearance: none; // iOS 기본 스타일 제거
 
         &:focus {
           outline: none;

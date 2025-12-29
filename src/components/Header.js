@@ -11,7 +11,7 @@ function Header() {
   return (
     <header className="header">
       <div className="header-inner">
-        <Link to="/" className="logo" onClick={() => setIsOpen(false)}>YKINAS</Link>
+        <Link to="/" className="logo" onClick={() => setIsOpen(false)}>YKIN<span>Λ</span>S</Link>
         {/* <Link to="/" className="logo" onClick={() => setIsOpen(false)}><img src='/logo512.png' alt="YKINAS Logo"></img></Link> */}
         {/* 데스크탑 메뉴 */}
         <nav className="nav-desktop">

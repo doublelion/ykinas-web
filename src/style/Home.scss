@@ -9,26 +9,290 @@
   }
 }
 
-.hero {
-  padding: 12rem 0 8rem;
-  text-align: center;
-  opacity: 0;
-  transform: translateY(30px);
-  animation: fadeInUp 1.2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
-  animation-delay: 0.5s; // 헤더 로드 후 자연스럽게 시작
-  h2 {
-    // font-size: clamp(2.5rem, 6vw, 4rem);
-    font-size: 4rem;
-    font-weight: 800;
-    line-height: 1.1;
+.home-container {
+  // 섹션 제목 공통 스타일
+  .section-title {
+    text-align: center;
+    margin-bottom: 50px;
     span {
-      color: $primary-color;
+      color: #00f2ff;
+      font-size: 0.9rem;
+      letter-spacing: 2px;
+      font-weight: 600;
+    }
+    h2 {
+      font-size: 2.5rem;
+      margin-top: 10px;
+      color: #fff;
     }
   }
-  p {
-    margin-top: 1.5rem;
-    color: $text-primary;
-    font-size: 1.5rem;
+  .hero {
+    min-height: 80vh; // 헤더부터 슬로건까지 꽉 차게
+    // padding: 12rem 0 8rem;
+    padding: 12vw 0 7vw;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeInUp 1.2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+    animation-delay: 0.5s; // 헤더 로드 후 자연스럽게 시작
+    background-size: cover;
+    background-position: center;
+    background: 
+      // 1. 하단/상단 경계를 없애는 검정 그라데이션 (배경색과 일치시킴)
+      linear-gradient(
+        to bottom,
+        #000 0%,
+        transparent 15%,
+        transparent 85%,
+        #000 100%
+      ),
+      // 2. 기존 가독성용 오버레이
+      linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0.7) 0%,
+          rgba(0, 0, 0, 0.4) 30%,
+          rgba(0, 0, 0, 0.8) 100%
+        ),
+      // 3. 포인트 광원
+      radial-gradient(
+          circle at 20% 30%,
+          rgba(0, 242, 255, 0.15) 0%,
+          transparent 40%
+        ),
+      // url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop') no-repeat center center; // 고해상도 이미지
+      url('../assets/images/hero_bg_01.webp') no-repeat center center;
+
+    // 모서리를 안쪽으로 흐리게 만드는 꼼수 (필수)
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      box-shadow: inset 0 0 100px 50px #000; // 안쪽으로 검정 그림자를 쏴서 모서리를 지움
+      pointer-events: none; // 클릭 방해 방지
+    }
+
+    h2 {
+      // font-size: clamp(2.5rem, 6vw, 4rem);
+      font-size: 4rem;
+      font-weight: 800;
+      line-height: 1.1;
+      span {
+        color: $primary-color;
+      }
+    }
+    p {
+      margin-top: 1.5rem;
+      color: $text-primary;
+      font-size: 1.5rem;
+    }
+  }
+
+  // 포트폴리오 프리뷰 섹션
+  .home-portfolio {
+    padding: 100px 0;
+    background: linear-gradient(
+      180deg,
+      rgba(10, 10, 15, 0) 0%,
+      rgba(20, 20, 30, 0.5) 100%
+    );
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 60px;
+      h2 {
+        font-size: 3rem;
+        color: #fff;
+      }
+      p {
+        color: #aaa;
+        margin-top: 10px;
+      }
+    }
+
+    .portfolio-preview-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto 50px;
+
+      // 미디어 쿼리
+      @media (max-width: 480px) {
+        grid-template-columns: 1fr; // 모바일은 무조건 한 줄
+        gap: 15px;
+      }
+      .preview-card {
+        position: relative;
+        background: rgba(255, 255, 255, 0.03);
+        // border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: clamp(2rem, 4vw, 4rem);
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        overflow: hidden;
+
+        .card-image {
+          width: 100%;
+          height: 200px;
+          overflow: hidden;
+          img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+          }
+        }
+
+        &:hover {
+          .card-image img {
+            transform: scale(1.1);
+          }
+        }
+
+        .card-info {
+          padding: 30px;
+          .category {
+            color: #00f2ff;
+            font-size: 1.2rem;
+            font-weight: 700;
+          }
+          h3 {
+            margin: 10px 0;
+            font-size: 2.3rem;
+            color: #fff;
+          }
+          p {
+            color: #888;
+            font-size: 1.45rem;
+            line-height: 1.5;
+            height: 3em;
+            overflow: hidden;
+          }
+          .tags {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            color: #555;
+            font-size: 1.5rem;
+          }
+        }
+ㄴ
+        &:hover {
+          transform: translateY(-10px);
+          background: rgba(0, 242, 255, 0.05);
+          border-color: #00f2ff;
+
+          .card-hover-icon {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        .category {
+          color: #00f2ff;
+          font-weight: 500;
+          font-size: 2rem;
+        }
+        h3 {
+          font-size: 2.8rem;
+          margin: 15px 0;
+          color: #fff;
+        }
+        p {
+          color: #ccc;
+          line-height: 1.6;
+          margin-bottom: 20px;
+        }
+        .tags {
+          color: #666;
+          font-family: monospace;
+        }
+
+        .card-hover-icon {
+          position: absolute;
+          right: 30px;
+          bottom: 30px;
+          opacity: 0;
+          transform: translateX(-20px);
+          transition: all 0.3s;
+        }
+      }
+    }
+
+    .view-more-center {
+      display: flex;
+      justify-content: center;
+    }
+  }
+  // 히어로 버튼 스타일 보강
+  .hero-btns {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 30px;
+
+    .text-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: color 0.3s;
+      &:hover {
+        color: #00f2ff;
+      }
+    }
+  }
+}
+@media (max-width: 1024px) {
+  .home-container {
+    .hero {
+      min-height: 40vh; // 헤더부터 슬로건까지 꽉 차게
+      // 모바일은 세로가 길므로 상하 그라데이션 범위를 더 넓게 잡아야 자연스럽습니다.
+      background: 
+        // 1. 상하 경계 삭제 (상단 20%, 하단 25% 정도로 더 깊게)
+        linear-gradient(
+          to bottom,
+          #000 0%,
+          transparent 25%,
+          transparent 100%,
+          #000 100%
+        ),
+        // 2. 가독성 오버레이 (모바일은 글자가 이미지를 많이 가리므로 농도 유지)
+        linear-gradient(
+            to bottom,
+            rgba(0, 0, 0, 0.6) 10%,
+            rgba(0, 0, 0, 0.3) 10%,
+            rgba(0, 0, 0, 0.9) 100%
+          ),
+        // 3. 포인트 광원 (모바일 화면 중앙으로 이동하여 시선 집중)
+        radial-gradient(
+            circle at 50% 40%,
+            rgba(0, 242, 255, 0.2) 0%,
+            transparent 50%
+          ),
+        url('../assets/images/hero_bg_01.webp') no-repeat center center;
+
+      background-size: cover;
+      background-position: center;
+      &::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        box-shadow: inset 0 0 3rem 0rem #000;
+        pointer-events: none;
+      }
+    }
   }
 }
 
@@ -105,7 +369,7 @@
   border-radius: 10px;
   font-size: 14px;
   line-height: 1.5;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   min-width: 220px;
 }
