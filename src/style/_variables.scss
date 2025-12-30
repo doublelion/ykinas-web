@@ -1,21 +1,165 @@
-// YKINAS Brand Colors
-$cyan-color: #00f2ff;
-$blue-color: #007bff;  // 세련된 테크 블루
-$skyblue-color: #a5d8ff;
-$primary-color: #e0e0e0;
+// ==========================================
+// 1. 브랜드 고정 상수 (Sass 전용)
+// ==========================================
+$ykinas-green: #4aba48;
+$ykinas-teal: #2f90a5;
+$ykinas-cyan: #00f2ff;
+$ykinas-blue: #007bff;
 
-//$bg-black: #0a0a0a;
-$bg-color: #050505;       // 완전 검정보다 약간의 깊이감이 있는 검정
-$bg-black: #000;
-$card-bg: #111;
-$border-color: #222;
-
-// Text Colors
-$text-main: #e0e0e0;      // 본문 텍스트
-$text-dim: #888888;       // 설명글이나 덜 중요한 텍스트
-$text-white: #fff;
-$text-primary: #e0e0e0;
-$text-gray: #888;
-
-// Layout
 $max-width: 1200px;
+
+$bg-black: #000000;
+$text-black: #1a1a1a; // 추천: 완전 블랙보다 부드러우면서도 선명한 깊은 차콜
+$text-gray: #888888;
+$text-white: #ffffff;
+$off-white: #f7f9f8;
+$gray-100: #e0e0e0;
+
+
+// ==========================================
+// 2. 테마 스타일 주입 믹스인 (중복 방지 핵심)
+// ==========================================
+@mixin inject-ykinas-theme {
+  :root {
+    // [LIGHT MODE - 기본값]
+    --bg-color: #f7f9f8;
+    --text-color: #1a2b2f;
+    --card-bg: #ffffff;
+    --nav-text: rgba(0, 0, 0, 0.7);
+    --border-line: rgba(0, 0, 0, 0.08);
+    --header-grad: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    --footer-text: #666666; // 라이트 모드: 진한 회색 (가독성 확보)
+
+    // Hero Section (Light)
+    --hero-text-color: #fff;
+    --hero-after-shadow: inset 0 0 100px 50px #f7f9f8;
+    --hero-bg-layers: 
+      url('../assets/images/hero_bg_01.webp');
+
+    --header-grad: linear-gradient(
+      180deg,
+      rgba(247, 249, 248, 0.9) 0%,
+      // 배경색과 맞춘 미색
+      rgba(247, 249, 248, 0) 100%
+    );
+
+    --header-bg: rgba(247, 249, 248, 0.8); 
+    --header-filter: saturate(180%) blur(20px);
+
+    // [LIGHT MODE - Button]
+    --btn-bg: rgba(255, 255, 255, 0.5); // 반투명 화이트 배경
+    --btn-border: rgba(0, 0, 0, 0.15);   // 연한 블랙 보더
+    --btn-text: #1a2b2f;               // 진한 텍스트
+    --btn-hover-bg: #1a2b2f;           // 호버 시 블랙 배경
+    --btn-hover-text: #ffffff;         // 호버 시 화이트 텍스트
+
+    --toggle-hover-bg: rgba(0, 0, 0, 0.05); // 아주 연한 회색 배경(호버 시에만)
+    --nav-mobile-bg: rgba(247, 249, 248, 0.95);
+    --icon-color: #{$ykinas-blue}; // 클릭 시(라이트 모드) 블루로 변경
+
+    --section-grad: linear-gradient(
+      180deg,
+      rgba(247, 249, 248, 0) 0%,
+      rgba(230, 235, 233, 0.5) 100% 
+    );
+  }
+
+  // [DARK MODE - 전환 시]
+  [data-theme='dark'] {
+    --bg-color: #050505;
+    --text-color: #e0e0e0;
+    --card-bg: #111111;
+    --nav-text: rgba(255, 255, 255, 0.8);
+    --border-line: rgba(255, 255, 255, 0.15);
+    --header-grad: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.6) 0%,
+      rgba(0, 0, 0, 0) 100%
+      );
+    
+    --header-bg: rgba(0, 0, 0, 0.7);
+    --header-filter: none; // 혹은 다크용 필터가 필요하면 추가 가능
+    
+    // Hero Section (Dark)
+    --hero-text-color: #ffffff;
+    --hero-after-shadow: inset 0 0 100px 50px #000000;
+    --hero-bg-layers: linear-gradient(
+        to bottom,
+        #000 0%,
+        transparent 15%,
+        transparent 85%,
+        #000 100%
+      ),
+      linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.7) 0%,
+        rgba(0, 0, 0, 0.4) 30%,
+        rgba(0, 0, 0, 0.8) 100%
+      ),
+      radial-gradient(
+        circle at 20% 30%,
+        rgba(0, 242, 255, 0.15) 0%,
+        transparent 40%
+      ),
+      url('../assets/images/hero_bg_01.webp');
+    --header-grad: linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.8) 0%,
+      rgba(0, 0, 0, 0.4) 40%,
+      rgba(0, 0, 0, 0) 100%
+    );
+    --header-before-opacity: 1;
+
+    // [DARK MODE - Button]
+    --btn-bg: rgba(0, 0, 0, 0.5);      // 반투명 블랙 배경
+    --btn-border: rgba(255, 255, 255, 0.3); // 연한 화이트 보더
+    --btn-text: #ffffff;               // 화이트 텍스트
+    --btn-hover-bg: #ffffff;           // 호버 시 화이트 배경
+    --btn-hover-text: #000000;         // 호버 시 블랙 텍스트
+
+    --nav-mobile-bg: rgba(5, 5, 5, 0.95);
+    --icon-color: #{$ykinas-green}; // 기본 상태(다크 모드) 그린
+    --toggle-hover-bg: rgba(74, 186, 72, 0.1); // 호버 시 연한 그린 빛
+
+    --section-grad: linear-gradient(
+      180deg,
+      rgba(10, 10, 15, 0) 0%,
+      rgba(20, 20, 30, 0.5) 100%
+    );
+
+  }
+}
+
+// ==========================================
+// 3. 기존 코드 호환성 매핑 (Sass 변수) 매핑
+// ==========================================
+$bg-color: var(--bg-color);
+$bg-main: var(--bg-color);
+$card-bg: var(--card-bg);
+$text-main: var(--text-color);
+$text-primary: var(--text-color);
+
+$primary-color: $ykinas-green;
+$secondary-color: $ykinas-teal;
+$cyan-color: $ykinas-cyan;
+$blue-color: $ykinas-blue;
+
+$btn-bg: var(--btn-bg);
+$btn-border: var(--btn-border);
+$btn-text: var(--btn-text);
+$btn-hover-bg: var(--btn-hover-bg);
+$btn-hover-text: var(--btn-hover-text);
+$ease-ykinas: cubic-bezier(.19, 1, .22, 1);
+
+$icon-color: var(--icon-color);
+$toggle-hover-bg: var(--toggle-hover-bg);
+
+// 공통 클래스 예시
+.some-class {
+  background: $card-bg;
+}
+

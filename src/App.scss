@@ -1,10 +1,15 @@
+/* App.scss */
 @use './style/variables' as *;
 
 // 최상위 컨테이너 구조
 .ykinas-app {
+  background-color: var(--bg-color); // 배경색 변수화
+  color: var(--text-color);
+  transition: background-color 0.3s ease; // 부드러운 전환 효과
+
   min-height: 100vh;
   display: flex;
-  flex-direction: column;  
+  flex-direction: column;
   justify-content: space-between;
 
   // 내부 컨텐츠 레이아웃
@@ -19,14 +24,29 @@
   }
 
   .header {
-    position: sticky;
+    &::before {
+      background: var(--header-grad); // 그라데이션 변수화
+    }
+    backdrop-filter: var(--header-filter);
+    -webkit-backdrop-filter: var(--header-filter); // 사파리 브라우저 대응 필수
+
+    border-bottom: 1px solid var(--border-line);
+    transition: background-color 0.3s ease, backdrop-filter 0.3s ease,
+      border-color 0.3s ease;
+    [data-theme='dark'] & {
+      border-bottom-color: transparent;
+    }
+
+    position: fixed; 
     top: 0;
+    left: 0; // fixed 사용 시 좌우 정렬을 위해 필요
     z-index: 100;
     width: 100%;
-    height: 80px; // 헤더의 실제 높이
+    height: 6rem; // 헤더의 실제 높이
     display: flex;
     align-items: center;
     justify-content: space-between;
+    background-color: var(--header-bg); // 변수 추가 권장
 
     &::before {
       content: '';
@@ -34,15 +54,8 @@
       top: 0;
       left: 0;
       right: 0;
-      height: 300px; // SpaceX와 동일하게 깊은 그림자 생성
-      background: linear-gradient(
-        180deg,
-        rgba(0, 0, 0, 0.6) 0%,
-        // 위쪽은 더 진하게
-        rgba(0, 0, 0, 0.3) 40%,
-        // 중간 단계
-        rgba(0, 0, 0, 0) 100% // 아래로 갈수록 투명하게
-      );
+      height: 300px; // 동일하게 깊은 그림자 생성
+      background: var(--header-grad);
       pointer-events: none; // 그림자가 클릭을 방해하지 않도록 설정
       z-index: -1; // 헤더의 글자(로고, 메뉴)보다 뒤로 보냄
     }
@@ -59,7 +72,7 @@
       .logo {
         font-size: 2.2rem;
         font-weight: 800;
-        color: $primary-color;
+        color: var(--text-color);
         text-decoration: none;
         letter-spacing: -0.5px;
         span {
@@ -75,16 +88,20 @@
     }
 
     .nav-desktop {
+      align-items: center; // 아이콘과 텍스트 정렬
       display: flex;
       gap: 2.5rem;
       a {
-        color: rgba(255, 255, 255, 0.8);
+        color: var(--nav-text);
         text-decoration: none;
         font-weight: 500;
         transition: 0.3s;
         &:hover {
-          color: $primary-color;
+          color: var(--text-color);
         }
+      }
+      &:hover {
+        // background: rgba(127, 127, 127, 0.1);
       }
       @media (max-width: 768px) {
         display: none;
@@ -95,7 +112,7 @@
       display: none;
       background: none;
       border: none;
-      color: white;
+      color: var(--text-color);
       cursor: pointer;
       @media (max-width: 768px) {
         display: block;
@@ -116,31 +133,31 @@
       display: flex;
       flex-direction: column;
       gap: 2rem;
-      
+
       a {
         font-family: 'D-DIN-Bold', sans-serif;
         font-size: 1.8rem;
-        color: #fff;
+        color: var(--text-color);
         text-transform: uppercase;
         text-decoration: none;
         letter-spacing: 0.1rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-bottom: 1px solid var(--border-line);
         padding-bottom: 1rem;
       }
     }
   }
 
- 
-
   // 모바일 사이드바
   .nav-mobile {
+    background-color: var(--bg-color);
+
     display: none;
     position: fixed;
     top: 0;
     right: -280px;
     width: 280px;
     height: 100vh;
-    background: $card-bg;
+    // background: $card-bg;
     z-index: 101;
     transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     // display: flex;
@@ -154,20 +171,43 @@
     }
     a {
       font-size: 1.3rem;
-      color: white;
+      color: var(--text-color);
       text-decoration: none;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       padding-bottom: 10px;
     }
     .close-btn {
-      background-color: transparent;
+      background: none; // 배경 제거
+      border: none; // 테두리 제거
+      padding: 0.5rem; // 클릭 영역 확보
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s ease;
+
+      &:hover {
+        transform: scale(1.1);
+      }
+
+      .icon-svg {
+        // 핵심: 믹스인에서 정의한 변수를 아이콘 색상으로 대입
+        stroke: $icon-color;
+        fill: none; // 필요 시 fill도 변수로 제어 가능
+        transition: stroke 0.3s ease;
+      }
     }
 
     .mobile-menu-header {
       display: flex;
       justify-content: flex-end;
       margin-bottom: 4rem;
-      .close-btn { background: none; border: none; color: #fff; cursor: pointer; }
+      .close-btn {
+        background: none;
+        border: none;
+        color: var(--text-color);
+        cursor: pointer;
+      }
     }
   }
 
@@ -177,7 +217,7 @@
     width: 100%;
     max-width: $max-width;
     margin: 0 auto;
-    padding: 0 2rem;
+    padding: 6rem 2rem 0; // 상단 패딩을 헤더 높이만큼 추가 (6rem)
   }
 
   // 푸터
@@ -187,10 +227,9 @@
     align-items: center;
     height: 5rem;
     padding: 4rem 2rem;
-    color: rgba(255, 255, 255, 0.5); // 약간 흐릿한 흰색이 고급스러움
-    // border-top: 1px solid rgba(255, 255, 255, 0.1);    
+    color: var(--footer-text);
     font-size: 1.5rem;
-  }    
+  }
   .copyright {
     font-size: 1.2rem; // 12px
     letter-spacing: 0.2rem; // 자간을 넓게
@@ -208,7 +247,7 @@
   .ykinas-app .nav-mobile {
     display: flex;
     flex-direction: column;
-    padding: 2em 2rem;
+    padding: 0.6em 2rem 2rem;
     gap: 1.5rem;
     box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
     transform: translateX(0);
@@ -227,7 +266,7 @@
 .submit-btn {
   position: relative;
   overflow: hidden;
-  
+
   &.loading {
     cursor: not-allowed;
     background: rgba(255, 255, 255, 0.1);
@@ -244,5 +283,40 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.theme-toggle {
+  /* 배경 관련 모든 스타일 제거 */
+  background: none !important;
+  background-color: transparent !important;
+
+  /* 테두리 및 그림자 제거 */
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+
+  /* 버튼 기본 속성 초기화 */
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* 아이콘 색상만 남기기 */
+  .icon-svg {
+    stroke: var(--icon-color);
+    transition: stroke 0.3s ease;
+  }
+
+  /* 클릭 시 생기는 브라우저 파란색 테두리 방지 */
+  &:focus {
+    outline: none;
+  }
+
+  /* 터치 기기에서 클릭 시 생기는 하이라이트 제거 (모바일 대응) */
+  -webkit-tap-highlight-color: transparent;
 }

@@ -1,5 +1,7 @@
 @use './style/variables' as *;
 
+@include inject-ykinas-theme;
+
 // index.scss 또는 전역 스타일 파일
 
 // 1. 전역 초기화
@@ -8,12 +10,16 @@
   padding: 0;
   box-sizing: border-box;
 }
+html, body {
+  max-width: 100%;
+  overflow-x: hidden; // 가로 스크롤 절대 금지
+}
 html {
   font-size: clamp(50%, 0.5vw + 44%, 62.5%); 
 }
 body {
   margin: 0;
-  background-color: $bg-black;
+  background-color: $bg-color;
   color: #ffffff;
   
   /* 폰트 설정의 핵심 순서 */
@@ -28,6 +34,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
   
   word-break: keep-all; // 한글 단어 끊김 방지
+
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 /* 영문 폰트: D-DIN */
 @font-face {
@@ -69,7 +77,8 @@ input, select, textarea {
   border: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   padding: 1.2rem 0;
-  color: #fff;
+  // 여기도 변수로 연동
+  color: $text-main;
   font-size: 1.6rem;
   transition: 0.3s;
 
@@ -78,10 +87,8 @@ input, select, textarea {
   &:-webkit-autofill:hover, 
   &:-webkit-autofill:focus, 
   &:-webkit-autofill:active {
-    // 배경색을 투명하게 하거나 원하는 색상($bg-black 등)으로 고정
-    -webkit-box-shadow: 0 0 0px 1000px $bg-black inset !important;
-    // 글자 색상 고정
-    -webkit-text-fill-color: #fff !important;
+    -webkit-box-shadow: 0 0 0px 1000px var(--bg-color) inset !important;
+    -webkit-text-fill-color: var(--text-color) !important;
     // 폰트가 변하지 않게 유지
     transition: background-color 5000s ease-in-out 0s;
   }

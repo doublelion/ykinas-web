@@ -1,12 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Sun, Moon, Menu, X } from 'lucide-react';
 
 function Header() {
+  const [isDark, setIsDark] = useState(true); // 기본 다크모드
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
+
+  useEffect(() => {
+    // 테마 변경 시 HTML 속성 업데이트
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  }, [isDark]);
 
   return (
     <header className="header">
@@ -17,11 +23,17 @@ function Header() {
         <nav className="nav-desktop">
           <Link to="/portfolio">포트폴리오</Link>
           <Link to="/contact">프로젝트 의뢰</Link>
+
+          <button className="theme-toggle" onClick={() => setIsDark(!isDark)}>
+            {/* 아이콘 내부 color 속성 제거하고 CSS로 제어할 수 있게 클래스 부여 */}
+            {isDark ? <Sun size={20} className="icon-svg" /> : <Moon size={20} className="icon-svg" />}
+          </button>
         </nav>
+        
 
         {/* 햄버거 버튼 (데스크탑에선 숨김) */}
         <button className="menu-btn" onClick={toggleMenu} aria-label="메뉴 열기">
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
+          {isOpen ? <X size={24} className="icon-svg" /> : <Menu size={24} className="icon-svg" />}
         </button>
       </div>
 
@@ -32,7 +44,11 @@ function Header() {
       <nav className={`nav-mobile ${isOpen ? 'open' : ''}`}>
         {/* 사이드바 내부 상단에 닫기 버튼을 추가하고 싶다면 여기에 넣을 수도 있습니다. */}
         <div className="mobile-menu-header">
-           <button className="close-btn" onClick={closeMenu}><X size={24} /></button>
+          {/* 모바일용 테마 토글 추가 */}
+          <button className="theme-toggle" onClick={() => setIsDark(!isDark)}>
+            {isDark ? <Sun size={20} className="icon-svg" /> : <Moon size={20} className="icon-svg" />}
+          </button>
+          <button className="close-btn" onClick={closeMenu}><X size={24} /></button>
         </div>
         
         <div className="mobile-links">
