@@ -15,7 +15,6 @@ $text-white: #ffffff;
 $off-white: #f7f9f8;
 $gray-100: #e0e0e0;
 
-
 // ==========================================
 // 2. 테마 스타일 주입 믹스인 (중복 방지 핵심)
 // ==========================================
@@ -37,8 +36,7 @@ $gray-100: #e0e0e0;
     // Hero Section (Light)
     --hero-text-color: #fff;
     --hero-after-shadow: inset 0 0 100px 50px #f7f9f8;
-    --hero-bg-layers: 
-      url('../assets/images/hero_bg_01.webp');
+    --hero-bg-layers: url('../assets/images/hero_bg_01.webp');
 
     --header-grad: linear-gradient(
       180deg,
@@ -47,25 +45,21 @@ $gray-100: #e0e0e0;
       rgba(247, 249, 248, 0) 100%
     );
 
-    --header-bg: rgba(247, 249, 248, 0.8); 
+    --header-bg: rgba(247, 249, 248, 0.8);
     --header-filter: saturate(180%) blur(20px);
 
     // [LIGHT MODE - Button]
     --btn-bg: rgba(255, 255, 255, 0.5); // 반투명 화이트 배경
-    --btn-border: rgba(0, 0, 0, 0.15);   // 연한 블랙 보더
-    --btn-text: #1a2b2f;               // 진한 텍스트
-    --btn-hover-bg: #1a2b2f;           // 호버 시 블랙 배경
-    --btn-hover-text: #ffffff;         // 호버 시 화이트 텍스트
+    --btn-border: rgba(0, 0, 0, 0.15); // 연한 블랙 보더
+    --btn-text: #1a2b2f; // 진한 텍스트
+    --btn-hover-bg: #1a2b2f; // 호버 시 블랙 배경
+    --btn-hover-text: #ffffff; // 호버 시 화이트 텍스트
 
     --toggle-hover-bg: rgba(0, 0, 0, 0.05); // 아주 연한 회색 배경(호버 시에만)
     --nav-mobile-bg: rgba(247, 249, 248, 0.95);
     --icon-color: #{$ykinas-blue}; // 클릭 시(라이트 모드) 블루로 변경
 
-    --section-grad: linear-gradient(
-      180deg,
-      rgba(247, 249, 248, 0) 0%,
-      rgba(230, 235, 233, 0.5) 100% 
-    );
+    --section-grad: #f7f9f8;
   }
 
   // [DARK MODE - 전환 시]
@@ -79,11 +73,11 @@ $gray-100: #e0e0e0;
       180deg,
       rgba(0, 0, 0, 0.6) 0%,
       rgba(0, 0, 0, 0) 100%
-      );
-    
+    );
+
     --header-bg: rgba(0, 0, 0, 0.7);
     --header-filter: none; // 혹은 다크용 필터가 필요하면 추가 가능
-    
+
     // Hero Section (Dark)
     --hero-text-color: #ffffff;
     --hero-after-shadow: inset 0 0 100px 50px #000000;
@@ -115,22 +109,17 @@ $gray-100: #e0e0e0;
     --header-before-opacity: 1;
 
     // [DARK MODE - Button]
-    --btn-bg: rgba(0, 0, 0, 0.5);      // 반투명 블랙 배경
+    --btn-bg: rgba(0, 0, 0, 0.5); // 반투명 블랙 배경
     --btn-border: rgba(255, 255, 255, 0.3); // 연한 화이트 보더
-    --btn-text: #ffffff;               // 화이트 텍스트
-    --btn-hover-bg: #ffffff;           // 호버 시 화이트 배경
-    --btn-hover-text: #000000;         // 호버 시 블랙 텍스트
+    --btn-text: #ffffff; // 화이트 텍스트
+    --btn-hover-bg: #ffffff; // 호버 시 화이트 배경
+    --btn-hover-text: #000000; // 호버 시 블랙 텍스트
 
     --nav-mobile-bg: rgba(5, 5, 5, 0.95);
     --icon-color: #{$ykinas-green}; // 기본 상태(다크 모드) 그린
     --toggle-hover-bg: rgba(74, 186, 72, 0.1); // 호버 시 연한 그린 빛
 
-    --section-grad: linear-gradient(
-      180deg,
-      rgba(10, 10, 15, 0) 0%,
-      rgba(20, 20, 30, 0.5) 100%
-    );
-
+    --section-grad: linear-gradient(180deg, #050505 0%, #0a0a10 100%);
   }
 }
 
@@ -153,7 +142,7 @@ $btn-border: var(--btn-border);
 $btn-text: var(--btn-text);
 $btn-hover-bg: var(--btn-hover-bg);
 $btn-hover-text: var(--btn-hover-text);
-$ease-ykinas: cubic-bezier(.19, 1, .22, 1);
+$ease-ykinas: cubic-bezier(0.19, 1, 0.22, 1);
 
 $icon-color: var(--icon-color);
 $toggle-hover-bg: var(--toggle-hover-bg);
@@ -162,4 +151,3 @@ $toggle-hover-bg: var(--toggle-hover-bg);
 .some-class {
   background: $card-bg;
 }
-

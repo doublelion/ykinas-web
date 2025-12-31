@@ -46,7 +46,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: var(--header-bg); // 변수 추가 권장
+    //background-color: var(--header-bg); // 변수 추가 권장
 
     &::before {
       content: '';
