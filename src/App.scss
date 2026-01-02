@@ -37,7 +37,7 @@
       border-bottom-color: transparent;
     }
 
-    position: fixed; 
+    position: fixed;
     top: 0;
     left: 0; // fixed 사용 시 좌우 정렬을 위해 필요
     z-index: 100;
@@ -58,6 +58,9 @@
       background: var(--header-grad);
       pointer-events: none; // 그림자가 클릭을 방해하지 않도록 설정
       z-index: -1; // 헤더의 글자(로고, 메뉴)보다 뒤로 보냄
+      @media (max-width: 640px) {
+        height: 180px; // 동일하게 깊은 그림자 생성
+      }
     }
 
     .header-inner {
@@ -96,6 +99,7 @@
         text-decoration: none;
         font-weight: 500;
         transition: 0.3s;
+        font-size: 1.45rem;
         &:hover {
           color: var(--text-color);
         }
@@ -319,4 +323,12 @@
 
   /* 터치 기기에서 클릭 시 생기는 하이라이트 제거 (모바일 대응) */
   -webkit-tap-highlight-color: transparent;
+}
+.sub-title {
+  font-family: 'D-DIN-Bold', sans-serif;
+  // [포인트] 기존 블루 상수를 유지하여 브랜드 일관성 확보
+  color: $ykinas-blue;
+  letter-spacing: 0.4rem;
+  font-size: 1.4rem;
+  text-transform: uppercase;
 }

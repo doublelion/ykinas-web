@@ -35,7 +35,7 @@ function Portfolio() {
   return (
     <section className="ykinas-portfolio">
       <div className="portfolio-header">
-        <span className="sub-title d-din">OUR WORKS</span>
+        <span className="sub-title">OUR WORKS</span>
         <h2 className="main-title">YKINAS PROJECTS</h2>
       </div>
 

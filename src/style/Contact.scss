@@ -16,14 +16,7 @@
     text-align: center;
     margin-bottom: 6rem;
 
-    .sub-title {
-      font-family: 'D-DIN-Bold', sans-serif;
-      // [포인트] 기존 블루 상수를 유지하여 브랜드 일관성 확보
-      color: $ykinas-blue; 
-      letter-spacing: 0.4rem;
-      font-size: 1.4rem;
-      text-transform: uppercase;
-    }
+    
 
     .main-title {
       font-size: clamp(3.2rem, 5vw, 4.2rem);
