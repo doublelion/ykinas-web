@@ -3,7 +3,7 @@
 .contact-section {
   padding: 12rem 2rem;
   // [수정] 고정 #000 대신 테마 배경색 사용
-  background: var(--bg-color); 
+  background: var(--bg-color);
   color: var(--text-color);
   transition: background-color 0.3s ease;
 
@@ -16,8 +16,6 @@
     text-align: center;
     margin-bottom: 6rem;
 
-    
-
     .main-title {
       font-size: clamp(3.2rem, 5vw, 4.2rem);
       margin: 1.5rem 0;
@@ -27,7 +25,7 @@
 
     .desc {
       // [수정] 라이트/다크 모드 공용 회색 변수 사용
-      color: var(--footer-text); 
+      color: var(--footer-text);
       line-height: 1.8;
       font-size: 1.7rem;
       word-break: keep-all;
@@ -68,7 +66,7 @@
         background: transparent;
         border: none;
         // [수정] 보더 라인을 테마 변수로 변경
-        border-bottom: 1px solid var(--border-line); 
+        border-bottom: 1px solid var(--border-line);
         padding: 1.2rem 0;
         color: var(--text-color);
         font-size: 1.6rem;
@@ -79,7 +77,7 @@
         &:focus {
           outline: none;
           // [포인트] 포커스 시 블루 컬러로 강조 (브랜드 정체성)
-          border-bottom-color: $ykinas-blue; 
+          border-bottom-color: $ykinas-blue;
         }
 
         &::placeholder {
@@ -93,6 +91,27 @@
         background: var(--card-bg);
         color: var(--text-color);
       }
+
+      .helper-text {
+        margin-top: 0.8rem;
+        font-size: 1.3rem;
+        color: var(--footer-text); // 가독성이 확보된 회색계열 변수 활용
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        line-height: 1.5;
+        letter-spacing: -0.01em;
+
+        .icon {
+          color: #{$ykinas-blue}; // 와이키나스 블루로 신뢰감 포인트
+          font-weight: bold;
+        }
+
+        strong {
+          color: $text-main; // 테마별 텍스트 컬러로 '24시간' 강조
+          font-weight: 700;
+        }
+      }
     }
 
     .agreement-group {
@@ -101,7 +120,7 @@
       gap: 1rem;
       font-size: 1.4rem;
       color: var(--footer-text);
-      
+
       input {
         width: 1.8rem;
         height: 1.8rem;
@@ -114,7 +133,7 @@
       height: 6rem;
       background: transparent;
       // [수정] 버튼 테두리 및 텍스트를 테마 텍스트 컬러와 동기화
-      border: 1px solid var(--text-color); 
+      border: 1px solid var(--text-color);
       color: var(--text-color);
       font-family: 'D-DIN-Bold', sans-serif;
       font-size: 1.8rem;

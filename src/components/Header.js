@@ -8,51 +8,65 @@ function Header() {
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
-
-  // --- 채널톡 로직 시작 ---
   useEffect(() => {
-    const loadChannelTalk = () => {
-      var w = window;
-      if (w.ChannelIO) return;
-      var ch = function () {
-        ch.c(arguments);
-      };
-      ch.q = [];
-      ch.c = function (args) {
-        ch.q.push(args);
-      };
-      w.ChannelIO = ch;
-      function l() {
-        if (w.ChannelIOInitialized) return;
-        w.ChannelIOInitialized = true;
-        var s = document.createElement('script');
-        s.type = 'text/javascript';
-        s.async = true;
-        s.src = 'https://cdn.channel.io/dot/ch-plugin-web.js';
-        s.charset = 'UTF-8';
-        var x = document.getElementsByTagName('script')[0];
-        x.parentNode.insertBefore(s, x);
-      }
-      if (document.readyState === 'complete') l();
-      else {
-        window.addEventListener('DOMContentLoaded', l, false);
-        window.addEventListener('load', l, false);
-      }
-    };
-
-    loadChannelTalk();
-
-    // 채널톡 실행 (부팅)
-    window.ChannelIO('boot', {
-      pluginKey: 'e5aabd3f-f5c3-44c3-94bd-fd257edb7f2e', // 여기에 실제 플러그인 키를 넣으세요
-      appearance: isDark ? 'dark' : 'light', // 현재 테마 모드에 맞춰 채널톡 색상도 변경됨
-    });
+    // 이미 index.html에서 로드되었으므로 바로 boot 호출
+    if (window.ChannelIO) {
+      window.ChannelIO('boot', {
+        pluginKey: 'e5aabd3f-f5c3-44c3-94bd-fd257edb7f2e',
+        appearance: isDark ? 'dark' : 'light', // 리액트의 isDark 상태와 연동
+      });
+    }
 
     return () => {
-      window.ChannelIO('shutdown');
+      if (window.ChannelIO) {
+        window.ChannelIO('shutdown');
+      }
     };
-  }, [isDark]); // 테마가 바뀔 때마다 채널톡 색상도 동기화됩니다.
-  // --- 채널톡 로직 끝 ---
+  }, [isDark]); // isDark가 바뀔 때마다 채널톡 테마도 즉시 변경됨
+  // --- 채널톡 로직 시작 ---
+  // useEffect(() => {
+  //   const loadChannelTalk = () => {
+  //     var w = window;
+  //     if (w.ChannelIO) return;
+  //     var ch = function () {
+  //       ch.c(arguments);
+  //     };
+  //     ch.q = [];
+  //     ch.c = function (args) {
+  //       ch.q.push(args);
+  //     };
+  //     w.ChannelIO = ch;
+  //     function l() {
+  //       if (w.ChannelIOInitialized) return;
+  //       w.ChannelIOInitialized = true;
+  //       var s = document.createElement('script');
+  //       s.type = 'text/javascript';
+  //       s.async = true;
+  //       s.src = 'https://cdn.channel.io/dot/ch-plugin-web.js';
+  //       s.charset = 'UTF-8';
+  //       var x = document.getElementsByTagName('script')[0];
+  //       x.parentNode.insertBefore(s, x);
+  //     }
+  //     if (document.readyState === 'complete') l();
+  //     else {
+  //       window.addEventListener('DOMContentLoaded', l, false);
+  //       window.addEventListener('load', l, false);
+  //     }
+  //   };
+
+  //   loadChannelTalk();
+
+  //   // 채널톡 실행 (부팅)
+  //   window.ChannelIO('boot', {
+  //     pluginKey: 'e5aabd3f-f5c3-44c3-94bd-fd257edb7f2e', // 여기에 실제 플러그인 키를 넣으세요
+  //     appearance: isDark ? 'dark' : 'light', // 현재 테마 모드에 맞춰 채널톡 색상도 변경됨
+  //   });
+
+  //   return () => {
+  //     window.ChannelIO('shutdown');
+  //   };
+  // }, [isDark]); // 테마가 바뀔 때마다 채널톡 색상도 동기화됩니다.
+  // // --- 채널톡 로직 끝 ---
 
   useEffect(() => {
     // 테마 변경 시 HTML 속성 업데이트

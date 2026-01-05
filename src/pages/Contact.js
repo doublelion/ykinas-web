@@ -105,10 +105,28 @@ function Contact() {
           <div className="input-group">
             <label>문의 유형</label>
             <select name="type" value={formData.type} onChange={handleChange}>
-              <option value="consulting">IT 컨설팅</option>
-              <option value="software">소프트웨어 개발</option>
-              <option value="maintenance">유지보수 / 기타</option>
+              {/* 1. 제작 관련: 전문성을 강조한 통합 메뉴 */}
+              <option value="web-development">
+                브랜드 웹사이트 및 커머스 구축
+              </option>
+
+              {/* 2. 프론트엔드 특화: 1인 전문가의 강점 (컨설팅 대신 추천) */}
+              <option value="frontend-ui">
+                고성능 프론트엔드 / UI·UX 고도화
+              </option>
+
+              {/* 3. 유지보수: 신뢰감을 주는 표현 */}
+              <option value="maintenance">운영 지원 및 유지보수 관리</option>
+
+              {/* 4. 기타 */}
+              <option value="others">기타 비즈니스 협업</option>
             </select>
+            {/* 신뢰 문구 추가 */}
+            <p className="helper-text">
+              <span className="icon">✓</span>
+              대표 개발자가 모든 프로젝트를 직접 검토하고{' '}
+              <strong>24시간 이내</strong>에 답변드립니다.
+            </p>
           </div>
 
           <div className="input-group">
