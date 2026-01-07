@@ -19,7 +19,7 @@ function Map() {
         const infoBg = isDark ? '#111' : '#ffffff';
         const infoText = isDark ? '#ffffff' : '#1a2b2f';
         const infoBorder = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
-        const linkColor = isDark ? '#7dd3fc' : '#007bff';
+        const linkColor = isDark ? '#007bff' : '#007bff';
 
         const infoWindow = new kakao.maps.InfoWindow({
           content: `

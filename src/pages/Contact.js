@@ -124,8 +124,8 @@ function Contact() {
             {/* 신뢰 문구 추가 */}
             <p className="helper-text">
               <span className="icon">✓</span>
-              대표 개발자가 모든 프로젝트를 직접 검토하고{' '}
-              <strong>24시간 이내</strong>에 답변드립니다.
+              <span>대표 개발자가 모든 프로젝트를 직접 검토하고 {' '}
+              <strong>24시간 이내</strong> 에 답변드립니다.</span>
             </p>
           </div>
 

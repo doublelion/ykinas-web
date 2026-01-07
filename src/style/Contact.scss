@@ -98,18 +98,21 @@
         color: var(--footer-text); // 가독성이 확보된 회색계열 변수 활용
         display: flex;
         align-items: flex-start;
-        gap: 8px;
+        gap: .8rem;
         line-height: 1.5;
         letter-spacing: -0.01em;
+        flex: 1;
 
         .icon {
           color: #{$ykinas-blue}; // 와이키나스 블루로 신뢰감 포인트
           font-weight: bold;
+          flex: 0 0 1rem;
         }
 
         strong {
           color: $text-main; // 테마별 텍스트 컬러로 '24시간' 강조
           font-weight: 700;
+          
         }
       }
     }
