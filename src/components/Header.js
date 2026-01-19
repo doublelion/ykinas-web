@@ -85,9 +85,11 @@ function Header() {
         {/* <Link to="/" className="logo" onClick={() => setIsOpen(false)}><img src='/logo512.png' alt="YKINAS Logo"></img></Link> */}
         {/* 데스크탑 메뉴 */}
         <nav className="nav-desktop">
+          <Link to="/audit" className="nav-audit-btn">
+            무료 웹 진단
+          </Link>{' '}
           <Link to="/portfolio">포트폴리오</Link>
           <Link to="/contact">프로젝트 의뢰</Link>
-
           <button className="theme-toggle" onClick={() => setIsDark(!isDark)}>
             {/* 아이콘 내부 color 속성 제거하고 CSS로 제어할 수 있게 클래스 부여 */}
             {isDark ? (
@@ -133,6 +135,9 @@ function Header() {
         </div>
 
         <div className="mobile-links">
+          <Link to="/audit" className="nav-audit-btn" onClick={closeMenu}>
+            무료 웹 진단
+          </Link>
           <Link to="/portfolio" onClick={closeMenu}>
             포트폴리오
           </Link>

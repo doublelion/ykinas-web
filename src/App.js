@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import Portfolio from './pages/Portfolio';
 import Contact from './pages/Contact';
+import Audit from './pages/Audit';
 import './App.scss';
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/audit" element={<Audit />} /> {/* 신규 경로 */}
           </Routes>
         </main>
         <Footer />

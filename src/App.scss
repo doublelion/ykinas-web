@@ -31,7 +31,9 @@
     -webkit-backdrop-filter: var(--header-filter); // 사파리 브라우저 대응 필수
 
     border-bottom: 1px solid var(--border-line);
-    transition: background-color 0.3s ease, backdrop-filter 0.3s ease,
+    transition:
+      background-color 0.3s ease,
+      backdrop-filter 0.3s ease,
       border-color 0.3s ease;
     [data-theme='dark'] & {
       border-bottom-color: transparent;
@@ -109,6 +111,20 @@
       }
       @media (max-width: 768px) {
         display: none;
+      }
+      .nav-audit-btn {
+        color: $ykinas-green !important; // 브랜드 컬러로 강조
+        font-weight: 800;
+        border: 1px solid $ykinas-green;
+        padding: 6px 16px;
+        border-radius: 20px;
+        transition: all 0.3s $ease-ykinas;
+
+        &:hover {
+          background: $ykinas-green;
+          color: #fff !important;
+          box-shadow: 0 0 15px rgba($ykinas-green, 0.4);
+        }
       }
     }
 
