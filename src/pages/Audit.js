@@ -126,15 +126,20 @@ function Audit() {
       const response = await fetch(
         `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${targetUrl}&category=PERFORMANCE&category=SEO&key=${API_KEY}`,
       );
+
       const data = await response.json();
-      if (data.error) throw new Error(data.error.message);
+
+      if (data.error) {
+        // 구글이 보내준 구체적인 에러 메시지를 알럿으로 띄웁니다.
+        console.error('Google API Error Details:', data.error);
+        throw new Error(data.error.message || '분석 중 오류가 발생했습니다.');
+      }
 
       // 데이터 도착 완료! 게이지 100%로 채우기
       clearInterval(progressTimer);
       clearInterval(stepTimer);
       setAnalysisProgress(100);
 
-      // 0.5초 뒤 결과 화면으로 전환
       setTimeout(() => {
         setResult(data.lighthouseResult.categories);
         setLoading(false);
@@ -142,7 +147,8 @@ function Audit() {
     } catch (error) {
       clearInterval(progressTimer);
       clearInterval(stepTimer);
-      alert('진단 실패: URL을 확인해주세요.');
+      // 에러 메시지를 더 구체적으로 보여주도록 수정
+      alert(`진단 실패: ${error.message}`);
       setLoading(false);
     }
   };
