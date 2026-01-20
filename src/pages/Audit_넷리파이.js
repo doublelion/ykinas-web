@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Zap, ShieldCheck, Loader2, Search, ArrowRight } from 'lucide-react';
-import emailjs from '@emailjs/browser'; // 1. 이 줄을 꼭 추가하세요!
 import Button from '../components/Button';
 import '../style/Audit.scss';
 
@@ -17,63 +16,35 @@ function Audit() {
     '성능 및 SEO 지표 분석 중...',
     '최적화 솔루션 도출 중...',
   ];
-  // 넷리파이
-  // const handleFormSubmit = async (e) => {
-  //   e.preventDefault();
-
-  //   // FormData 생성 시 이벤트 타겟(e.target)을 직접 참조
-  //   const myForm = e.target;
-  //   const formData = new FormData(myForm);
-
-  //   // 현재 상태값들을 명시적으로 추가 (확인 사살)
-  //   formData.set('form-name', 'audit-consulting');
-  //   formData.set('contact-info', contact);
-  //   formData.set('target-url', url);
-  //   formData.set('perf-score', (result?.performance?.score * 100).toFixed(0));
-  //   formData.set('seo-score', (result?.seo?.score * 100).toFixed(0));
-
-  //   try {
-  //     await fetch('/audit', {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  //       body: new URLSearchParams(formData).toString(),
-  //     });
-  //     alert(
-  //       '와이키나스 전문가에게 분석 요청이 전송되었습니다. 24시간 내에 연락드릴게요!',
-  //     );
-  //     setContact('');
-  //   } catch (error) {
-  //     alert('전송 중 오류가 발생했습니다. 다시 시도해 주세요.');
-  //   }
-  // };
-
-  // Audit.js의 handleFormSubmit 부분 수정 (버셀)
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
-    // EmailJS 템플릿의 {{변수}}와 이름이 똑같아야 합니다.
-    const templateParams = {
-      'contact-info': contact,
-      'target-url': url,
-      'perf-score': (result?.performance?.score * 100).toFixed(0),
-      'seo-score': (result?.seo?.score * 100).toFixed(0),
-    };
+    // FormData 생성 시 이벤트 타겟(e.target)을 직접 참조
+    const myForm = e.target;
+    const formData = new FormData(myForm);
+
+    // 현재 상태값들을 명시적으로 추가 (확인 사살)
+    formData.set('form-name', 'audit-consulting');
+    formData.set('contact-info', contact);
+    formData.set('target-url', url);
+    formData.set('perf-score', (result?.performance?.score * 100).toFixed(0));
+    formData.set('seo-score', (result?.seo?.score * 100).toFixed(0));
 
     try {
-      await emailjs.send(
-        'service_6wxvcrc', // EmailJS 서비스 ID
-        'template_qxqeirs', // EmailJS 템플릿 ID
-        templateParams,
-        'xTdCAigWnc9dXZrNQ', // EmailJS 퍼블릭 키
+      await fetch('/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(formData).toString(),
+      });
+      alert(
+        '와이키나스 전문가에게 분석 요청이 전송되었습니다. 24시간 내에 연락드릴게요!',
       );
-
-      alert('와이키나스 전문가에게 분석 요청이 전송되었습니다!');
       setContact('');
     } catch (error) {
-      console.error('EmailJS Error:', error);
-      alert('전송 중 오류가 발생했습니다.');
+      alert('전송 중 오류가 발생했습니다. 다시 시도해 주세요.');
     }
   };
+
 
   useEffect(() => {
     let interval;
