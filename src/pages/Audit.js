@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Zap, ShieldCheck, Loader2, Search, ArrowRight } from 'lucide-react';
-import emailjs from '@emailjs/browser'; // 1. 이 줄을 꼭 추가하세요!
+import emailjs from '@emailjs/browser';
 import Button from '../components/Button';
 import '../style/Audit.scss';
+
 
 function Audit() {
   const [url, setUrl] = useState('');
