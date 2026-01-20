@@ -19,8 +19,12 @@ function Audit() {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
-    const formData = new FormData(e.target);
-    // 중요: React 상태값(contact)을 FormData에 수동으로 한 번 더 확인 사살해줍니다.
+    // FormData 생성 시 이벤트 타겟(e.target)을 직접 참조
+    const myForm = e.target;
+    const formData = new FormData(myForm);
+
+    // 현재 상태값들을 명시적으로 추가 (확인 사살)
+    formData.set('form-name', 'audit-consulting');
     formData.set('contact-info', contact);
     formData.set('target-url', url);
     formData.set('perf-score', (result?.performance?.score * 100).toFixed(0));
@@ -35,7 +39,7 @@ function Audit() {
       alert(
         '와이키나스 전문가에게 분석 요청이 전송되었습니다. 24시간 내에 연락드릴게요!',
       );
-      setContact(''); // 입력창 초기화
+      setContact('');
     } catch (error) {
       alert('전송 중 오류가 발생했습니다. 다시 시도해 주세요.');
     }
