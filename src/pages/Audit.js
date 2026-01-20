@@ -4,13 +4,13 @@ import emailjs from '@emailjs/browser';
 import Button from '../components/Button';
 import '../style/Audit.scss';
 
-
 function Audit() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [contact, setContact] = useState('');
   const [loadingStep, setLoadingStep] = useState(0);
+  const [analysisProgress, setAnalysisProgress] = useState(0); // 게이지 상태 추가
 
   const steps = [
     '구글 라이트하우스 엔진 연결 중...',
@@ -18,6 +18,7 @@ function Audit() {
     '성능 및 SEO 지표 분석 중...',
     '최적화 솔루션 도출 중...',
   ];
+
   // 넷리파이
   // const handleFormSubmit = async (e) => {
   //   e.preventDefault();
@@ -86,15 +87,39 @@ function Audit() {
     return () => clearInterval(interval);
   }, [loading]);
 
+  // 1. runAudit 함수 수정 (게이지 애니메이션 추가)
   const runAudit = async (e) => {
     e.preventDefault();
+
+    // 입력된 값 앞뒤 공백 제거
     let targetUrl = url.trim();
-    if (!targetUrl.startsWith('http')) targetUrl = `https://${targetUrl}`;
+    if (!targetUrl) return;
+
+    // "ykinas.com"만 쳐도 "https://ykinas.com"으로 변환해주는 유연함!
+    if (!targetUrl.startsWith('http')) {
+      targetUrl = `https://${targetUrl}`;
+    }
 
     setLoading(true);
     setResult(null);
+    setAnalysisProgress(0);
 
-    // 환경 변수에서 키를 불러옵니다.
+    // 1. 게이지를 0.15초마다 1%씩 부드럽게 올리는 타이머
+    const progressTimer = setInterval(() => {
+      setAnalysisProgress((prev) => {
+        if (prev >= 92) {
+          // 92%에서 잠시 대기 (데이터 올 때까지)
+          return 92;
+        }
+        return prev + 1;
+      });
+    }, 150);
+
+    // 2. 로딩 메시지 단계별 변경 (기존 steps 활용)
+    const stepTimer = setInterval(() => {
+      setLoadingStep((prev) => (prev < 3 ? prev + 1 : prev));
+    }, 3000);
+
     const API_KEY = process.env.REACT_APP_PAGESPEED_API_KEY;
 
     try {
@@ -103,17 +128,28 @@ function Audit() {
       );
       const data = await response.json();
       if (data.error) throw new Error(data.error.message);
-      setResult(data.lighthouseResult.categories);
+
+      // 데이터 도착 완료! 게이지 100%로 채우기
+      clearInterval(progressTimer);
+      clearInterval(stepTimer);
+      setAnalysisProgress(100);
+
+      // 0.5초 뒤 결과 화면으로 전환
+      setTimeout(() => {
+        setResult(data.lighthouseResult.categories);
+        setLoading(false);
+      }, 500);
     } catch (error) {
+      clearInterval(progressTimer);
+      clearInterval(stepTimer);
       alert('진단 실패: URL을 확인해주세요.');
-    } finally {
       setLoading(false);
     }
   };
 
+  // 2. 하단 return 부분의 로딩 화면(audit-dim) 수정
   return (
     <div className="audit-container">
-      {/* 고퀄리티 로딩 딤(Dim) 처리 */}
       {loading && (
         <div className="audit-dim">
           <div className="scanner-box">
@@ -122,13 +158,27 @@ function Audit() {
               <div className="radar-dot"></div>
             </div>
             <h2 className="loading-text">{steps[loadingStep]}</h2>
-            <p>최대 30초가 소요될 수 있습니다.</p>
+            <p>데이터를 정밀 분석 중입니다. 잠시만 기다려주세요.</p>
+
+            {/* 가로 그래프 게이지 */}
             <div className="progress-bar-container">
               <div
                 className="progress-fill"
-                style={{ width: `${(loadingStep + 1) * 25}%` }}
+                style={{
+                  width: `${analysisProgress}%`, // loadingStep 대신 analysisProgress 사용!
+                  transition: 'width 0.2s ease-out',
+                }}
               ></div>
             </div>
+            <p
+              style={{
+                color: '#3b82f6',
+                marginTop: '10px',
+                fontWeight: 'bold',
+              }}
+            >
+              {analysisProgress}%
+            </p>
           </div>
         </div>
       )}
@@ -150,6 +200,15 @@ function Audit() {
             placeholder="분석할 URL을 입력하세요 (예: ykinas.com)"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
+            required
+            // 정규식 설명: 도메인 형태(단어.단어)인지 확인합니다.
+            pattern="^(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/.*)?$"
+            onInvalid={(e) =>
+              e.target.setCustomValidity(
+                'ykinas.com 형식으로 올바르게 입력해주세요.',
+              )
+            }
+            onInput={(e) => e.target.setCustomValidity('')}
           />
           <button type="submit" disabled={loading}>
             분석 시작
