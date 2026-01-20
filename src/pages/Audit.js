@@ -201,11 +201,11 @@ function Audit() {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
-            // 정규식 설명: 도메인 형태(단어.단어)인지 확인합니다.
-            pattern="^(?:https?:\/\/)?(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(?:\/.*)?$"
+            // 하이픈(-), 숫자, 여러 단계의 도메인(.vercel.app 등)을 모두 허용하는 유연한 패턴
+            pattern="^(?:https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}(?:\/.*)?$"
             onInvalid={(e) =>
               e.target.setCustomValidity(
-                'ykinas.com 형식으로 올바르게 입력해주세요.',
+                'ykinas.com 또는 임시 주소 형식으로 입력해주세요.',
               )
             }
             onInput={(e) => e.target.setCustomValidity('')}
