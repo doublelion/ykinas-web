@@ -243,36 +243,11 @@ function Audit() {
                   전문가가 직접 구조를 분석한 1:1 리포트를 무료로 보내드립니다.
                 </p>
               </div>
-              <form
-                name="audit-consulting"
-                method="POST"
-                action="/audit"
-                data-netlify="true"
-                className="cta-form"
-                onSubmit={handleFormSubmit}
-              >
-                <input
-                  type="hidden"
-                  name="form-name"
-                  value="audit-consulting"
-                />
-
-                {/* 이 name 값들이 넷리파이 메일 템플릿의 {{변수}}와 일치해야 함 */}
-                <input type="hidden" name="target-url" value={url} />
-                <input
-                  type="hidden"
-                  name="perf-score"
-                  value={(result?.performance?.score * 100).toFixed(0)}
-                />
-                <input
-                  type="hidden"
-                  name="seo-score"
-                  value={(result?.seo?.score * 100).toFixed(0)}
-                />
-
+              <form className="cta-form" onSubmit={handleFormSubmit}>
+                {/* 이제 hidden input들은 필요 없습니다. 
+      templateParams에서 데이터를 바로 넘겨주고 있기 때문입니다. */}
                 <input
                   type="text"
-                  name="contact-info" // 넷리파이 메일 설정의 {{contact-info}}와 일치!
                   placeholder="연락처 또는 이메일"
                   value={contact}
                   onChange={(e) => setContact(e.target.value)}
