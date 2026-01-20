@@ -20,6 +20,11 @@ function Audit() {
     e.preventDefault();
 
     const formData = new FormData(e.target);
+    // 중요: React 상태값(contact)을 FormData에 수동으로 한 번 더 확인 사살해줍니다.
+    formData.set('contact-info', contact);
+    formData.set('target-url', url);
+    formData.set('perf-score', (result?.performance?.score * 100).toFixed(0));
+    formData.set('seo-score', (result?.seo?.score * 100).toFixed(0));
 
     try {
       await fetch('/', {
@@ -54,9 +59,12 @@ function Audit() {
     setLoading(true);
     setResult(null);
 
+    // 환경 변수에서 키를 불러옵니다.
+    const API_KEY = process.env.REACT_APP_PAGESPEED_API_KEY;
+
     try {
       const response = await fetch(
-        `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${targetUrl}&category=PERFORMANCE&category=SEO&key=AIzaSyAMPB3s1dlEMWdPnF2IP8VxF1C16Gid55Q`,
+        `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${targetUrl}&category=PERFORMANCE&category=SEO&key=${API_KEY}`,
       );
       const data = await response.json();
       if (data.error) throw new Error(data.error.message);
@@ -92,7 +100,7 @@ function Audit() {
 
       <div className="audit-wrapper">
         <header className="audit-header">
-          <span className="badge">AI-BASED ANALYSIS</span>
+          <span className="sub-title">AI-BASED ANALYSIS</span>
           <h1>
             고치지 않아도 되는 <br />{' '}
             <span className="highlight">웹사이트를 만듭니다</span>
@@ -146,16 +154,15 @@ function Audit() {
                 method="POST"
                 data-netlify="true"
                 className="cta-form"
-                onSubmit={handleFormSubmit} // 이 부분 추가
+                onSubmit={handleFormSubmit}
               >
-                {/* 넷리파이 필수 히든 필드 */}
                 <input
                   type="hidden"
                   name="form-name"
                   value="audit-consulting"
                 />
 
-                {/* 분석 데이터 자동 전송용 히든 필드 */}
+                {/* 이 name 값들이 넷리파이 메일 템플릿의 {{변수}}와 일치해야 함 */}
                 <input type="hidden" name="target-url" value={url} />
                 <input
                   type="hidden"
@@ -170,7 +177,7 @@ function Audit() {
 
                 <input
                   type="text"
-                  name="contact-info" // index.html과 일치
+                  name="contact-info" // 넷리파이 메일 설정의 {{contact-info}}와 일치!
                   placeholder="연락처 또는 이메일"
                   value={contact}
                   onChange={(e) => setContact(e.target.value)}
