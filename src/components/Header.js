@@ -82,16 +82,19 @@ function Header() {
         <Link to="/" className="logo" onClick={() => setIsOpen(false)}>
           YKIN<span>Λ</span>S
         </Link>
-        {/* <Link to="/" className="logo" onClick={() => setIsOpen(false)}><img src='/logo512.png' alt="YKINAS Logo"></img></Link> */}
+
         {/* 데스크탑 메뉴 */}
         <nav className="nav-desktop">
           <Link to="/audit" className="nav-audit-btn">
             무료 웹 진단
-          </Link>{' '}
+          </Link>
+
+          {/* 🚀 데스크탑 템플릿 메뉴 추가 */}
+          <Link to="/templates">템플릿</Link>
+
           <Link to="/portfolio">포트폴리오</Link>
           <Link to="/contact">프로젝트 의뢰</Link>
           <button className="theme-toggle" onClick={() => setIsDark(!isDark)}>
-            {/* 아이콘 내부 color 속성 제거하고 CSS로 제어할 수 있게 클래스 부여 */}
             {isDark ? (
               <Sun size={20} className="icon-svg" />
             ) : (
@@ -100,7 +103,7 @@ function Header() {
           </button>
         </nav>
 
-        {/* 햄버거 버튼 (데스크탑에선 숨김) */}
+        {/* 햄버거 버튼 */}
         <button
           className="menu-btn"
           onClick={toggleMenu}
@@ -114,14 +117,12 @@ function Header() {
         </button>
       </div>
 
-      {/* 딤(Dim) 처리: 메뉴가 열렸을 때만 나타남 */}
+      {/* 딤(Dim) 처리 */}
       {isOpen && <div className="nav-overlay" onClick={closeMenu}></div>}
 
       {/* 모바일 사이드바 */}
       <nav className={`nav-mobile ${isOpen ? 'open' : ''}`}>
-        {/* 사이드바 내부 상단에 닫기 버튼을 추가하고 싶다면 여기에 넣을 수도 있습니다. */}
         <div className="mobile-menu-header">
-          {/* 모바일용 테마 토글 추가 */}
           <button className="theme-toggle" onClick={() => setIsDark(!isDark)}>
             {isDark ? (
               <Sun size={20} className="icon-svg" />
@@ -138,6 +139,12 @@ function Header() {
           <Link to="/audit" className="nav-audit-btn" onClick={closeMenu}>
             무료 웹 진단
           </Link>
+
+          {/* 🚀 모바일 템플릿 메뉴 추가 */}
+          <Link to="/templates" onClick={closeMenu}>
+            템플릿
+          </Link>
+
           <Link to="/portfolio" onClick={closeMenu}>
             포트폴리오
           </Link>

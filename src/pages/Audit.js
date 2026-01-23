@@ -19,54 +19,27 @@ function Audit() {
     '최적화 솔루션 도출 중...',
   ];
 
-  // 넷리파이
-  // const handleFormSubmit = async (e) => {
-  //   e.preventDefault();
-
-  //   // FormData 생성 시 이벤트 타겟(e.target)을 직접 참조
-  //   const myForm = e.target;
-  //   const formData = new FormData(myForm);
-
-  //   // 현재 상태값들을 명시적으로 추가 (확인 사살)
-  //   formData.set('form-name', 'audit-consulting');
-  //   formData.set('contact-info', contact);
-  //   formData.set('target-url', url);
-  //   formData.set('perf-score', (result?.performance?.score * 100).toFixed(0));
-  //   formData.set('seo-score', (result?.seo?.score * 100).toFixed(0));
-
-  //   try {
-  //     await fetch('/audit', {
-  //       method: 'POST',
-  //       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  //       body: new URLSearchParams(formData).toString(),
-  //     });
-  //     alert(
-  //       '와이키나스 전문가에게 분석 요청이 전송되었습니다. 24시간 내에 연락드릴게요!',
-  //     );
-  //     setContact('');
-  //   } catch (error) {
-  //     alert('전송 중 오류가 발생했습니다. 다시 시도해 주세요.');
-  //   }
-  // };
-
   // Audit.js의 handleFormSubmit 부분 수정 (버셀)
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
-    // EmailJS 템플릿의 {{변수}}와 이름이 똑같아야 합니다.
+    // EmailJS 템플릿의 {{ }} 안에 들어갈 이름들입니다.
     const templateParams = {
-      'contact-info': contact,
-      'target-url': url,
-      'perf-score': (result?.performance?.score * 100).toFixed(0),
-      'seo-score': (result?.seo?.score * 100).toFixed(0),
+      user_name: '성능 분석 요청', // 이름 대신 고정 텍스트
+      user_contact: contact,
+      target_url: url,
+      performance_score: (result?.performance?.score * 100).toFixed(0),
+      seo_score: (result?.seo?.score * 100).toFixed(0),
+      inquiry_type: '사이트 진단',
+      user_message: '상세 분석 리포트 요청입니다.',
     };
 
     try {
       await emailjs.send(
-        'service_6wxvcrc', // EmailJS 서비스 ID
-        'template_qxqeirs', // EmailJS 템플릿 ID
+        'service_6wxvcrc',
+        'template_qxqeirs',
         templateParams,
-        'xTdCAigWnc9dXZrNQ', // EmailJS 퍼블릭 키
+        'xTdCAigWnc9dXZrNQ',
       );
 
       alert('와이키나스 전문가에게 분석 요청이 전송되었습니다!');

@@ -1,0 +1,308 @@
+@use '../../style/variables' as *;
+
+.aristide-v1-wrapper {
+  position: fixed;
+  inset: 0;
+  background-color: #000;
+  color: #fff;
+  overflow: hidden;
+  z-index: 5000;
+
+  .custom-cursor {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    background: #fff;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    mix-blend-mode: difference;
+    transform: translate(-50%, -50%);
+  }
+
+  .header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 120px;
+    z-index: 10000; // 🚀 무조건 최상위
+    padding: 40px 60px;
+    pointer-events: none;
+
+    .header-container {
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-start;
+      width: 100%;
+      height: 100%;
+      mix-blend-mode: difference; // 🚀 텍스트 반전 효과 유지
+
+      &:has(.logo) {
+        justify-content: space-between;
+      }
+    }
+
+    .logo,
+    .btn-wrapper {
+      pointer-events: auto !important;
+    }
+
+    .logo {
+      cursor: pointer;
+      h1 {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: rgba(156, 163, 175, 1);
+        margin: 0;
+      }
+      p {
+        font-size: 1.65rem;
+        color: rgba(156, 163, 175, 0.6);
+        margin-top: 4px;
+        letter-spacing: 2px;
+      }
+    }
+
+    .detail-close-btn {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      color: #fff;
+      width: 55px;
+      height: 55px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+
+      svg {
+        transition: transform 0.4s ease;
+      }
+      &:hover {
+        background: #fff;
+        color: #000;
+        svg {
+          transform: rotate(90deg);
+        }
+      }
+    }
+  }
+
+  .main-engine {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+
+    .column {
+      position: relative;
+      flex: 1;
+      height: 100%;
+      overflow: hidden;
+      transition: flex 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+
+      .image-container {
+        position: absolute;
+        inset: 0;
+        width: 100vw;
+        left: 50%;
+        transform: translateX(-50%);
+        &::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.4);
+          z-index: 1;
+          transition: background 0.5s;
+        }
+        img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          filter: grayscale(100%);
+          transition: 0.9s ease;
+        }
+      }
+
+      .hover-reveal-content {
+        position: absolute;
+        bottom: 10%;
+        left: 60px;
+        z-index: 10;
+        text-align: left;
+        opacity: 0;
+        transform: translateY(30px);
+        transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        .meta-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 10px;
+          font-size: 1.2rem;
+          color: #d1d5db;
+          text-transform: uppercase;
+          svg {
+            width: 14px;
+            height: 14px;
+            color: #4b5563;
+          }
+        }
+        .outline-title h2 {
+          font-size: 4.5vw;
+          font-weight: 800;
+          color: #fff;
+          text-transform: uppercase;
+        }
+      }
+
+      @media (min-width: 769px) {
+        &:hover:not(.selected):not(.hidden) {
+          flex: 6;
+          .image-container img {
+            filter: grayscale(0%);
+            transform: scale(1.05);
+          }
+          .image-container::before {
+            background: rgba(0, 0, 0, 0.2);
+          }
+          .hover-reveal-content {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      }
+
+      &.selected {
+        flex: 50 !important;
+        z-index: 10;
+        .image-container img {
+          filter: grayscale(0%);
+        }
+      }
+      &.hidden {
+        flex: 0 !important;
+        opacity: 0;
+      }
+    }
+
+    .info-panel {
+      flex: 50;
+      background: #050505;
+      display: flex;
+      align-items: center;
+      padding: 0 10%;
+      z-index: 50;
+      position: relative;
+
+      .content-box {
+        .work-label {
+          color: $ykinas-green;
+          font-weight: bold;
+          letter-spacing: 2px;
+          font-size: 1.2rem;
+          margin-bottom: 10px;
+        }
+        .selected-title {
+          font-size: 5.5vw;
+          font-weight: 900;
+          line-height: 0.9;
+          text-transform: uppercase;
+          margin: 20px 0;
+        }
+        .description {
+          font-size: 1.5rem;
+          line-height: 1.6;
+          opacity: 0.7;
+          margin-bottom: 40px;
+        }
+        .meta-info {
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          padding-top: 20px;
+          margin-bottom: 40px;
+          .label {
+            font-size: 1.3rem;
+            color: #666;
+            margin-bottom: 5px;
+          }
+          .value {
+            font-size: 1.3rem;
+            font-weight: 500;
+          }
+        }
+        /* 🚀 버튼 컬러 복구 */
+        .inquiry-btn {
+          background: none;
+          border: none;
+          border-bottom: 2px solid $ykinas-green;
+          color: $ykinas-green;
+          display: flex;
+          align-items: center;
+          gap: 20px;
+          font-weight: bold;
+          cursor: pointer;
+          padding: 10px 0;
+          transition: gap 0.3s;
+          &:hover {
+            gap: 30px;
+          }
+        }
+      }
+    }
+  }
+}
+
+// --- 모바일 (MO) ---
+@media (max-width: 768px) {
+  .aristide-v1-wrapper {
+    .header {
+      padding: 20px;
+      height: 80px;
+      z-index: 10001 !important;
+      .header-container {
+        mix-blend-mode: normal;
+      } // 모바일 가독성 위해 반전 제거
+      .detail-close-btn {
+        width: 50px;
+        height: 50px;
+        background: #fff;
+        color: #000; // 🚀 모바일에서 확실히 보이도록 반전 컬러
+        border: none;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      }
+    }
+
+    .main-engine {
+      display: flex; // 가로 유지
+      .column.selected {
+        position: absolute;
+        inset: 0;
+        flex: 100 !important;
+        z-index: 100;
+        .image-container::before {
+          background: rgba(0, 0, 0, 0.7) !important;
+        }
+      }
+      .info-panel {
+        position: absolute;
+        inset: 0;
+        background: transparent;
+        z-index: 200;
+        display: flex;
+        align-items: flex-end;
+        padding: 0 25px 8vh 25px;
+        pointer-events: none;
+        .content-box {
+          pointer-events: auto;
+          .selected-title {
+            font-size: 12vw;
+          }
+          .description {
+            font-size: 1.3rem;
+          }
+        }
+      }
+    }
+  }
+}

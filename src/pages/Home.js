@@ -12,6 +12,7 @@ function Home() {
   // 최신 프로젝트 2개만 추출 (id 역순 혹은 최하단 2개)
   const previewProjects = PROJECTS.slice(-2).reverse();
 
+  // 여기를 수정하면 납품용이 된다 //
   const handleInquiry = () => {
     navigate('/contact'); // 페이지 깜빡임 없이 이동
   };

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
+import emailjs from '@emailjs/browser'; // EmailJS 임포트
 import '../style/Contact.scss';
 
 function Contact() {
-  const [isLoading, setIsLoading] = useState(false); // 로딩 상태 추가
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     contact: '',
-    type: 'consulting',
+    type: 'web-development', // 기본값 수정
     message: '',
     agreement: false,
   });
@@ -19,38 +20,41 @@ function Contact() {
     });
   };
 
-  // Netlify 폼 제출을 위한 헬퍼 함수 (AJAX 방식)
-  const encode = (data) => {
-    return Object.keys(data)
-      .map(
-        (key) => encodeURIComponent(key) + '=' + encodeURIComponent(data[key]),
-      )
-      .join('&');
-  };
-
-  // Contact.js 내부
   const handleSubmit = (e) => {
     e.preventDefault();
     setIsLoading(true);
 
-    fetch('/', {
-      // 현재 경로 혹은 "/" 가 맞는지 확인
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: encode({ 'form-name': 'project-inquiry', ...formData }),
-    })
-      .then((response) => {
-        if (response.ok) {
-          alert('문의가 정상적으로 접수되었습니다.');
-          setIsLoading(false);
-          // 성공 후 폼 초기화 코드...
-        } else {
-          throw new Error('404 혹은 서버 에러 발생');
-        }
+    const templateParams = {
+      user_name: formData.name,
+      user_contact: formData.contact,
+      inquiry_type: formData.type,
+      user_message: formData.message,
+      target_url: '-', // 분석기 데이터는 대시 처리
+      performance_score: '-',
+      seo_score: '-',
+    };
+
+    emailjs
+      .send(
+        'service_6wxvcrc',
+        'template_qxqeirs',
+        templateParams,
+        'xTdCAigWnc9dXZrNQ',
+      )
+      .then(() => {
+        alert('문의가 정상적으로 접수되었습니다!');
+        setIsLoading(false);
+        setFormData({
+          name: '',
+          contact: '',
+          type: 'web-development',
+          message: '',
+          agreement: false,
+        });
       })
       .catch((error) => {
-        console.error(error);
-        alert('오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        console.error('EmailJS Error:', error);
+        alert('오류가 발생했습니다.');
         setIsLoading(false);
       });
   };
@@ -68,15 +72,7 @@ function Contact() {
           </p>
         </div>
 
-        <form
-          name="project-inquiry"
-          onSubmit={handleSubmit}
-          data-netlify="true"
-          className="contact-form"
-        >
-          {/* Netlify 인식용 히든 필드 */}
-          <input type="hidden" name="form-name" value="project-inquiry" />
-
+        <form onSubmit={handleSubmit} className="contact-form">
           <div className="input-row">
             <div className="input-group">
               <label>성함 / 기업명</label>
@@ -105,27 +101,23 @@ function Contact() {
           <div className="input-group">
             <label>문의 유형</label>
             <select name="type" value={formData.type} onChange={handleChange}>
-              {/* 1. 제작 관련: 전문성을 강조한 통합 메뉴 */}
-              <option value="web-development">
+              <option value="브랜드 웹사이트 및 커머스 구축">
                 브랜드 웹사이트 및 커머스 구축
               </option>
-
-              {/* 2. 프론트엔드 특화: 1인 전문가의 강점 (컨설팅 대신 추천) */}
-              <option value="frontend-ui">
+              <option value="고성능 프론트엔드 / UI·UX 고도화">
                 고성능 프론트엔드 / UI·UX 고도화
               </option>
-
-              {/* 3. 유지보수: 신뢰감을 주는 표현 */}
-              <option value="maintenance">운영 지원 및 유지보수 관리</option>
-
-              {/* 4. 기타 */}
-              <option value="others">기타 비즈니스 협업</option>
+              <option value="운영 지원 및 유지보수 관리">
+                운영 지원 및 유지보수 관리
+              </option>
+              <option value="기타 비즈니스 협업">기타 비즈니스 협업</option>
             </select>
-            {/* 신뢰 문구 추가 */}
             <p className="helper-text">
               <span className="icon">✓</span>
-              <span>대표 개발자가 모든 프로젝트를 직접 검토하고 {' '}
-              <strong>24시간 이내</strong> 에 답변드립니다.</span>
+              <span>
+                대표 개발자가 모든 프로젝트를 직접 검토하고{' '}
+                <strong>24시간 이내</strong> 에 답변드립니다.
+              </span>
             </p>
           </div>
 
@@ -161,7 +153,7 @@ function Contact() {
             disabled={isLoading}
           >
             {isLoading ? (
-              <div className="spinner"></div> // 로딩 애니메이션
+              <div className="spinner"></div>
             ) : (
               <>
                 <span>의뢰하기</span>
