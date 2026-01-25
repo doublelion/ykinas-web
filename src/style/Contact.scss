@@ -161,3 +161,34 @@
     }
   }
 }
+
+
+.map-section {
+  padding: 8rem 0;
+  max-width: $max-width;
+  margin: 0 auto;
+
+  .section-title-sub {
+    font-size: clamp(2.4rem, 5vw, 3.2rem);
+    color: var(--text-color); // [수정] 고정 #fff에서 변수로 변경
+    margin-bottom: 4rem;
+    text-align: center;
+    font-weight: 800;
+  }
+
+  .kakao-map-container {
+    width: 100%;
+    height: 45rem;
+    border-radius: 2.4rem; // 조금 더 부드러운 곡선
+    border: 1px solid var(--border-line);
+    background-color: var(--card-bg); // 로드 전 배경색도 테마에 맞게
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+
+    // 카카오맵 내부 InfoWindow 기본 화이트 박스 제거용 스타일 (선택)
+    .info-window-custom {
+      background: none;
+      border: none;
+    }
+  }
+}

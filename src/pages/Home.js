@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Sparkles,
 } from 'lucide-react';
-import Map from '../components/Map'; // 지도 컴포넌트 (있을 경우)
 import Button from '../components/Button'; // 경로 확인 필요
 import { PROJECTS } from '../data/project'; // 데이터 임포트
 import { useNavigate } from 'react-router-dom';
@@ -160,8 +159,7 @@ function Home() {
         </div>
       </section>
 
-      {/* 오시는 길 (지도) - Footer 바로 위에 위치 */}
-      <Map />
+      
     </div>
   );
 }
