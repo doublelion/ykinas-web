@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react'; // React 선언은 한 번만!
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useParams } from 'react-router-dom'; // 15번 라인 useParams 해결
 import { TEMPLATES } from './data/template'; // 데이터 경로
@@ -6,13 +6,14 @@ import Home from './pages/Home';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Portfolio from './pages/Portfolio';
-import Contact from './pages/Contact';
-import Audit from './pages/Audit';
 import TemplateList from './pages/TemplateList'; // 목록 페이지 (카드들 나오는 곳)
 import TemplateDetail from './pages/TemplateDetail'; // 상세 페이지 (멋진 애니메이션)
 import AristideV1 from './components/templates/AristideV1'; // 26번 라인 AristideV1 해결 (경로 확인 필수)
 import './App.scss';
 
+// 기존 import Audit from './pages/Audit'; 를 아래처럼 변경
+const Audit = lazy(() => import('./pages/Audit'));
+const Contact = lazy(() => import('./pages/Contact'));
 
 // 1. 컴포넌트 정의
 const TemplateRenderer = () => {
@@ -68,14 +69,18 @@ function App() {
       <div className="ykinas-app">
         <Header />
         <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/portfolio" element={<Portfolio />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/audit" element={<Audit />} />
-            <Route path="/templates" element={<TemplateList />} />
-            <Route path="/templates/:id" element={<TemplateRenderer />} />
-          </Routes>
+          <Suspense
+            fallback={<div className="loading-spinner">Loading...</div>}
+          >
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/portfolio" element={<Portfolio />} />
+              <Route path="/audit" element={<Audit />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/templates" element={<TemplateList />} />
+              <Route path="/templates/:id" element={<TemplateRenderer />} />
+            </Routes>
+          </Suspense>
         </main>
         <Footer />
       </div>

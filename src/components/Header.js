@@ -3,73 +3,49 @@ import { Link } from 'react-router-dom';
 import { Sun, Moon, Menu, X } from 'lucide-react';
 
 function Header() {
-  const [isDark, setIsDark] = useState(true); // 기본 다크모드
+  const [isDark, setIsDark] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [isBooted, setIsBooted] = useState(false); // 부팅 상태를 state로 관리
 
   const toggleMenu = () => setIsOpen(!isOpen);
   const closeMenu = () => setIsOpen(false);
+
+  // 1. 채널톡 지연 부팅 및 테마 업데이트
   useEffect(() => {
-    // 이미 index.html에서 로드되었으므로 바로 boot 호출
-    if (window.ChannelIO) {
-      window.ChannelIO('boot', {
-        pluginKey: 'e5aabd3f-f5c3-44c3-94bd-fd257edb7f2e',
-        appearance: isDark ? 'dark' : 'light', // 리액트의 isDark 상태와 연동
+    const handleShowChannel = () => {
+      if (window.ChannelIO && !isBooted) {
+        window.ChannelIO('boot', {
+          pluginKey: 'e5aabd3f-f5c3-44c3-94bd-fd257edb7f2e',
+          appearance: isDark ? 'dark' : 'light',
+        });
+        setIsBooted(true);
+      }
+    };
+
+    if (!isBooted) {
+      window.addEventListener('scroll', handleShowChannel, { passive: true });
+      window.addEventListener('touchstart', handleShowChannel, {
+        passive: true,
+      });
+      window.addEventListener('mousemove', handleShowChannel, {
+        passive: true,
+      });
+    } else {
+      // 이미 부팅된 상태에서 테마만 변경될 때
+      window.ChannelIO('update', {
+        appearance: isDark ? 'dark' : 'light',
       });
     }
 
     return () => {
-      if (window.ChannelIO) {
-        window.ChannelIO('shutdown');
-      }
+      window.removeEventListener('scroll', handleShowChannel);
+      window.removeEventListener('touchstart', handleShowChannel);
+      window.removeEventListener('mousemove', handleShowChannel);
     };
-  }, [isDark]); // isDark가 바뀔 때마다 채널톡 테마도 즉시 변경됨
-  // --- 채널톡 로직 시작 ---
-  // useEffect(() => {
-  //   const loadChannelTalk = () => {
-  //     var w = window;
-  //     if (w.ChannelIO) return;
-  //     var ch = function () {
-  //       ch.c(arguments);
-  //     };
-  //     ch.q = [];
-  //     ch.c = function (args) {
-  //       ch.q.push(args);
-  //     };
-  //     w.ChannelIO = ch;
-  //     function l() {
-  //       if (w.ChannelIOInitialized) return;
-  //       w.ChannelIOInitialized = true;
-  //       var s = document.createElement('script');
-  //       s.type = 'text/javascript';
-  //       s.async = true;
-  //       s.src = 'https://cdn.channel.io/dot/ch-plugin-web.js';
-  //       s.charset = 'UTF-8';
-  //       var x = document.getElementsByTagName('script')[0];
-  //       x.parentNode.insertBefore(s, x);
-  //     }
-  //     if (document.readyState === 'complete') l();
-  //     else {
-  //       window.addEventListener('DOMContentLoaded', l, false);
-  //       window.addEventListener('load', l, false);
-  //     }
-  //   };
+  }, [isDark, isBooted]); // isBooted를 의존성 배열에 추가
 
-  //   loadChannelTalk();
-
-  //   // 채널톡 실행 (부팅)
-  //   window.ChannelIO('boot', {
-  //     pluginKey: 'e5aabd3f-f5c3-44c3-94bd-fd257edb7f2e', // 여기에 실제 플러그인 키를 넣으세요
-  //     appearance: isDark ? 'dark' : 'light', // 현재 테마 모드에 맞춰 채널톡 색상도 변경됨
-  //   });
-
-  //   return () => {
-  //     window.ChannelIO('shutdown');
-  //   };
-  // }, [isDark]); // 테마가 바뀔 때마다 채널톡 색상도 동기화됩니다.
-  // // --- 채널톡 로직 끝 ---
-
+  // 2. 시스템 테마 적용
   useEffect(() => {
-    // 테마 변경 시 HTML 속성 업데이트
     document.documentElement.setAttribute(
       'data-theme',
       isDark ? 'dark' : 'light',

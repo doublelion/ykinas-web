@@ -74,8 +74,11 @@ function Home() {
               onClick={() => navigate('/templates')}
             >
               <img
-                src="/templates/tpl-01/src/images/silence.webp"
                 alt="Aristide Template"
+                src="/templates/tpl-01/src/images/silence.webp"
+                width="800"
+                height="600"
+                style={{ width: '100%', height: 'auto' }}
               />
             </div>
           </div>
