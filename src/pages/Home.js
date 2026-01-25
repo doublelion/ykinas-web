@@ -1,5 +1,11 @@
 import React from 'react';
-import { Monitor, ShoppingCart, Settings, ArrowRight } from 'lucide-react';
+import {
+  Monitor,
+  ShoppingCart,
+  Settings,
+  ArrowRight,
+  Sparkles,
+} from 'lucide-react';
 import Map from '../components/Map'; // 지도 컴포넌트 (있을 경우)
 import Button from '../components/Button'; // 경로 확인 필요
 import { PROJECTS } from '../data/project'; // 데이터 임포트
@@ -30,6 +36,51 @@ function Home() {
         </p>
         <Button text="프로젝트 문의하기" onClick={handleInquiry} />
       </header>
+
+      <section className="home-template-highlight">
+        <div className="container">
+          {/* 포트폴리오와 똑같은 헤더 구조 */}
+          <div className="section-header">
+            <span>PREMIUM SOLUTION</span>
+            <h2>Template Line-up</h2>
+          </div>
+
+          <div className="highlight-flex">
+            <div className="highlight-content">
+              <h3>ARISTIDE.INSPIRED</h3>
+              <p className="highlight-desc">
+                단순한 템플릿을 넘어 브랜드의 가치를 증명합니다. <br />
+                최신 최적화 기술이 집약된 와이키나스의 첫 번째 솔루션.
+              </p>
+              <ul className="feature-list">
+                <li>
+                  <Sparkles size={18} /> 4K 비주얼 및 하이엔드 디자인
+                </li>
+                <li>
+                  <Sparkles size={18} /> Lighthouse 성능 지수 최적화
+                </li>
+                <li>
+                  <Sparkles size={18} /> SEO 엔진 최적화 및 모바일 대응
+                </li>
+              </ul>
+              <Button
+                text="상세 정보 보기"
+                onClick={() => navigate('/templates')}
+              />
+            </div>
+
+            <div
+              className="highlight-image"
+              onClick={() => navigate('/templates')}
+            >
+              <img
+                src="/templates/tpl-01/src/images/silence.webp"
+                alt="Aristide Template"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* 서비스 섹션 */}
       <section id="services" className="service-grid">

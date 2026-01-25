@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RUI Architecture Recruiting</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Noto+Serif+KR:wght@900&family=Oswald:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Styles -->
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        .font-serif-kr { font-family: 'Noto Serif KR', serif; }
+        .font-oswald { font-family: 'Oswald', sans-serif; }
+        
+        /* Grid Background Pattern */
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image:
+                linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+        }
+
+        /* Vertical Text */
+        .writing-vertical {
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+        }
+
+        /* Hide scrollbar for horizontal */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .menu-btn-line {
+            transition: all 0.3s ease;
+        }
+        .active .menu-btn-line-1 { transform: rotate(45deg) translate(5px, 5px); }
+        .active .menu-btn-line-2 { opacity: 0; }
+        .active .menu-btn-line-3 { transform: rotate(-45deg) translate(5px, -5px); }
+    </style>
+</head>
+<body class="bg-white text-[#1A1A1A] antialiased overflow-x-hidden">
+
+    <!-- Fixed Header -->
+    <header class="fixed top-0 right-0 z-50 p-6 mix-blend-difference text-white">
+        <button id="menu-btn" class="flex flex-col gap-1.5 w-8 items-end group cursor-pointer border border-white p-2">
+            <span class="text-[10px] font-oswald tracking-widest mb-1">MENU</span>
+            <span class="w-full h-px bg-current menu-btn-line menu-btn-line-1"></span>
+            <span class="w-full h-px bg-current menu-btn-line menu-btn-line-2"></span>
+            <span class="w-full h-px bg-current menu-btn-line menu-btn-line-3"></span>
+        </button>
+    </header>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobile-menu" class="fixed inset-0 bg-[#E04F30] z-40 transform translate-x-full flex items-center justify-center">
+        <nav class="text-white text-center space-y-8 font-oswald text-4xl font-bold">
+            <a href="#about" class="block hover:opacity-50 transition-opacity">ABOUT</a>
+            <a href="#projects" class="block hover:opacity-50 transition-opacity">PROJECT</a>
+            <a href="#people" class="block hover:opacity-50 transition-opacity">PEOPLE</a>
+            <a href="#environment" class="block hover:opacity-50 transition-opacity">ENVIRONMENT</a>
+        </nav>
+    </div>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="relative h-screen w-full flex overflow-hidden">
+            <!-- Left Side -->
+            <div class="hero-left w-1/2 h-full relative overflow-hidden bg-black">
+                <img src="https://images.unsplash.com/photo-1695712551846-4dc15433fbd4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" class="w-full h-full object-cover opacity-80 scale-110">
+                
+                <!-- Vertical Logo Overlay -->
+                <div class="absolute top-12 left-12 text-white z-10">
+                    <div class="border-2 border-white p-2 inline-block mb-2">
+                        <span class="font-serif-kr text-4xl font-black">類</span>
+                    </div>
+                    <div class="text-[10px] font-oswald tracking-[0.2em] leading-tight">
+                        RUI SEKKEI SHITSU<br>
+                        RECRUITING SITE
+                    </div>
+                </div>
+
+                <!-- Text Overlay -->
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center w-full z-20 mix-blend-overlay">
+                    <h2 class="hero-title-en text-4xl md:text-6xl font-oswald font-bold text-white mb-4 tracking-tighter">HUMAN ARCHITECTS</h2>
+                </div>
+            </div>
+
+            <!-- Right Side -->
+            <div class="hero-right w-1/2 h-full relative overflow-hidden bg-zinc-200">
+                <img src="https://images.unsplash.com/photo-1758936381581-f85b4d1da1fc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" class="w-full h-full object-cover">
+            </div>
+
+            <!-- Central Big Text -->
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none text-center w-full">
+                <h1 class="hero-title-jp text-6xl md:text-[8vw] font-serif-kr font-black text-white drop-shadow-lg leading-none whitespace-nowrap">
+                    인류를, 풀다.
+                </h1>
+            </div>
+
+            <!-- Scroll Indicator -->
+            <div class="absolute bottom-8 left-8 z-30 flex flex-col items-center gap-2">
+                <div class="w-12 h-12 rounded-full bg-[#E04F30] animate-bounce"></div>
+                <span class="text-xs text-white font-oswald tracking-widest">SCROLL</span>
+            </div>
+        </section>
+
+        <!-- Sticky Nav Bar -->
+        <div class="sticky top-0 z-40 bg-[#E04F30] text-white py-4 px-6 flex justify-between items-center shadow-lg">
+            <div class="hidden md:flex gap-8 font-oswald font-bold text-sm tracking-wide">
+                <a href="#about" class="hover:text-black transition-colors">ABOUT</a>
+                <a href="#projects" class="hover:text-black transition-colors">PROJECT</a>
+                <a href="#people" class="hover:text-black transition-colors">PEOPLE</a>
+                <a href="#environment" class="hover:text-black transition-colors">ENVIRONMENT</a>
+            </div>
+            <div class="flex gap-4 text-xs font-bold">
+                <a href="#" class="bg-black px-4 py-2 hover:bg-white hover:text-black transition-colors">신입 채용</a>
+                <a href="#" class="bg-black px-4 py-2 hover:bg-white hover:text-black transition-colors">경력 채용</a>
+                <a href="#" class="bg-black px-4 py-2 hover:bg-white hover:text-black transition-colors">인턴십</a>
+            </div>
+        </div>
+
+        <!-- About RUI (Top Message) -->
+        <section id="about" class="relative py-32 bg-grid overflow-hidden">
+            <div class="container mx-auto px-6 relative z-10">
+                <div class="text-center mb-24 relative">
+                    <span class="text-[#E04F30] font-oswald text-xl font-bold tracking-widest block mb-4">ABOUT RUI</span>
+                    <h2 class="text-6xl md:text-9xl font-serif-kr font-black flex items-center justify-center gap-4 about-big-text">
+                        <span class="relative">
+                            類
+                            <span class="absolute -left-8 top-0 text-sm font-oswald text-zinc-400 rotate-90 origin-bottom-right">247</span>
+                        </span>
+                        <span class="text-4xl md:text-6xl font-light">란</span>
+                    </h2>
+                    <div class="absolute w-px h-[200px] bg-black left-1/2 top-full"></div>
+                </div>
+
+                <div class="flex flex-col md:flex-row items-center gap-16 mt-32">
+                    <div class="w-full md:w-1/2">
+                        <span class="text-[#E04F30] font-oswald font-bold mb-4 block">_TOP MESSAGE</span>
+                        <h3 class="text-3xl font-bold leading-tight mb-8">
+                            사회에 필요한 것은<br>
+                            만들고, 필요 없는 것은<br>
+                            만들지 않는다.
+                        </h3>
+                        <p class="text-zinc-600 leading-relaxed mb-8">
+                            건축은 단순히 건물을 짓는 행위가 아닙니다. 그것은 사람들이 모이고, 생활하며, 새로운 가치를 창출하는 장을 만드는 일입니다. 
+                            우리는 항상 '본질'을 묻습니다. 이것이 정말 인간에게 필요한가? 사회에 기여하는가? 
+                            그 물음 끝에 류(類)의 건축이 있습니다.
+                        </p>
+                        <div class="bg-zinc-100 p-8">
+                            <p class="font-serif-kr font-bold text-lg mb-2">대표이사 사장</p>
+                            <p class="text-2xl font-black">김 류 일</p>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/2 relative ceo-image">
+                        <div class="absolute top-4 left-4 w-full h-full border-2 border-[#E04F30] z-0"></div>
+                        <img src="https://images.unsplash.com/photo-1766939366543-2858c7b2cd0b?q=80&w=800" class="relative z-10 w-full grayscale contrast-125">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Diagonal Lines Decoration -->
+            <div class="absolute top-0 right-0 w-[500px] h-px bg-black rotate-45 origin-top-left opacity-20"></div>
+        </section>
+
+        <!-- Projects (Horizontal Scroll) -->
+        <section id="projects" class="relative bg-zinc-50 overflow-hidden">
+            <div class="project-track flex h-screen w-max items-center px-12 gap-24">
+                
+                <!-- Intro Card -->
+                <div class="w-[400px] flex-shrink-0 px-8">
+                    <span class="text-[#E04F30] font-oswald text-xl font-bold tracking-widest block mb-8">PROJECTS</span>
+                    <h2 class="text-5xl font-serif-kr font-black leading-snug mb-8">
+                        류(類)가<br>
+                        그리는<br>
+                        미래.
+                    </h2>
+                    <p class="text-zinc-500 mb-8">
+                        교육 시설에서 농업 시설까지.<br>
+                        우리의 영역에는 한계가 없습니다.
+                    </p>
+                    <div class="flex gap-4">
+                        <span class="text-6xl font-oswald font-light text-zinc-300">01</span>
+                        <span class="w-16 h-px bg-black mt-8"></span>
+                    </div>
+                </div>
+
+                <!-- Project 1 -->
+                <div class="w-[80vw] md:w-[60vw] h-[80vh] bg-white shadow-xl relative flex flex-col md:flex-row group overflow-hidden">
+                    <div class="w-full md:w-1/2 p-12 flex flex-col justify-center relative z-10 bg-white">
+                        <span class="text-[#E04F30] text-9xl font-oswald font-bold absolute -top-4 -left-4 opacity-10">03</span>
+                        <span class="text-[#E04F30] text-6xl font-oswald font-bold mb-8">3</span>
+                        <h3 class="text-3xl font-bold mb-4 leading-tight">
+                            배움에서 공간을 생각하고,<br>
+                            건축에서 교육을 바꾸다.
+                        </h3>
+                        <p class="text-[#E04F30] font-bold mb-8">오테몬 가쿠인 중·고등학교</p>
+                        <button class="bg-black text-white px-8 py-3 rounded-full w-max flex items-center gap-2 hover:bg-[#E04F30] transition-colors">
+                            <span class="text-xs font-bold tracking-widest">READ MORE</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <div class="w-full md:w-1/2 h-full overflow-hidden">
+                        <img src="https://images.unsplash.com/photo-1759494761428-010a67910dd4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                    </div>
+                </div>
+
+                <!-- Project 2 -->
+                <div class="w-[80vw] md:w-[60vw] h-[80vh] bg-white shadow-xl relative flex flex-col md:flex-row group overflow-hidden">
+                    <div class="w-full md:w-1/2 h-full overflow-hidden order-2 md:order-1">
+                        <img src="https://images.unsplash.com/photo-1733743358087-3741e0fa06a2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                    </div>
+                    <div class="w-full md:w-1/2 p-12 flex flex-col justify-center relative z-10 bg-white order-1 md:order-2">
+                         <span class="text-[#E04F30] text-9xl font-oswald font-bold absolute -top-4 -right-4 opacity-10">04</span>
+                        <span class="text-[#E04F30] text-6xl font-oswald font-bold mb-8">4</span>
+                        <h3 class="text-3xl font-bold mb-4 leading-tight">
+                            농업 × 교육 × 설계로,<br>
+                            지역에 활력을 낳다.
+                        </h3>
+                        <p class="text-[#E04F30] font-bold mb-8">농업과 배움의 공창(Co-creation) 거점</p>
+                        <button class="bg-black text-white px-8 py-3 rounded-full w-max flex items-center gap-2 hover:bg-[#E04F30] transition-colors">
+                            <span class="text-xs font-bold tracking-widest">READ MORE</span>
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Facts / Numbers -->
+        <section class="py-32 container mx-auto px-6">
+            <div class="text-center mb-16">
+                 <span class="text-[#E04F30] font-oswald font-bold mb-2 block">_FACT</span>
+                 <h2 class="text-5xl font-black flex items-center justify-center gap-4">
+                     숫자로 <span class="text-7xl font-serif-kr">보다</span>
+                 </h2>
+                 <div class="w-12 h-12 bg-black rounded-full text-white flex items-center justify-center mx-auto mt-8 animate-bounce">
+                     <i data-lucide="arrow-down" class="w-6 h-6"></i>
+                 </div>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                <div class="fact-item text-center p-8 bg-zinc-50">
+                    <div class="text-sm text-zinc-500 mb-2 font-bold">창업 연수</div>
+                    <div class="text-6xl font-oswald font-bold text-[#E04F30]">50<span class="text-2xl text-black">th</span></div>
+                </div>
+                <div class="fact-item text-center p-8 bg-zinc-50">
+                    <div class="text-sm text-zinc-500 mb-2 font-bold">직원 수</div>
+                    <div class="text-6xl font-oswald font-bold text-[#E04F30]">580<span class="text-2xl text-black">명</span></div>
+                </div>
+                 <div class="fact-item text-center p-8 bg-zinc-50">
+                    <div class="text-sm text-zinc-500 mb-2 font-bold">평균 연령</div>
+                    <div class="text-6xl font-oswald font-bold text-[#E04F30]">34<span class="text-2xl text-black">세</span></div>
+                </div>
+                 <div class="fact-item text-center p-8 bg-zinc-50">
+                    <div class="text-sm text-zinc-500 mb-2 font-bold">남녀 비율</div>
+                    <div class="text-6xl font-oswald font-bold text-[#E04F30]">5:5</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="bg-[#E04F30] text-black pt-24 pb-0 relative overflow-hidden">
+            <div class="container mx-auto px-6 relative z-10 pb-24">
+                <div class="flex flex-col md:flex-row justify-between items-start gap-16">
+                    
+                    <!-- Logo Column -->
+                    <div class="w-full md:w-1/4">
+                        <div class="border-2 border-black p-4 inline-block mb-6">
+                            <span class="font-serif-kr text-6xl font-black block leading-none">類</span>
+                            <span class="font-serif-kr text-2xl font-bold block -mt-2">건축설계실</span>
+                        </div>
+                        <p class="font-oswald text-sm font-bold tracking-widest border-t border-dotted border-black pt-2 mt-2 inline-block">
+                            RUI ARCHITECTURE<br>RECRUITING SITE
+                        </p>
+                    </div>
+
+                    <!-- Sitemap Columns -->
+                    <div class="w-full md:w-3/4 grid grid-cols-2 md:grid-cols-4 gap-8 text-sm">
+                        
+                        <div class="space-y-4">
+                            <h4 class="font-bold border-b border-black pb-2 text-white/80">류(類)란? ABOUT</h4>
+                            <ul class="space-y-2 font-medium">
+                                <li><a href="#" class="hover:text-white">대표 메시지</a></li>
+                                <li><a href="#" class="hover:text-white">숫자로 보다</a></li>
+                                <li><a href="#" class="hover:text-white">5가지 사업 영역</a></li>
+                                <li><a href="#" class="hover:text-white">영상으로 보다</a></li>
+                            </ul>
+                        </div>
+
+                         <div class="space-y-4">
+                            <h4 class="font-bold border-b border-black pb-2 text-white/80">사람 PEOPLE</h4>
+                            <ul class="space-y-2 font-medium">
+                                <li><a href="#" class="hover:text-white">직무 소개</a></li>
+                                <li><a href="#" class="hover:text-white">류인(類人) 도감</a></li>
+                                <li><a href="#" class="hover:text-white">친우 토크</a></li>
+                            </ul>
+                        </div>
+
+                         <div class="space-y-4">
+                            <h4 class="font-bold border-b border-black pb-2 text-white/80">채용 정보 INFO</h4>
+                            <ul class="space-y-2 font-medium">
+                                <li><a href="#" class="hover:text-white">신입 채용 요강</a></li>
+                                <li><a href="#" class="hover:text-white">경력 채용 요강</a></li>
+                                <li><a href="#" class="hover:text-white">인턴십</a></li>
+                                <li><a href="#" class="hover:text-white">채용 뉴스</a></li>
+                            </ul>
+                        </div>
+
+                         <div class="space-y-4">
+                            <h4 class="font-bold border-b border-black pb-2 text-white/80">환경 ENVIRONMENT</h4>
+                            <ul class="space-y-2 font-medium">
+                                <li><a href="#" class="hover:text-white">복리후생</a></li>
+                                <li><a href="#" class="hover:text-white">오피스 투어</a></li>
+                                <li><a href="#" class="hover:text-white">개선 리포트</a></li>
+                                <li class="pt-4"><a href="#" class="flex items-center gap-2 hover:text-white"><i data-lucide="instagram" class="w-4 h-4"></i> rui_architecture</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Line Illustration -->
+                <div class="mt-24 mb-12 relative w-full h-32 opacity-50">
+                    <svg class="footer-line w-full h-full" viewBox="0 0 1000 100" preserveAspectRatio="none">
+                        <path d="M0,80 Q100,50 200,80 T400,80 T600,80 T800,80 T1000,80" fill="none" stroke="black" stroke-width="1" />
+                        <path d="M50,80 L60,40 L70,80 M60,40 L60,30 M55,30 A5,5 0 1,1 65,30 A5,5 0 1,1 55,30" fill="none" stroke="black" stroke-width="1" />
+                        <path d="M150,80 L160,45 L170,80 M160,45 L160,35 M155,35 A5,5 0 1,1 165,35 A5,5 0 1,1 155,35" fill="none" stroke="black" stroke-width="1" />
+                         <!-- Simulating people walking line drawing -->
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Bottom Black Bar -->
+            <div class="bg-black text-white py-6 px-6 text-[10px] tracking-widest flex flex-col md:flex-row justify-between items-center relative z-20">
+                <div class="flex gap-8 mb-4 md:mb-0">
+                    <a href="#" class="hover:text-[#E04F30]">CORPORATE SITE</a>
+                    <a href="#" class="hover:text-[#E04F30]">PRIVACY POLICY</a>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="font-serif-kr font-bold text-lg">類設計室</span>
+                    <span class="text-zinc-500">© 2026 RUI SEKKEI SHITSU Co.,Ltd.</span>
+                </div>
+            </div>
+        </footer>
+    </main>
+
+    <!-- Scripts -->
+    <script>
+        lucide.createIcons();
+    </script>
+    <script type="module" src="/src/main.js"></script>
+    <script type="module">
+        import '/src/styles/style.css';
+    </script>
+</body>
+</html>

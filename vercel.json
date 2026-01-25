@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/templates/tpl-01/(.*)",
+      "destination": "/templates/tpl-01/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

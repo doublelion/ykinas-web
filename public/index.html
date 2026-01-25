@@ -1,45 +1,95 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <base href="/" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="google-site-verification" content="QtJk1ponrMl0Rh190RBZRA-Pg-kyqtAtXpYTy0-di4Y" />
 
-<head>
-  <meta charset="utf-8" />
-  <base href="/" />
-  <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#000000" />
-  <meta name="description" content="Web site created using create-react-app" />
-  <script type="text/javascript"
-    src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=2fe17c41b295074803456b103a38c199&autoload=false"></script>
-  <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo_test.png" />
+    <title>와이키나스(YKINAS) | 하이엔드 웹 비즈니스 솔루션</title>
+    <meta
+      name="description"
+      content="단순한 제작을 넘어 비즈니스의 본질을 담은 웹 솔루션을 제안합니다. 브랜드 웹사이트 구축, 고성능 UI/UX 설계, 맞춤형 비즈니스 템플릿을 경험하세요."
+    />
+    <meta
+      name="keywords"
+      content="웹솔루션, 웹에이전시, 맞춤형웹사이트, 프리미엄웹제작, UI/UX컨설팅, 기업용웹솔루션, 와이키나스"
+    />
 
-  <script>
-    (function () { var w = window; if (w.ChannelIO) { return w.console.error("ChannelIO script included twice."); } var ch = function () { ch.c(arguments); }; ch.q = []; ch.c = function (args) { ch.q.push(args); }; w.ChannelIO = ch; function l() { if (w.ChannelIOInitialized) { return; } w.ChannelIOInitialized = true; var s = document.createElement("script"); s.type = "text/javascript"; s.async = true; s.src = "https://cdn.channel.io/plugin/ch-plugin-web.js"; var x = document.getElementsByTagName("script")[0]; if (x.parentNode) { x.parentNode.insertBefore(s, x); } } if (document.readyState === "complete") { l(); } else { w.addEventListener("DOMContentLoaded", l); w.addEventListener("load", l); } })();
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="와이키나스(YKINAS) - 고치지 않아도 되는 웹사이트를 만듭니다."
+    />
+    <meta
+      property="og:description"
+      content="비즈니스 가치를 높이는 하이엔드 웹 솔루션 파트너. 전략적 설계부터 고성능 구현까지."
+    />
+    <meta property="og:image" content="%PUBLIC_URL%/og-image-main.png" />
+    <meta property="og:url" content="https://ykinas.com" />
 
-    ChannelIO('boot', {
-      "pluginKey": "e5aabd3f-f5c3-44c3-94bd-fd257edb7f2e"
-    });
-  </script>
-  <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
-  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-  <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
+    <script
+      type="text/javascript"
+      src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=2fe17c41b295074803456b103a38c199&autoload=false"
+    ></script>
+    <!-- 채널톡 -->
+    <script>
+      (function () {
+        var w = window;
+        if (w.ChannelIO) {
+          return w.console.error('ChannelIO script included twice.');
+        }
+        var ch = function () {
+          ch.c(arguments);
+        };
+        ch.q = [];
+        ch.c = function (args) {
+          ch.q.push(args);
+        };
+        w.ChannelIO = ch;
+        function l() {
+          if (w.ChannelIOInitialized) {
+            return;
+          }
+          w.ChannelIOInitialized = true;
+          var s = document.createElement('script');
+          s.type = 'text/javascript';
+          s.async = true;
+          s.src = 'https://cdn.channel.io/plugin/ch-plugin-web.js';
+          var x = document.getElementsByTagName('script')[0];
+          if (x.parentNode) {
+            x.parentNode.insertBefore(s, x);
+          }
+        }
+        if (document.readyState === 'complete') {
+          l();
+        } else {
+          w.addEventListener('DOMContentLoaded', l);
+          w.addEventListener('load', l);
+        }
+      })();
+      ChannelIO('boot', { pluginKey: 'e5aabd3f-f5c3-44c3-94bd-fd257edb7f2e' });
+    </script>
 
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-  <title>와이키나스</title>
-</head>
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo_test.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
-<body>
-  <noscript>YKINAS</noscript>
-  <div id="root"></div>
-  <!--
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "url": "https://ykinas.com",
+        "logo": "https://ykinas.com/logo_test.png"
+      }
+    </script>
+  </head>
+
+  <body>
+    <noscript>YKINAS</noscript>
+    <div id="root"></div>
+    <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.
 
@@ -49,24 +99,28 @@
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
-  <form name="project-inquiry" data-netlify="true" netlify-honeypot="bot-field" hidden>
-    <input type="text" name="name" />
-    <input type="text" name="contact" />
-    <select name="type">
-      <option value="consulting"></option>
-      <option value="software"></option>
-      <option value="maintenance"></option>
-    </select>
-    <textarea name="message"></textarea>
-    <input type="checkbox" name="agreement" />
-  </form>
+    <form
+      name="project-inquiry"
+      data-netlify="true"
+      netlify-honeypot="bot-field"
+      hidden
+    >
+      <input type="text" name="name" />
+      <input type="text" name="contact" />
+      <select name="type">
+        <option value="consulting"></option>
+        <option value="software"></option>
+        <option value="maintenance"></option>
+      </select>
+      <textarea name="message"></textarea>
+      <input type="checkbox" name="agreement" />
+    </form>
 
-  <!-- <form name="audit-consulting" netlify netlify-honeypot="bot-field" hidden>
+    <!-- <form name="audit-consulting" netlify netlify-honeypot="bot-field" hidden>
     <input type="text" name="contact-info" />
     <input type="hidden" name="target-url" />
     <input type="hidden" name="perf-score" />
     <input type="hidden" name="seo-score" />
   </form> -->
-</body>
-
+  </body>
 </html>

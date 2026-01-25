@@ -13,7 +13,6 @@ import TemplateDetail from './pages/TemplateDetail'; // 상세 페이지 (멋진
 import AristideV1 from './components/templates/AristideV1'; // 26번 라인 AristideV1 해결 (경로 확인 필수)
 import './App.scss';
 
-
 // 1. 컴포넌트 정의
 const TemplateRenderer = () => {
   // TemplateRenderer 내부 수정

@@ -211,7 +211,11 @@
             font-weight: 700;
             margin-bottom: 1rem;
           }
-          h3 { font-size: 2.3rem; color: var(--text-color); margin-bottom: 1.2rem; }
+          h3 {
+            font-size: 2.3rem;
+            color: var(--text-color);
+            margin-bottom: 1.2rem;
+          }
           p {
             color: var(--footer-text);
             font-size: 1.5rem;
@@ -226,7 +230,11 @@
             margin-top: 1.5rem;
             display: flex;
             gap: 1rem;
-            span { font-size: 1.3rem; color: var(--footer-text); opacity: 0.7; }
+            span {
+              font-size: 1.3rem;
+              color: var(--footer-text);
+              opacity: 0.7;
+            }
           }
         }
 
@@ -246,7 +254,9 @@
           border-color: $ykinas-teal;
           box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
 
-          .card-image img { transform: scale(1.1); }
+          .card-image img {
+            transform: scale(1.1);
+          }
           .card-hover-icon {
             opacity: 1;
             transform: translateX(0);
@@ -426,5 +436,122 @@
       background: none;
       border: none;
     }
+  }
+}
+
+// 템플릿 하이라이트 섹션 (Home.scss 추가분)
+.home-template-highlight {
+  padding: 100px 0; // 포트폴리오 패딩과 일치
+  background: var(--section-grad); // 배경색 일치
+  .section-header {
+    text-align: center;
+    margin-bottom: 60px;
+    h2 {
+      font-size: 3rem;
+      color: var(--text-color);
+    }
+    p {
+      color: var(--footer-text);
+      margin-top: 10px;
+    }
+  }
+  .container {
+    max-width: 1200px; // 포트폴리오 리스트 폭과 일치
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  .highlight-flex {
+    display: flex;
+    align-items: center;
+    gap: 6rem;
+    margin-top: 50px;
+
+    @media (max-width: 1024px) {
+      flex-direction: column;
+      text-align: center;
+    }
+  }
+
+  .highlight-content {
+    flex: 1;
+
+    h3 {
+      // 작품명 (ARISTIDE.INSPIRED)
+      font-size: 2.8rem;
+      margin-bottom: 2rem;
+      color: var(--text-color);
+      font-weight: 800;
+    }
+
+    .highlight-desc {
+      font-size: 1.6rem;
+      color: var(--footer-text);
+      line-height: 1.8;
+      margin-bottom: 3rem;
+      word-break: keep-all; // 한글 줄바꿈 최적화
+    }
+
+    .feature-list {
+      list-style: none;
+      padding: 0;
+      margin-bottom: 4rem;
+
+      li {
+        font-size: 1.4rem;
+        color: var(--text-color);
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        opacity: 0.9;
+
+        @media (max-width: 1024px) {
+          justify-content: center;
+        }
+
+        svg {
+          color: $ykinas-teal;
+        }
+      }
+    }
+  }
+
+  .highlight-image {
+    flex: 1.2;
+    border-radius: 20px; // 포트폴리오 카드 곡률과 일치
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid var(--border-line);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    transition: all 0.5s ease;
+
+    img {
+      width: 100%;
+      display: block;
+      transition: transform 0.8s ease;
+    }
+
+    &:hover {
+      transform: translateY(-10px); // 포트폴리오 카드 호버 효과 일치
+      border-color: $ykinas-teal;
+
+      img {
+        transform: scale(1.05);
+      }
+    }
+  }
+}
+
+// 애니메이션 키프레임 추가
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
   }
 }
