@@ -12,11 +12,12 @@ function TemplateList() {
     return ['ALL', ...new Set(TEMPLATES.map((t) => t.category))];
   }, []);
 
+  // [수정안] TemplateList.js 내부 필터링 로직
   const filteredTemplates = useMemo(() => {
-    if (!TEMPLATES) return [];
+    if (!TEMPLATES || TEMPLATES.length === 0) return [];
     return filter === 'ALL'
       ? TEMPLATES
-      : TEMPLATES.filter((t) => t.category === filter);
+      : TEMPLATES.filter((t) => t.category.toUpperCase() === filter.toUpperCase());
   }, [filter]);
 
   return (
@@ -54,17 +55,17 @@ function TemplateList() {
                 }}
               />
               <div className="overlay">
+                {/* [수정안] Overlay 내부 버튼 로직 */}
                 <div className="action-buttons">
-                  <Link to={`/templates/${tpl.id}`}>
-                    <button className="btn-demo">
-                      <Eye size={16} /> 데모 보기
-                    </button>
-                  </Link>
-                  <Link to="/contact">
-                    <button className="btn-price">
-                      <MessageCircle size={16} /> 가격 상담
-                    </button>
-                  </Link>
+                  {tpl.isExternal ? (
+                    <a href={tpl.link} target="_blank" rel="noreferrer">
+                      <button className="btn-demo"><Eye size={16} /> 데모 보기</button>
+                    </a>
+                  ) : (
+                    <Link to={`/templates/${tpl.id}`}>
+                      <button className="btn-demo"><Eye size={16} /> 데모 보기</button>
+                    </Link>
+                  )}
                 </div>
               </div>
             </div>
