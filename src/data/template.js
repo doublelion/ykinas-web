@@ -60,4 +60,13 @@ export const TEMPLATES = [
       },
     ],
   },
+  {
+    id: 'tpl-cafe24-01', // 카페24 템플릿 ID
+    category: 'COMMERCE',
+    title: 'CAFE24 PREMIUM',
+    desc: '카페24 기반 쇼핑몰 템플릿',
+    img: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=2000', // 임시 이미지
+    link: 'https://d.cafe24.com/sample?productCode=PTMD867736&frame=P',
+    isExternal: true // 외부 링크 여부 체크용
+  }
 ];
