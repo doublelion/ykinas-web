@@ -57,31 +57,30 @@ function TemplateList() {
               <div className="overlay">
                 {/* [수정안] Overlay 내부 버튼 로직 */}
                 <div className="action-buttons">
-                  {/* 🚀 기획 포인트: isExternal 값에 따라 분기 처리 */}
+                  {/* 1. 데모 보기: 내부 렌더링 vs 외부 링크 차별화 */}
                   {tpl.isExternal ? (
-                    // 카페24 등 외부 솔루션 링크 (새 창 열기)
                     <a
                       href={tpl.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-demo-link"
+                      className="btn-link"
                     >
                       <button className="btn-demo external">
-                        <Eye size={16} /> 외부 샘플 보기
+                        <Eye size={16} /> 샘플 사이트
                       </button>
                     </a>
                   ) : (
-                    // 기존 tpl-01 등 내부 상세 페이지 이동
                     <Link to={`/templates/${tpl.id}`}>
                       <button className="btn-demo">
-                        <Eye size={16} /> 내부 데모 보기
+                        <Eye size={16} /> 데모 보기
                       </button>
                     </Link>
                   )}
 
+                  {/* 2. 견적 상담: 모든 템플릿 공통 로직 유지 */}
                   <Link to="/contact">
                     <button className="btn-price">
-                      <MessageCircle size={16} /> 구축 상담
+                      <MessageCircle size={16} /> 견적 상담
                     </button>
                   </Link>
                 </div>
