@@ -66,7 +66,7 @@ export const TEMPLATES = [
     title: 'CAFE24 PREMIUM',
     desc: '카페24 기반 쇼핑몰 템플릿',
     img: 'https://dcenter-img.cafe24.com/d/product/2026/02/10/uwjjoshyzz0ilgm41qw0cqt2bhsob48y.png', // 카페24 업로드 이미지
-    link: 'https://d.cafe24.com/sample?productCode=PTMD867736&frame=P',
+    link: 'https://d.cafe24.com/product/product_detail?productCode=PTMD867736',
     isExternal: true // 외부 링크 여부 체크용
   }
 ];
