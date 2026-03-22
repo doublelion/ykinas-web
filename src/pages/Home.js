@@ -30,7 +30,7 @@ const HERO_SLIDES = [
     id: 2,
     title: "Tech & Design",
     highlight: "Architecture",
-    desc: "사용자 중심의 설계와 압도적인 성능 최적화로, 비즈니스의 지속 가능성을 증명하는 완성도 높은 플랫폼을 구축합니다.",
+    desc: "사용자 중심의 설계와 고성능 최적화로 비즈니스 성장을 견인하는 완벽한 플랫폼을 구축합니다.",
     features: [
       "UI/UX 인터랙티브 디자인",
       "고급 퍼블리싱 기술 적용",
