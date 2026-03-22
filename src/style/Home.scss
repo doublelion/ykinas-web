@@ -126,9 +126,9 @@
 
           p.hero-desc {
             color: rgba(255, 255, 255, 0.85);
-            font-size: clamp(1.2rem, 2vw, 1.6rem);
+            font-size: clamp(1.4rem, 2vw, 1.6rem);
             max-width: 700px;
-            margin: 0 auto 3rem;
+            margin: 0 auto 20px;
             word-break: keep-all;
             line-height: 1.6;
           }
@@ -162,7 +162,7 @@
             }
 
             @media (max-width: 768px) {
-              grid-template-columns: 1fr; // 모바일은 1단
+              // grid-template-columns: 1fr; // 모바일은 1단
               gap: 1rem;
             }
           }
