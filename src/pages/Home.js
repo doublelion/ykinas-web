@@ -13,41 +13,46 @@ import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 import '../style/Home.scss';
 
-// 하이엔드 톤앤매너 고해상도 이미지 (웹 디자인, IT 솔루션 컨셉)
+
+// 하이엔드 3박자(코딩-디자인-기획)
+// 하이엔드 톤앤매너 & 3박자(디자인-솔루션-기획) 최종 선별 이미지 데이터
 const HERO_SLIDES = [
   {
     id: 1,
     title: "Next Generation",
     highlight: "Web Solution",
     desc: "와이키나스는 홈페이지 제작부터 쇼핑몰 구축까지, 귀사의 비즈니스를 디지털로 전환하는 최적의 파트너입니다.",
-    features: [],
-    bgImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=2070" // 다크 코딩 화면
+    features: ["최신 프레임워크 기반 개발", "고성능 API 인터페이스", "철저한 보안 및 최적화"],
+    // [1번 교체] 디자인과 코딩이 조화를 이루는 프리미엄 다크 테마 웹사이트 작업 환경
+    bgImage: "https://images.unsplash.com/photo-1547658719-da2b51169166?auto=format&fit=crop&q=80&w=2070"
   },
   {
     id: 2,
     title: "Tech & Design",
     highlight: "Architecture",
-    desc: "사용자 중심의 설계와 압도적인 성능 최적화를 통해 흔들림 없는 디지털 자산을 구축합니다.",
+    desc: "사용자 중심의 설계와 압도적인 성능 최적화로, 비즈니스의 지속 가능성을 증명하는 완성도 높은 플랫폼을 구축합니다.",
     features: [
-      "웹 퍼블리싱 & UI/UX 구현",
-      "디지털 자산 아키텍처 설계",
-      "웹 성능 최적화",
-      "인터랙티브 웹 개발"
+      "UI/UX 인터랙티브 디자인",
+      "고급 퍼블리싱 기술 적용",
+      "일관된 브랜드 아이덴티티",
+      "사용자 여정 최적화 설계"
     ],
-    bgImage: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=2072" // 다크 노트북 작업 환경
+    // [2번 유지] 하이엔드 디자인 인터페이스 컨셉
+    bgImage: "https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&q=80&w=2064"
   },
   {
     id: 3,
     title: "Scalable",
-    highlight: "Solutions",
-    desc: "모든 기기에 대응하는 유연함과 시스템 간 유기적인 연동으로 비즈니스의 확장을 지원합니다.",
+    highlight: "Planning",
+    desc: "비즈니스의 본질을 꿰뚫는 기획과 확장이 용이한 시스템 설계로 미래 성장을 지원합니다.",
     features: [
-      "반응형 & 적응형 웹 구축",
-      "쇼핑몰 및 기업형 사이트 제작",
-      "프론트엔드 & API 연동",
-      "웹 표준 및 접근성 준수"
+      "전략적 비즈니스 기획",
+      "데이터 기반 아키텍처",
+      "지속 가능한 시스템 설계",
+      "글로벌 표준 기술 준수"
     ],
-    bgImage: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&q=80&w=2070" // 다크 모니터 서버 환경
+    // [3번 교체] 데이터 기반의 전략 기획과 분석을 수행하는 다크 테마 컨설팅 환경
+    bgImage: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&q=80&w=2070"
   }
 ];
 
@@ -141,43 +146,59 @@ function Home() {
           <p>브랜드 아이덴티티를 반영한<br />완성도 높은 디지털 결과물을 제작합니다.</p>
         </div>
         <div className="service-card">
-          <ShoppingCart color="#00f2ff" size={40} />
+          <ShoppingCart className="service-icon" size={40} style={{ stroke: 'var(--icon-color)' }} />
           <h3>쇼핑몰 구축</h3>
           <p>결제·상품·주문 관리까지 고려한<br />안정적인 이커머스 환경을 구축합니다.</p>
         </div>
         <div className="service-card">
-          <Settings color="#00f2ff" size={40} />
+          <Settings className="service-icon" size={40} style={{ stroke: 'var(--icon-color)' }} />
           <h3>유지보수 &amp; 관리</h3>
           <p>오류 수정, 콘텐츠 변경, 기능 개선 등<br />지속적인 웹사이트 관리를 지원합니다.</p>
         </div>
       </section>
 
       {/* 포트폴리오 섹션 */}
-      <section className="home-portfolio">
+      <section className="home-portfolio ykinas-portfolio">
         <div className="section-header">
           <span>PORTFOLIO</span>
           <h2>Latest Projects</h2>
         </div>
-        <div className="portfolio-preview-list">
+
+        <div className="portfolio-grid portfolio-preview-list">
           {previewProjects.map((project) => (
-            <div key={project.id} className="preview-card" onClick={() => navigate('/portfolio')}>
-              <div className="card-image">
-                <img src={project.img} alt={project.title} />
+            <article
+              key={project.id}
+              className="portfolio-item preview-card"
+              onClick={() => navigate('/portfolio')}
+            >
+              <div className="item-image">
+                <img src={project.img} alt={project.title} loading="lazy" />
+                <div className="overlay">
+                  {/* Portfolio.js의 CTA 스타일 이식 */}
+                  <Button text="자세히 보기" onClick={() => navigate('/portfolio')} />
+                </div>
+                {/* 기존 화살표 아이콘 유지 (선택 사항) */}
+                <div className="card-hover-icon">
+                  <ArrowRight size={32} color="#00f2ff" />
+                </div>
               </div>
-              <div className="card-info">
+
+              <div className="item-info">
                 <span className="category">{project.category}</span>
                 <h3>{project.title}</h3>
                 <p>{project.desc}</p>
                 <div className="tags">
-                  {project.tags?.map((tag) => <span key={tag}>{tag}</span>)}
+                  {project.tags?.map((tag, idx) => (
+                    <span key={`${project.id}-${tag}-${idx}`} className="tag">
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               </div>
-              <div className="card-hover-icon">
-                <ArrowRight size={32} color="#00f2ff" />
-              </div>
-            </div>
+            </article>
           ))}
         </div>
+
         <div className="view-more-center">
           <Button text="전체 포트폴리오 보기" onClick={() => navigate('/portfolio')} />
         </div>
