@@ -18,23 +18,36 @@ const HERO_SLIDES = [
   {
     id: 1,
     title: "Next Generation",
-    highlight: "IT Solution",
+    highlight: "Web Solution",
     desc: "와이키나스는 홈페이지 제작부터 쇼핑몰 구축까지, 귀사의 비즈니스를 디지털로 전환하는 최적의 파트너입니다.",
-    bgImage: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=2072"
+    features: [],
+    bgImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=2070" // 다크 코딩 화면
   },
   {
     id: 2,
-    title: "High-End &",
-    highlight: "Minimalism",
-    desc: "사용자 경험(UX)과 비즈니스 로직을 통합적으로 고려한 압도적인 퀄리티의 웹 솔루션을 제안합니다.",
-    bgImage: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=2070"
+    title: "Tech & Design",
+    highlight: "Architecture",
+    desc: "사용자 중심의 설계와 압도적인 성능 최적화를 통해 흔들림 없는 디지털 자산을 구축합니다.",
+    features: [
+      "웹 퍼블리싱 & UI/UX 구현",
+      "디지털 자산 아키텍처 설계",
+      "웹 성능 최적화",
+      "인터랙티브 웹 개발"
+    ],
+    bgImage: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=2072" // 다크 노트북 작업 환경
   },
   {
     id: 3,
-    title: "Uncompromising",
-    highlight: "Performance",
-    desc: "최신 프론트엔드 기술과 최적화 아키텍처로 흔들림 없는 안정성과 속도를 보장합니다.",
-    bgImage: "https://images.unsplash.com/photo-1618220179428-22790b46a0eb?auto=format&fit=crop&q=80&w=2070"
+    title: "Scalable",
+    highlight: "Solutions",
+    desc: "모든 기기에 대응하는 유연함과 시스템 간 유기적인 연동으로 비즈니스의 확장을 지원합니다.",
+    features: [
+      "반응형 & 적응형 웹 구축",
+      "쇼핑몰 및 기업형 사이트 제작",
+      "프론트엔드 & API 연동",
+      "웹 표준 및 접근성 준수"
+    ],
+    bgImage: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&q=80&w=2070" // 다크 모니터 서버 환경
   }
 ];
 
@@ -69,6 +82,16 @@ function Home() {
                   {slide.title} <br /> <span className="highlight">{slide.highlight}</span>
                 </h2>
                 <p className="hero-desc">{slide.desc}</p>
+
+                {/* 기술 및 솔루션 리스트 렌더링 */}
+                {slide.features.length > 0 && (
+                  <ul className="hero-features">
+                    {slide.features.map((feature, idx) => (
+                      <li key={idx}>{feature}</li>
+                    ))}
+                  </ul>
+                )}
+
                 <div className="hero-btns">
                   <Button text="프로젝트 문의하기" onClick={handleInquiry} />
                 </div>

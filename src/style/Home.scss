@@ -84,6 +84,47 @@
           text-align: center;
           padding: 0 20px;
           opacity: 0;
+          width: 100%; // 전체 너비 확보
+          // 새로 추가된 기능 리스트 스타일 (2단 그리드)
+          .hero-features {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.2rem 3rem;
+            text-align: left;
+            margin: 0 auto 3rem;
+            max-width: 760px;
+            list-style: none;
+            padding: 0;
+
+            li {
+              color: rgba(255, 255, 255, 0.9);
+              font-size: 1.4rem;
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              word-break: keep-all; // 한글 줄바꿈 방지
+
+              &::before {
+                content: '';
+                display: inline-block;
+                width: 6px;
+                height: 6px;
+                background-color: $ykinas-teal; // 와이키나스 테마 컬러
+                border-radius: 50%;
+              }
+            }
+
+            // 모바일 대응 (1단으로 변경)
+            @media (max-width: 768px) {
+              grid-template-columns: 1fr;
+              gap: 1rem;
+              max-width: 400px;
+              
+              li {
+                font-size: 1.2rem;
+              }
+            }
+          }
 
           h2 {
             font-size: clamp(3rem, 6vw, 5rem);
