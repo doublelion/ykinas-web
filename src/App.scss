@@ -27,14 +27,15 @@
     &::before {
       background: var(--header-grad); // 그라데이션 변수화
     }
+
     backdrop-filter: var(--header-filter);
     -webkit-backdrop-filter: var(--header-filter); // 사파리 브라우저 대응 필수
 
     border-bottom: 1px solid var(--border-line);
-    transition:
-      background-color 0.3s ease,
-      backdrop-filter 0.3s ease,
-      border-color 0.3s ease;
+    transition: background-color 0.3s ease,
+    backdrop-filter 0.3s ease,
+    border-color 0.3s ease;
+
     [data-theme='dark'] & {
       border-bottom-color: transparent;
     }
@@ -60,6 +61,7 @@
       background: var(--header-grad);
       pointer-events: none; // 그림자가 클릭을 방해하지 않도록 설정
       z-index: -1; // 헤더의 글자(로고, 메뉴)보다 뒤로 보냄
+
       @media (max-width: 640px) {
         height: 180px; // 동일하게 깊은 그림자 생성
       }
@@ -80,11 +82,14 @@
         color: var(--text-color);
         text-decoration: none;
         letter-spacing: -0.5px;
+
         span {
           font-weight: 600;
-          transform: translateY(-1px); /* 높이가 안 맞으면 상하 이동 */
+          transform: translateY(-1px);
+          /* 높이가 안 맞으면 상하 이동 */
           font-size: 2.2rem;
         }
+
         img {
           width: 2rem;
           height: auto;
@@ -96,22 +101,27 @@
       align-items: center; // 아이콘과 텍스트 정렬
       display: flex;
       gap: 2.5rem;
+
       a {
         color: var(--nav-text);
         text-decoration: none;
         font-weight: 500;
         transition: 0.3s;
         font-size: 1.45rem;
+
         &:hover {
           color: var(--text-color);
         }
       }
+
       &:hover {
         // background: rgba(127, 127, 127, 0.1);
       }
+
       @media (max-width: 768px) {
         display: none;
       }
+
       .nav-audit-btn {
         color: $ykinas-green !important; // 브랜드 컬러로 강조
         font-weight: 800;
@@ -134,10 +144,12 @@
       border: none;
       color: var(--text-color);
       cursor: pointer;
+
       @media (max-width: 768px) {
         display: block;
       }
     }
+
     // 딤(Dim) 레이어
     .nav-overlay {
       position: fixed;
@@ -149,6 +161,7 @@
       z-index: 100;
       animation: fadeIn 0.3s ease;
     }
+
     .mobile-links {
       display: flex;
       flex-direction: column;
@@ -189,6 +202,7 @@
     &.open {
       right: 0;
     }
+
     a {
       font-size: 1.3rem;
       color: var(--text-color);
@@ -196,6 +210,7 @@
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       padding-bottom: 10px;
     }
+
     .close-btn {
       background: none; // 배경 제거
       border: none; // 테두리 제거
@@ -222,6 +237,7 @@
       display: flex;
       justify-content: flex-end;
       margin-bottom: 4rem;
+
       .close-btn {
         background: none;
         border: none;
@@ -250,6 +266,7 @@
     color: var(--footer-text);
     font-size: 1.5rem;
   }
+
   .copyright {
     font-size: 1.2rem; // 12px
     letter-spacing: 0.2rem; // 자간을 넓게
@@ -262,8 +279,12 @@
   }
 }
 
-/* 모바일에서만 보이게 */
+/* 모바일 */
 @media (max-width: 1024px) {
+  .ykinas-app .main-content {
+    padding: 6rem 0rem 0; // 상단 패딩을 헤더 높이만큼 추가 (6rem)
+  }
+
   .ykinas-app .nav-mobile {
     display: flex;
     flex-direction: column;
@@ -340,6 +361,7 @@
   /* 터치 기기에서 클릭 시 생기는 하이라이트 제거 (모바일 대응) */
   -webkit-tap-highlight-color: transparent;
 }
+
 .sub-title {
   font-family: 'D-DIN-Bold', sans-serif;
   // [포인트] 기존 블루 상수를 유지하여 브랜드 일관성 확보

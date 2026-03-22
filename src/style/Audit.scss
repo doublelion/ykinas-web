@@ -237,6 +237,9 @@
 
 // 모바일 대응
 @media (max-width: 768px) {
+  .audit-wrapper {
+    margin: 0 10px;
+  }
   .consulting-cta {
     .cta-form {
       flex-direction: column;
