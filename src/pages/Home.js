@@ -1,90 +1,50 @@
 import React from 'react';
-import { Monitor, ShoppingCart, Settings, ArrowRight, Sparkles } from 'lucide-react';
-import Map from '../components/Map';
-import Button from '../components/Button';
-import { PROJECTS } from '../data/project';
+import {
+  Monitor,
+  ShoppingCart,
+  Settings,
+  ArrowRight,
+  Sparkles,
+} from 'lucide-react';
+import Map from '../components/Map'; // 지도 컴포넌트 (있을 경우)
+import Button from '../components/Button'; // 경로 확인 필요
+import { PROJECTS } from '../data/project'; // 데이터 임포트
 import { useNavigate } from 'react-router-dom';
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Autoplay, Pagination, EffectFade } from 'swiper/modules';
-
-// Swiper 스타일 임포트
-import 'swiper/css';
-import 'swiper/css/pagination';
-import 'swiper/css/effect-fade';
 import '../style/Home.scss';
-
-// 하이엔드 톤앤매너 고해상도 이미지 (웹 디자인, IT 솔루션 컨셉)
-const HERO_SLIDES = [
-  {
-    id: 1,
-    title: "Next Generation",
-    highlight: "IT Solution",
-    desc: "와이키나스는 홈페이지 제작부터 쇼핑몰 구축까지, 귀사의 비즈니스를 디지털로 전환하는 최적의 파트너입니다.",
-    bgImage: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=2072"
-  },
-  {
-    id: 2,
-    title: "High-End &",
-    highlight: "Minimalism",
-    desc: "사용자 경험(UX)과 비즈니스 로직을 통합적으로 고려한 압도적인 퀄리티의 웹 솔루션을 제안합니다.",
-    bgImage: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=2070"
-  },
-  {
-    id: 3,
-    title: "Uncompromising",
-    highlight: "Performance",
-    desc: "최신 프론트엔드 기술과 최적화 아키텍처로 흔들림 없는 안정성과 속도를 보장합니다.",
-    bgImage: "https://images.unsplash.com/photo-1618220179428-22790b46a0eb?auto=format&fit=crop&q=80&w=2070"
-  }
-];
 
 function Home() {
   const navigate = useNavigate();
+
+  // 최신 프로젝트 2개만 추출 (id 역순 혹은 최하단 2개)
   const previewProjects = PROJECTS.slice(-2).reverse();
 
+  // 여기를 수정하면 납품용이 된다 //
   const handleInquiry = () => {
-    navigate('/contact');
+    navigate('/contact'); // 페이지 깜빡임 없이 이동
   };
 
   return (
     <div className="home-container">
-      {/* 리뉴얼된 히어로 스와이퍼 섹션 */}
-      <header className="hero-slider-section">
-        <Swiper
-          modules={[Autoplay, Pagination, EffectFade]}
-          effect="fade"
-          speed={1000}
-          autoplay={{ delay: 5000, disableOnInteraction: false }}
-          pagination={{ clickable: true }}
-          loop={true}
-          className="hero-swiper"
-        >
-          {HERO_SLIDES.map((slide) => (
-            <SwiperSlide key={slide.id}>
-              <div className="slide-bg" style={{ backgroundImage: `url(${slide.bgImage})` }}>
-                <div className="overlay"></div>
-              </div>
-              <div className="slide-content">
-                <h2>
-                  {slide.title} <br /> <span className="highlight">{slide.highlight}</span>
-                </h2>
-                <p className="hero-desc">{slide.desc}</p>
-                <div className="hero-btns">
-                  <Button text="프로젝트 문의하기" onClick={handleInquiry} />
-                </div>
-              </div>
-            </SwiperSlide>
-          ))}
-        </Swiper>
+      {/* 히어로 섹션 */}
+      <header className="hero">
+        <h2>
+          Next Generation <br /> <span className="highlight">IT Solution</span>
+        </h2>
+        <p className="hero-desc">
+          와이키나스는 홈페이지 제작부터 쇼핑몰 구축까지, 귀사의 비즈니스를
+          디지털로 전환하는 최적의 파트너입니다.
+        </p>
+        <Button text="프로젝트 문의하기" onClick={handleInquiry} />
       </header>
 
-      {/* 템플릿 하이라이트 섹션 */}
       <section className="home-template-highlight">
         <div className="container">
+          {/* 포트폴리오와 똑같은 헤더 구조 */}
           <div className="section-header">
             <span>PREMIUM SOLUTION</span>
             <h2>Template Line-up</h2>
           </div>
+
           <div className="highlight-flex">
             <div className="highlight-content">
               <h3>ARISTIDE.INSPIRED</h3>
@@ -93,16 +53,31 @@ function Home() {
                 최신 최적화 기술이 집약된 와이키나스의 첫 번째 솔루션.
               </p>
               <ul className="feature-list">
-                <li><Sparkles size={18} /> 4K 비주얼 및 하이엔드 디자인</li>
-                <li><Sparkles size={18} /> Lighthouse 성능 지수 최적화</li>
-                <li><Sparkles size={18} /> SEO 엔진 최적화 및 모바일 대응</li>
+                <li>
+                  <Sparkles size={18} /> 4K 비주얼 및 하이엔드 디자인
+                </li>
+                <li>
+                  <Sparkles size={18} /> Lighthouse 성능 지수 최적화
+                </li>
+                <li>
+                  <Sparkles size={18} /> SEO 엔진 최적화 및 모바일 대응
+                </li>
               </ul>
-              <Button text="상세 정보 보기" onClick={() => navigate('/templates')} />
+              <Button
+                text="상세 정보 보기"
+                onClick={() => navigate('/templates')}
+              />
             </div>
-            <div className="highlight-image" onClick={() => navigate('/templates')}>
+
+            <div
+              className="highlight-image"
+              onClick={() => navigate('/templates')}
+            >
               <img
                 alt="Aristide Template"
                 src="/templates/tpl-01/src/images/silence.webp"
+                width="800"
+                height="600"
                 style={{ width: '100%', height: 'auto' }}
               />
             </div>
@@ -115,29 +90,48 @@ function Home() {
         <div className="service-card">
           <Monitor color="#00f2ff" size={40} />
           <h3>홈페이지 제작</h3>
-          <p>브랜드 아이덴티티를 반영한<br />완성도 높은 디지털 결과물을 제작합니다.</p>
+          <p>
+            브랜드 아이덴티티를 반영한
+            <br />
+            완성도 높은 디지털 결과물을 제작합니다.
+          </p>
         </div>
+
         <div className="service-card">
           <ShoppingCart color="#00f2ff" size={40} />
           <h3>쇼핑몰 구축</h3>
-          <p>결제·상품·주문 관리까지 고려한<br />안정적인 이커머스 환경을 구축합니다.</p>
+          <p>
+            결제·상품·주문 관리까지 고려한
+            <br />
+            안정적인 이커머스 환경을 구축합니다.
+          </p>
         </div>
+
         <div className="service-card">
           <Settings color="#00f2ff" size={40} />
           <h3>유지보수 &amp; 관리</h3>
-          <p>오류 수정, 콘텐츠 변경, 기능 개선 등<br />지속적인 웹사이트 관리를 지원합니다.</p>
+          <p>
+            오류 수정, 콘텐츠 변경, 기능 개선 등<br />
+            지속적인 웹사이트 관리를 지원합니다.
+          </p>
         </div>
       </section>
 
-      {/* 포트폴리오 섹션 */}
+      {/* 포트폴리오 섹션 - 데이터 연동 버전 */}
       <section className="home-portfolio">
         <div className="section-header">
           <span>PORTFOLIO</span>
           <h2>Latest Projects</h2>
         </div>
+
         <div className="portfolio-preview-list">
           {previewProjects.map((project) => (
-            <div key={project.id} className="preview-card" onClick={() => navigate('/portfolio')}>
+            <div
+              key={project.id}
+              className="preview-card"
+              onClick={() => navigate('/portfolio')}
+            >
+              {/* 이미지 배경 추가로 시각적 풍성함 부여 */}
               <div className="card-image">
                 <img src={project.img} alt={project.title} />
               </div>
@@ -146,7 +140,9 @@ function Home() {
                 <h3>{project.title}</h3>
                 <p>{project.desc}</p>
                 <div className="tags">
-                  {project.tags?.map((tag) => <span key={tag}>{tag}</span>)}
+                  {project.tags?.map((tag) => (
+                    <span key={tag}>{tag}</span>
+                  ))}
                 </div>
               </div>
               <div className="card-hover-icon">
@@ -155,11 +151,16 @@ function Home() {
             </div>
           ))}
         </div>
+
         <div className="view-more-center">
-          <Button text="전체 포트폴리오 보기" onClick={() => navigate('/portfolio')} />
+          <Button
+            text="전체 포트폴리오 보기"
+            onClick={() => navigate('/portfolio')}
+          />
         </div>
       </section>
 
+      {/* 오시는 길 (지도) - Footer 바로 위에 위치 */}
       <Map />
     </div>
   );
