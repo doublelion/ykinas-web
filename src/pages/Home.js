@@ -136,7 +136,7 @@ function Home() {
       {/* 서비스 섹션 */}
       <section id="services" className="service-grid">
         <div className="service-card">
-          <Monitor color="#00f2ff" size={40} />
+          <Monitor className="service-icon" size={40} style={{ stroke: 'var(--icon-color)' }} />
           <h3>홈페이지 제작</h3>
           <p>브랜드 아이덴티티를 반영한<br />완성도 높은 디지털 결과물을 제작합니다.</p>
         </div>
