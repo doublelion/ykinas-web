@@ -8,316 +8,144 @@
     transform: translateY(0);
   }
 }
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes kenBurns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
 
 .home-container {
-  // 섹션 제목 공통 스타일
-  .section-title {
-    text-align: center;
-    margin-bottom: 50px;
-    span {
-      color: $ykinas-teal; // 라이트 모드에선 티알 컬러가 더 선명합니다
-      font-size: 0.9rem;
-      letter-spacing: 2px;
-      font-weight: 600;
+  // --- 새로 교체된 스와이퍼 히어로 영역 ---
+  .hero-slider-section {
+    width: 100%;
+    min-height: 80vh;
+    position: relative;
+    
+    @media (max-width: 1024px) {
+      min-height: 60vh;
     }
-    h2 {
-      font-size: 2.5rem;
-      margin-top: 10px;
-      // 라이트 모드 대응: 고정 #fff에서 변수로 변경
-      color: var(--text-color);
-    }
-  }
-  .hero {
-    background: var(--hero-bg-layers); // 분기된 레이어 적용
-    min-height: 80vh; // 헤더부터 슬로건까지 꽉 차게
-    // padding: 12rem 0 8rem;
-    padding: 12vw 0 7vw;
-    text-align: center;
-    opacity: 0;
-    transform: translateY(30px);
-    animation: fadeInUp 1.2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
-    animation-delay: 0.5s; // 헤더 로드 후 자연스럽게 시작
-    background-size: cover;
-    background-position: center;
-    background-image:
-      // url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop') no-repeat center center; // 고해상도 이미지
-      url('../assets/images/hero_bg_01.webp') no-repeat center center;
 
-    // 모서리를 안쪽으로 흐리게 만드는 꼼수 (필수)
-    &::after {
-      content: '';
+    .hero-swiper {
+      width: 100%;
+      height: 100%;
       position: absolute;
       top: 0;
       left: 0;
-      right: 0;
-      bottom: 0;
-      //box-shadow: var(--hero-after-shadow); // 다크는 검정, 라이트는 미색그림자
-      pointer-events: none; // 클릭 방해 방지
-    }
 
-    h2 {
-      // font-size: clamp(2.5rem, 6vw, 4rem);
-      font-size: 4rem;
-      font-weight: 800;
-      color: var(--hero-text-color); // 텍스트 색상 분기
-      line-height: 1.1;
-      z-index: 2; // after 위로 올림
-      span {
-        color: $primary-color;
-      }
-    }
-    p {
-      color: var(--hero-text-color);
-      margin-top: 1.5rem;
-      font-size: 1.5rem;
-    }
-  }
-
-  // 포트폴리오 프리뷰 섹션
-  .home-portfolio {
-    padding: 100px 0;
-    background: var(--section-grad);
-
-    .section-header {
-      text-align: center;
-      margin-bottom: 60px;
-      h2 {
-        font-size: 3rem;
-        color: var(--text-color);
-      }
-      p {
-        color: var(--footer-text);
-        margin-top: 10px;
-      }
-    }
-
-    .portfolio-preview-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr));
-      gap: 20px;
-      max-width: 1200px;
-      margin: 0 auto 50px;
-
-      // 미디어 쿼리
-      @media (max-width: 480px) {
-        grid-template-columns: 1fr; // 모바일은 무조건 한 줄
-        gap: 15px;
-      }
-      .preview-card {
+      .swiper-slide {
         position: relative;
-        background: var(--card-bg);
-        border: 1px solid var(--border-line);
-        padding: clamp(2rem, 4vw, 4rem);
-        border-radius: 20px;
-        cursor: pointer;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        display: flex;
+        align-items: center;
+        justify-content: center;
         overflow: hidden;
-        z-index: 1; // 기본 레이어 설정
 
-        .card-image {
-          width: 100%;
-          height: 200px;
-          overflow: hidden;
-          position: relative; // 레이어 기준
-          img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.5s ease;
-            border-radius: 1rem;
-          }
-        }
-
-        &:hover {
-          .card-image img {
-            transform: scale(1.1);
-          }
-        }
-
-        .card-info {
-          padding: 30px;
-          z-index: 2; // 이미지보다 위
-          padding: 30px 0 0; // 패딩 조정
-
-          .category {
-            color: $ykinas-teal; // 변수 사용
-            //color: $text-black;
-            font-size: 1.2rem;
-            font-weight: 700;
-            [data-theme='dark'] & {
-              color: #00f2ff;
-            }
-          }
-
-          h3 {
-            margin: 10px 0;
-            font-size: 2.3rem;
-            color: var(--text-color); // 제목 검정색으로
-          }
-          p {
-            color: $text-gray; // 본문 회색으로
-            font-size: 1.45rem;
-            line-height: 1.5;
-            height: 3em;
-            overflow: hidden;
-          }
-          .tags {
-            margin-top: 15px;
-            display: flex;
-            gap: 10px;
-            color: #555;
-            font-size: 1.2rem;
-          }
-        }
-        ㄴ &:hover {
-          transform: translateY(-10px);
-
-          background: var(--card-bg);
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
-          border-color: $ykinas-teal;
-
-          .card-hover-icon {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-
-        .category {
-          color: #00f2ff;
-          font-weight: 500;
-          font-size: 2rem;
-        }
-        h3 {
-          font-size: 2.8rem;
-          margin: 15px 0;
-          color: #fff;
-        }
-        p {
-          color: #ccc;
-          line-height: 1.6;
-          margin-bottom: 20px;
-        }
-        .tags {
-          color: #666;
-          font-family: monospace;
-        }
-
-        .card-info {
-          padding-top: 2.5rem;
-          .category {
-            display: block;
-            color: $ykinas-teal;
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-          }
-          h3 {
-            font-size: 2.3rem;
-            color: var(--text-color);
-            margin-bottom: 1.2rem;
-          }
-          p {
-            color: var(--footer-text);
-            font-size: 1.5rem;
-            line-height: 1.6;
-            height: 3.2em;
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-          }
-          .tags {
-            margin-top: 1.5rem;
-            display: flex;
-            gap: 1rem;
-            span {
-              font-size: 1.3rem;
-              color: var(--footer-text);
-              opacity: 0.7;
-            }
-          }
-        }
-
-        .card-hover-icon {
+        // 배경 이미지 켄번스 애니메이션 처리
+        .slide-bg {
           position: absolute;
-          right: 3rem;
-          bottom: 3rem;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+          z-index: 1;
+          transition: transform 6s linear;
+          
+          .overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(
+              to bottom,
+              rgba(0, 0, 0, 0.4) 0%,
+              rgba(0, 0, 0, 0.7) 100%
+            );
+          }
+        }
+
+        // 텍스트 콘텐츠 시차 효과
+        .slide-content {
+          position: relative;
+          z-index: 2;
+          text-align: center;
+          padding: 0 20px;
           opacity: 0;
-          transform: translateX(-20px);
+
+          h2 {
+            font-size: clamp(3rem, 6vw, 5rem);
+            font-weight: 800;
+            color: #ffffff;
+            line-height: 1.15;
+            margin-bottom: 1.5rem;
+            
+            span.highlight {
+              color: $ykinas-teal; // 테마 포인트 컬러 유지
+              background: none;
+              -webkit-text-fill-color: initial;
+            }
+          }
+
+          p.hero-desc {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: clamp(1.2rem, 2vw, 1.6rem);
+            max-width: 600px;
+            margin: 0 auto 3rem;
+            word-break: keep-all;
+            line-height: 1.6;
+          }
+
+          .hero-btns {
+            display: flex;
+            justify-content: center;
+          }
+        }
+
+        // 활성화된 슬라이드에만 애니메이션 작동
+        &-active {
+          .slide-bg {
+            animation: kenBurns 6s ease-out forwards;
+          }
+          .slide-content {
+            animation: slideUpFade 1s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+            animation-delay: 0.3s;
+          }
+        }
+      }
+
+      // 커스텀 페이지네이션 (와이키나스 톤앤매너)
+      .swiper-pagination {
+        bottom: 40px;
+        .swiper-pagination-bullet {
+          width: 12px;
+          height: 12px;
+          background: rgba(255, 255, 255, 0.4);
+          opacity: 1;
           transition: all 0.3s ease;
-          z-index: 10;
-        }
-
-        // 호버 액션 통합 (오류 수정됨)
-        &:hover {
-          transform: translateY(-12px);
-          border-color: $ykinas-teal;
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-
-          .card-image img {
-            transform: scale(1.1);
-          }
-          .card-hover-icon {
-            opacity: 1;
-            transform: translateX(0);
+          
+          &-active {
+            background: $ykinas-teal;
+            width: 32px;
+            border-radius: 6px;
           }
         }
       }
     }
-
-    .view-more-center {
-      display: flex;
-      justify-content: center;
-    }
-  }
-  // 히어로 버튼 스타일 보강
-  .hero-btns {
-    display: flex;
-    gap: 20px;
-    justify-content: center;
-    margin-top: 30px;
-
-    .text-btn {
-      background: none;
-      border: none;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: color 0.3s;
-      &:hover {
-        color: #00f2ff;
-      }
-    }
   }
 }
-@media (max-width: 1024px) {
-  .home-container {
-    padding-top: 6rem;
-    .hero {
-      min-height: 40vh; // 헤더부터 슬로건까지 꽉 차게
-      // 모바일은 세로가 길므로 상하 그라데이션 범위를 더 넓게 잡아야 자연스럽습니다.
-      background: var(--hero-bg-layers);
-      background-image: url('../assets/images/hero_bg_01.webp') no-repeat center
-        center;
-      background-size: cover;
-      background-position: center;
-      // &::after {
-      //   content: '';
-      //   position: absolute;
-      //   top: 0;
-      //   left: 0;
-      //   right: 0;
-      //   bottom: 0;
-      //   box-shadow: inset 0 0 3rem 0rem #000;
-      //   pointer-events: none;
-      // }
-    }
-  }
-}
-
 .service-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
