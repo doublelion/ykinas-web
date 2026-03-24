@@ -204,7 +204,7 @@ function Home() {
         </div>
       </section>
 
-      <Map />
+      {/*<Map />*/}
     </div>
   );
 }
