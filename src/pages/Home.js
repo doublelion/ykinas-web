@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // useState, useEffect 추가
+import { supabase } from '../supabaseClient'; // supabase 추가
 import { Monitor, ShoppingCart, Settings, ArrowRight, Sparkles } from 'lucide-react';
 import Button from '../components/Button';
 import { PROJECTS } from '../data/project';
@@ -57,7 +58,24 @@ const HERO_SLIDES = [
 
 function Home() {
   const navigate = useNavigate();
-  const previewProjects = PROJECTS.slice(-2).reverse();
+  // 1. 상태 관리 추가 (기존 previewProjects 변수 대체)
+  const [previewProjects, setPreviewProjects] = useState([]);
+
+  // 2. 최신 프로젝트 2개만 가져오는 로직 추가
+  useEffect(() => {
+    const fetchLatestProjects = async () => {
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('sort_order', { ascending: true }) // 이 줄로 교체
+        .range(0, 1); // 최신순으로 2개만 가져옴
+
+      if (!error && data) {
+        setPreviewProjects(data);
+      }
+    };
+    fetchLatestProjects();
+  }, []);
 
   const handleInquiry = () => {
     navigate('/contact');
@@ -171,12 +189,11 @@ function Home() {
               onClick={() => navigate('/portfolio')}
             >
               <div className="item-image">
-                <img src={project.img} alt={project.title} loading="lazy" />
+                {/* project.img를 project.img_url로 변경 */}
+                <img src={project.img_url} alt={project.title} loading="lazy" />
                 <div className="overlay">
-                  {/* Portfolio.js의 CTA 스타일 이식 */}
                   <Button text="자세히 보기" onClick={() => navigate('/portfolio')} />
                 </div>
-                {/* 기존 화살표 아이콘 유지 (선택 사항) */}
                 <div className="card-hover-icon">
                   <ArrowRight size={32} color="#00f2ff" />
                 </div>
@@ -187,11 +204,16 @@ function Home() {
                 <h3>{project.title}</h3>
                 <p>{project.desc}</p>
                 <div className="tags">
-                  {project.tags?.map((tag, idx) => (
-                    <span key={`${project.id}-${tag}-${idx}`} className="tag">
-                      {tag}
-                    </span>
-                  ))}
+                  {/* tags가 배열인지 확인하는 안전장치 추가 */}
+                  {Array.isArray(project.tags) ? (
+                    project.tags.map((tag, idx) => (
+                      <span key={`${project.id}-${idx}`} className="tag">{tag}</span>
+                    ))
+                  ) : (
+                    project.tags?.split(',').map((tag, idx) => (
+                      <span key={`${project.id}-${idx}`} className="tag">{tag.replace(/[\[\]\" ]/g, '')}</span>
+                    ))
+                  )}
                 </div>
               </div>
             </article>

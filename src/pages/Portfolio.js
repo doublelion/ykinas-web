@@ -9,38 +9,38 @@ function Portfolio() {
   const [hasMore, setHasMore] = useState(true);
   const ITEMS_PER_PAGE = 6;
 
+  // [1] 카테고리 정의 수정
   const categories = useMemo(() => [
     { id: 'ALL', name: 'ALL' },
-    { id: 'MOBILE FRONTEND', name: 'MOBILE' },
-    { id: 'PC, MOBILE FRONTEND', name: 'PC / MOBILE' },
-    { id: 'CROSS PLATFORM FRONTEND', name: 'CROSS PLATFORM' }
+    { id: 'COMMERCE', name: 'E-COMMERCE' }, // 카페24, 쇼핑몰, 결제 시스템 특화
+    { id: 'CORPORATE', name: 'CORPORATE' }, // 기업 홈페이지, 브랜드 사이트, 랜딩페이지
+    { id: 'SOLUTION', name: 'WEB SOLUTION' } // 예약 시스템, 맞춤형 기능, 관리자 툴
   ], []);
 
+  // [1] 데이터 가져오기 핵심 함수
   const fetchProjects = useCallback(async (isInitial = false) => {
-    const from = isInitial ? 0 : projects.length;
-    const to = from + ITEMS_PER_PAGE - 1;
+    // 필터 변경 시 0부터 시작, 추가 로딩 시 현재 길이부터 시작
+    const start = isInitial ? 0 : projects.length;
+    const end = start + ITEMS_PER_PAGE - 1;
 
-    // Portfolio.js 내부 fetchProjects 함수 수정
-    let query = supabase
-      .from('projects')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
-      .range(from, to);
+    let query = supabase.from('projects').select('*', { count: 'exact' });
 
     if (filter !== 'ALL') {
-      query = query.ilike('category', `%${filter}%`);
+      query = query.ilike('category', `%${filter.trim()}%`);
     }
 
-    const { data, error, count } = await query;
-    if (error) return console.error(error);
+    const { data, error, count } = await query
+      .order('sort_order', { ascending: true }) // 이 줄로 교체
+      .range(start, end);
 
     setProjects(prev => isInitial ? data : [...prev, ...data]);
     setHasMore(count > (isInitial ? data.length : projects.length + data.length));
-  }, [filter, projects.length]);
+  }, [filter]); // projects.length 의존성 제거 (무한루프 방지)
 
+  // [2] 필터 변경 감지 및 초기화
   useEffect(() => {
     fetchProjects(true);
-  }, [filter]); // 필터가 바뀔 때만 초기화 후 호출
+  }, [filter, fetchProjects]);
 
   return (
     <section className="ykinas-portfolio">
