@@ -9,10 +9,14 @@ function Portfolio() {
   const [hasMore, setHasMore] = useState(true);
   const ITEMS_PER_PAGE = 6;
 
-  // 1. 카테고리 목록 정의 (DB에서 가져온 데이터 기반으로 동적 생성)
+  // DB에 입력하신 실제 카테고리 명칭과 똑같이 맞춰야 합니다.
   const categories = useMemo(() => {
-    return ['ALL', 'MOBILE', 'PC, MOBILE FRONTEND', 'CROSS PLATFORM FRONTEND'];
-    // 또는 DB에서 unique한 값을 추출하도록 로직 추가 가능
+    return [
+      { id: 'ALL', name: 'ALL' },
+      { id: 'MOBILE FRONTEND', name: 'MOBILE' }, // ID는 DB값, Name은 버튼 표시용
+      { id: 'PC, MOBILE FRONTEND', name: 'PC / MOBILE' },
+      { id: 'CROSS PLATFORM FRONTEND', name: 'CROSS PLATFORM' }
+    ];
   }, []);
 
   const fetchProjects = useCallback(async (isInitial = false) => {
@@ -35,10 +39,10 @@ function Portfolio() {
     setProjects(prev => isInitial ? data : [...prev, ...data]);
     setHasMore(count > (isInitial ? data.length : projects.length + data.length));
   }, [filter, projects.length]);
-  useEffect(() => {
-    fetchProjects(true); // <--- 정확한 함수 이름으로 수정
-  }, [fetchProjects]);
 
+  useEffect(() => {
+    fetchProjects(true);
+  }, [filter]); // 필터가 바뀔 때만 초기화 후 호출
 
   return (
     <section className="ykinas-portfolio">
@@ -47,15 +51,14 @@ function Portfolio() {
         <h2 className="main-title">YKINAS PROJECTS</h2>
       </div>
 
-      {/* 필터바 복구 */}
       <div className="filter-bar">
         {categories.map((cat) => (
-          <button
-            key={cat}
-            className={filter === cat ? 'active' : ''}
-            onClick={() => setFilter(cat)}
+          <button 
+            key={cat.id} 
+            className={filter === cat.id ? 'active' : ''} 
+            onClick={() => setFilter(cat.id)}
           >
-            {cat}
+            {cat.name}
           </button>
         ))}
       </div>
@@ -64,7 +67,6 @@ function Portfolio() {
         {projects.map((project) => (
           <article key={project.id} className="portfolio-item">
             <div className="item-image">
-              {/* img -> img_url로 변경 */}
               <img src={project.img_url} alt={project.title} loading="lazy" />
               <div className="overlay">
                 <a href={project.link_url} target="_blank" rel="noreferrer">
@@ -77,18 +79,23 @@ function Portfolio() {
               <h3>{project.title}</h3>
               <p>{project.desc}</p>
               <div className="tags">
-                {Array.isArray(project.tags)
-                  ? project.tags.map((tag, idx) => <span key={idx} className="tag">{tag}</span>)
-                  : project.tags?.toString().split(',').map((tag, idx) => (
-                    <span key={idx} className="tag">{tag.replace(/[\[\]\" ]/g, '')}</span>
-                  ))
-                }
+                {Array.isArray(project.tags) ? (
+                  project.tags.map((tag, idx) => <span key={idx} className="tag">{tag}</span>)
+                ) : (
+                  project.tags?.split(',').map((tag, idx) => <span key={idx} className="tag">{tag.trim()}</span>)
+                )}
               </div>
             </div>
           </article>
         ))}
       </div>
-      {!hasMore && projects.length > 0 && <p className="end-msg">모든 프로젝트를 불러왔습니다.</p>}
+
+      {/* 위치를 그리드 밖 하단 중앙으로 고정 */}
+      {!hasMore && projects.length > 0 && (
+        <div className="portfolio-footer">
+          <p className="end-msg">모든 프로젝트를 불러왔습니다.</p>
+        </div>
+      )}
     </section>
   );
 }

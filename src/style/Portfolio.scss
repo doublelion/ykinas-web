@@ -12,7 +12,7 @@
     text-align: center;
     margin-bottom: 8rem;
     padding: 0 2rem;
-  
+
     .main-title {
       font-size: clamp(3.2rem, 6vw, 5.6rem);
       font-weight: 800;
@@ -34,9 +34,12 @@
 
     /* 스크롤바 숨기기 */
     scrollbar-width: none; // Firefox
+
     &::-webkit-scrollbar {
       display: none;
-    } // Chrome, Safari
+    }
+
+    // Chrome, Safari
 
     @media (max-width: 1024px) {
       justify-content: flex-start; // 모바일/태블릿에선 왼쪽부터 스크롤 시작
@@ -97,6 +100,7 @@
         .item-image img {
           transform: scale(1.08);
         }
+
         .overlay {
           opacity: 1;
         }
@@ -134,16 +138,16 @@
           a {
             text-decoration: none;
             display: block; // 버튼 크기에 맞게 조절
-            transform: translateY(
-              20px
-            ); // 살짝 아래에서 위로 올라오는 효과 추가용
+            transform: translateY(20px); // 살짝 아래에서 위로 올라오는 효과 추가용
             transition: transform 0.3s ease;
           }
         }
+
         // 호버 시 처리
         &:hover {
           .overlay {
             opacity: 1;
+
             a {
               transform: translateY(0); // 호버 시 제자리로
             }
@@ -196,6 +200,39 @@
             border: 1px solid var(--border-line);
           }
         }
+      }
+    }
+  }
+
+  .portfolio-footer {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 80px;
+    padding-bottom: 40px;
+
+    .end-msg {
+      font-size: 1.6rem;
+      color: var(--footer-text);
+      position: relative;
+      padding: 10px 20px;
+
+      &::before,
+      &::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        width: 40px;
+        height: 1px;
+        background: var(--border-line);
+      }
+
+      &::before {
+        left: -50px;
+      }
+
+      &::after {
+        right: -50px;
       }
     }
   }
