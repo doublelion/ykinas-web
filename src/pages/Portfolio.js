@@ -9,20 +9,18 @@ function Portfolio() {
   const [hasMore, setHasMore] = useState(true);
   const ITEMS_PER_PAGE = 6;
 
-  // DB에 입력하신 실제 카테고리 명칭과 똑같이 맞춰야 합니다.
-  const categories = useMemo(() => {
-    return [
-      { id: 'ALL', name: 'ALL' },
-      { id: 'MOBILE FRONTEND', name: 'MOBILE' }, // ID는 DB값, Name은 버튼 표시용
-      { id: 'PC, MOBILE FRONTEND', name: 'PC / MOBILE' },
-      { id: 'CROSS PLATFORM FRONTEND', name: 'CROSS PLATFORM' }
-    ];
-  }, []);
+  const categories = useMemo(() => [
+    { id: 'ALL', name: 'ALL' },
+    { id: 'MOBILE FRONTEND', name: 'MOBILE' }, // id는 DB값과 똑같이! name은 화면 표시용!
+    { id: 'PC, MOBILE FRONTEND', name: 'PC / MOBILE' },
+    { id: 'CROSS PLATFORM FRONTEND', name: 'CROSS PLATFORM' }
+  ], []);
 
   const fetchProjects = useCallback(async (isInitial = false) => {
     const from = isInitial ? 0 : projects.length;
     const to = from + ITEMS_PER_PAGE - 1;
 
+    // Portfolio.js 내부 fetchProjects 함수 수정
     let query = supabase
       .from('projects')
       .select('*', { count: 'exact' })
@@ -30,7 +28,7 @@ function Portfolio() {
       .range(from, to);
 
     if (filter !== 'ALL') {
-      query = query.eq('category', filter);
+      query = query.ilike('category', `%${filter}%`);
     }
 
     const { data, error, count } = await query;
@@ -53,9 +51,9 @@ function Portfolio() {
 
       <div className="filter-bar">
         {categories.map((cat) => (
-          <button 
-            key={cat.id} 
-            className={filter === cat.id ? 'active' : ''} 
+          <button
+            key={cat.id}
+            className={filter === cat.id ? 'active' : ''}
             onClick={() => setFilter(cat.id)}
           >
             {cat.name}
