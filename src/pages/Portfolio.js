@@ -11,7 +11,7 @@ function Portfolio() {
 
   const categories = useMemo(() => [
     { id: 'ALL', name: 'ALL' },
-    { id: 'MOBILE FRONTEND', name: 'MOBILE' }, // id는 DB값과 똑같이! name은 화면 표시용!
+    { id: 'MOBILE FRONTEND', name: 'MOBILE' },
     { id: 'PC, MOBILE FRONTEND', name: 'PC / MOBILE' },
     { id: 'CROSS PLATFORM FRONTEND', name: 'CROSS PLATFORM' }
   ], []);
