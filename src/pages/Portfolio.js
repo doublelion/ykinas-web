@@ -39,7 +39,7 @@ function Portfolio() {
     fetchProjects(true); // <--- 정확한 함수 이름으로 수정
   }, [fetchProjects]);
 
-  
+
   return (
     <section className="ykinas-portfolio">
       <div className="portfolio-header">
@@ -77,9 +77,12 @@ function Portfolio() {
               <h3>{project.title}</h3>
               <p>{project.desc}</p>
               <div className="tags">
-                {project.tags?.map((tag, idx) => (
-                  <span key={idx} className="tag">{tag}</span>
-                ))}
+                {Array.isArray(project.tags)
+                  ? project.tags.map((tag, idx) => <span key={idx} className="tag">{tag}</span>)
+                  : project.tags?.toString().split(',').map((tag, idx) => (
+                    <span key={idx} className="tag">{tag.replace(/[\[\]\" ]/g, '')}</span>
+                  ))
+                }
               </div>
             </div>
           </article>
