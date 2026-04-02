@@ -1,6 +1,5 @@
 import React from 'react';
 import { Monitor, ShoppingCart, Settings, ArrowRight, Sparkles } from 'lucide-react';
-import Map from '../components/Map';
 import Button from '../components/Button';
 import { PROJECTS } from '../data/project';
 import { useNavigate } from 'react-router-dom';

@@ -1,74 +1,91 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../supabaseClient'; 
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase } from '../supabaseClient';
 import Button from '../components/Button';
 import '../style/Portfolio.scss';
 
 function Portfolio() {
   const [projects, setProjects] = useState([]);
   const [filter, setFilter] = useState('ALL');
-  const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const ITEMS_PER_PAGE = 6; // 한 번에 가져올 개수
+  const ITEMS_PER_PAGE = 6;
 
-  // 데이터 페칭 함수
-  const fetchProjects = useCallback(async (pageNum, currentFilter) => {
+  // 1. 카테고리 목록 정의 (DB에서 가져온 데이터 기반으로 동적 생성)
+  const categories = useMemo(() => {
+    return ['ALL', 'MOBILE', 'PC, MOBILE FRONTEND', 'CROSS PLATFORM FRONTEND'];
+    // 또는 DB에서 unique한 값을 추출하도록 로직 추가 가능
+  }, []);
+
+  const fetchProjects = useCallback(async (isInitial = false) => {
+    const from = isInitial ? 0 : projects.length;
+    const to = from + ITEMS_PER_PAGE - 1;
+
     let query = supabase
       .from('projects')
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
-      .range(pageNum * ITEMS_PER_PAGE, (pageNum + 1) * ITEMS_PER_PAGE - 1);
+      .range(from, to);
 
-    if (currentFilter !== 'ALL') {
-      query = query.eq('category', currentFilter);
+    if (filter !== 'ALL') {
+      query = query.eq('category', filter);
     }
 
     const { data, error, count } = await query;
+    if (error) return console.error(error);
 
-    if (error) {
-      console.error('Error fetching projects:', error);
-      return;
-    }
-
-    setProjects((prev) => (pageNum === 0 ? data : [...prev, ...data]));
-    setHasMore(count > (pageNum + 1) * ITEMS_PER_PAGE);
-  }, []);
-
-  // 필터나 페이지 변경 시 실행
+    setProjects(prev => isInitial ? data : [...prev, ...data]);
+    setHasMore(count > (isInitial ? data.length : projects.length + data.length));
+  }, [filter, projects.length]);
   useEffect(() => {
-    fetchProjects(0, filter);
-    setPage(0);
-  }, [filter, fetchProjects]);
+    fetchProjects(true); // <--- 정확한 함수 이름으로 수정
+  }, [fetchProjects]);
 
-  // 무한 스크롤 핸들러 (Intersection Observer 대신 심플하게 구현)
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500 && hasMore) {
-        setPage((prev) => {
-          const nextPage = prev + 1;
-          fetchProjects(nextPage, filter);
-          return nextPage;
-        });
-      }
-    };
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [hasMore, filter, fetchProjects]);
-
+  
   return (
     <section className="ykinas-portfolio">
-      {/* 헤더 및 필터바 영역 (기존과 동일하되 categories는 고정 혹은 DB에서 추출) */}
+      <div className="portfolio-header">
+        <span className="sub-title">OUR WORKS</span>
+        <h2 className="main-title">YKINAS PROJECTS</h2>
+      </div>
+
+      {/* 필터바 복구 */}
+      <div className="filter-bar">
+        {categories.map((cat) => (
+          <button
+            key={cat}
+            className={filter === cat ? 'active' : ''}
+            onClick={() => setFilter(cat)}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
       <div className="portfolio-grid">
         {projects.map((project) => (
           <article key={project.id} className="portfolio-item">
             <div className="item-image">
+              {/* img -> img_url로 변경 */}
               <img src={project.img_url} alt={project.title} loading="lazy" />
-              {/* ... 나머지 UI 동일 ... */}
+              <div className="overlay">
+                <a href={project.link_url} target="_blank" rel="noreferrer">
+                  <Button text="자세히 보기" />
+                </a>
+              </div>
             </div>
-            {/* ... 상세 정보 영역 동일 ... */}
+            <div className="item-info">
+              <span className="category">{project.category}</span>
+              <h3>{project.title}</h3>
+              <p>{project.desc}</p>
+              <div className="tags">
+                {project.tags?.map((tag, idx) => (
+                  <span key={idx} className="tag">{tag}</span>
+                ))}
+              </div>
+            </div>
           </article>
         ))}
       </div>
-      {!hasMore && <p className="end-msg">모든 프로젝트를 불러왔습니다.</p>}
+      {!hasMore && projects.length > 0 && <p className="end-msg">모든 프로젝트를 불러왔습니다.</p>}
     </section>
   );
 }
