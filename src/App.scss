@@ -1,6 +1,22 @@
 /* App.scss */
 @use './style/variables' as *;
 
+/* 모든 모바일 브라우저에서 자동 확대를 방지하는 가장 깔끔한 방법 */
+input[type="text"], 
+input[type="number"], 
+select, 
+textarea {
+  font-size: 16px !important; /* 16px 미만은 절대 금지 */
+  line-height: normal; /* 행간에 의한 높이 왜곡 방지 */
+}
+
+/* iOS Safari 전용 대응: 폰트 크기를 유지하면서 시스템 줌 방지 */
+@supports (-webkit-overflow-scrolling: touch) {
+  input, select, textarea {
+    font-size: 16px;
+  }
+}
+
 // 최상위 컨테이너 구조
 .ykinas-app {
   background-color: var(--bg-color); // 배경색 변수화

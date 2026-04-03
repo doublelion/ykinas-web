@@ -365,7 +365,7 @@
           }
         }
 
-        .card-info {
+        .item-info {
           padding: 3rem;
 
           .category {
@@ -382,12 +382,66 @@
             font-weight: 700;
           }
 
-          p {
-            color: var(--footer-text);
-            font-size: 1.5rem;
-            line-height: 1.6;
+          /* [수정된 부분] 더보기 버튼 및 텍스트 안개 효과 */
+          .desc-wrap {
+            position: relative; // 버튼 배치를 위한 기준점
             margin-bottom: 2rem;
-            word-break: keep-all;
+
+            .desc-text {
+              color: var(--footer-text);
+              font-size: 1.5rem;
+              line-height: 1.6;
+              word-break: keep-all;
+              margin-bottom: 0;
+
+              display: -webkit-box;
+              -webkit-line-clamp: 2; // 기본 2줄 제한
+              -webkit-box-orient: vertical;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            /* 펼쳐졌을 때 스타일 보정 */
+            &.expanded {
+              .desc-text {
+                display: block;
+                -webkit-line-clamp: unset;
+                overflow: visible;
+                padding-bottom: 1rem; // 버튼과 겹치지 않게 여백
+              }
+
+              .btn-inline-more {
+                position: relative; // 펼쳐지면 흐름에 따라 하단 배치
+                background: none; // 안개 효과 제거
+                padding-left: 0;
+                margin-top: 0.5rem;
+                display: block;
+              }
+            }
+
+            /* [핵심] 안개 효과가 포함된 더보기 버튼 */
+            .btn-inline-more {
+              position: absolute;
+              right: 0;
+              bottom: 0;
+
+              // 왼쪽(투명)에서 오른쪽(배경색)으로 이어지는 그라디언트 쉐도우
+              background: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, var(--card-bg) 20%, var(--card-bg) 100%);
+
+              border: none;
+              color: $ykinas-teal; // 브랜드 컬러 사용
+              font-size: 1.4rem;
+              font-weight: 700;
+              line-height: 1.6;
+              padding-left: 4rem; // 그라디언트가 충분히 보일 수 있는 여백
+              cursor: pointer;
+              transition: color 0.3s $ease-ykinas;
+
+              &:hover {
+                color: $ykinas-green;
+                text-decoration: underline;
+              }
+            }
           }
 
           .tags {

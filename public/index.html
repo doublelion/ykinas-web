@@ -1,108 +1,88 @@
 <!doctype html>
 <html lang="ko">
-  <head>
-    <meta charset="utf-8" />
-    <base href="/" />
 
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <link rel="canonical" href="https://ykinas.com" />
+<head>
+  <meta charset="utf-8" />
+  <base href="/" />
 
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-    <link
-      rel="preload"
-      href="./assets/fonts/D-DIN-Bold.woff"
-      as="font"
-      type="font/woff2"
-      crossorigin="anonymous"
-    />
-    <link
-      rel="stylesheet"
-      as="style"
-      crossorigin
-      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
-    />
+  <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+  <link rel="canonical" href="https://ykinas.com" />
 
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta name="robots" content="index, follow" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preload" href="./assets/fonts/D-DIN-Bold.woff" as="font" type="font/woff2" crossorigin="anonymous" />
+  <link rel="stylesheet" as="style" crossorigin
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 
-    <!-- 인증 -->
-    <meta name="google-site-verification" content="QtJk1ponrMl0Rh190RBZRA-Pg-kyqtAtXpYTy0-di4Y" />
-    <meta name="naver-site-verification" content="네이버코드입력" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="robots" content="index, follow" />
 
-    <!-- 핵심 SEO (글로벌 + 로컬 균형) -->
-    <title>웹사이트 제작 전문 | 와이키나스(YKINAS) - 부평·인천 기반 글로벌 웹 에이전시</title>
+  <!-- 인증 -->
+  <meta name="google-site-verification" content="QtJk1ponrMl0Rh190RBZRA-Pg-kyqtAtXpYTy0-di4Y" />
+  <meta name="naver-site-verification" content="네이버코드입력" />
 
-    <meta
-      name="description"
-      content="웹사이트 제작, 쇼핑몰 구축, UI/UX 설계까지. 부평·인천 기반으로 전국 및 글로벌 프로젝트를 진행하는 웹 에이전시 와이키나스."
-    />
+  <!-- 핵심 SEO (글로벌 + 로컬 균형) -->
+  <title>웹사이트 제작 전문 | 와이키나스(YKINAS) - 부평·인천 기반 글로벌 웹 에이전시</title>
 
-    <meta
-      name="keywords"
-      content="웹사이트제작, 홈페이지제작, 쇼핑몰제작, 웹에이전시, UIUX, 부평홈페이지, 인천웹사이트제작, 글로벌웹에이전시, 와이키나스"
-    />
+  <meta name="description" content="웹사이트 제작, 쇼핑몰 구축, UI/UX 설계까지. 부평·인천 기반으로 전국 및 글로벌 프로젝트를 진행하는 웹 에이전시 와이키나스." />
 
-    <!-- Open Graph -->
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="웹사이트 제작 전문 | 와이키나스(YKINAS)" />
-    <meta
-      property="og:description"
-      content="전략 설계부터 UI/UX, 개발까지. 전국 및 글로벌 웹사이트 제작 파트너."
-    />
-    <meta property="og:url" content="https://ykinas.com" />
-    <meta property="og:site_name" content="YKINAS" />
-    <meta property="og:image" content="https://ykinas.com/og-image.jpg" />
+  <meta name="keywords" content="웹사이트제작, 홈페이지제작, 쇼핑몰제작, 웹에이전시, UIUX, 부평홈페이지, 인천웹사이트제작, 글로벌웹에이전시, 와이키나스" />
 
-    <!-- Kakao Map -->
-    <script
-      type="text/javascript"
-      src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=2fe17c41b295074803456b103a38c199&autoload=false"
-    ></script>
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="웹사이트 제작 전문 | 와이키나스(YKINAS)" />
+  <meta property="og:description" content="전략 설계부터 UI/UX, 개발까지. 전국 및 글로벌 웹사이트 제작 파트너." />
+  <meta property="og:url" content="https://ykinas.com" />
+  <meta property="og:site_name" content="YKINAS" />
+  <meta property="og:image" content="https://ykinas.com/og-image.jpg" />
 
-    <!-- 채널톡 -->
-    <script>
-      (function () {
-        var w = window;
-        if (w.ChannelIO) {
-          return w.console.error('ChannelIO script included twice.');
+  <!-- Kakao Map -->
+  <script type="text/javascript"
+    src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=2fe17c41b295074803456b103a38c199&autoload=false"></script>
+
+  <!-- 채널톡 -->
+  <script>
+    (function () {
+      var w = window;
+      if (w.ChannelIO) {
+        return w.console.error('ChannelIO script included twice.');
+      }
+      var ch = function () {
+        ch.c(arguments);
+      };
+      ch.q = [];
+      ch.c = function (args) {
+        ch.q.push(args);
+      };
+      w.ChannelIO = ch;
+      function l() {
+        if (w.ChannelIOInitialized) {
+          return;
         }
-        var ch = function () {
-          ch.c(arguments);
-        };
-        ch.q = [];
-        ch.c = function (args) {
-          ch.q.push(args);
-        };
-        w.ChannelIO = ch;
-        function l() {
-          if (w.ChannelIOInitialized) {
-            return;
-          }
-          w.ChannelIOInitialized = true;
-          var s = document.createElement('script');
-          s.type = 'text/javascript';
-          s.async = true;
-          s.src = 'https://cdn.channel.io/plugin/ch-plugin-web.js';
-          var x = document.getElementsByTagName('script')[0];
-          if (x.parentNode) {
-            x.parentNode.insertBefore(s, x);
-          }
+        w.ChannelIOInitialized = true;
+        var s = document.createElement('script');
+        s.type = 'text/javascript';
+        s.async = true;
+        s.src = 'https://cdn.channel.io/plugin/ch-plugin-web.js';
+        var x = document.getElementsByTagName('script')[0];
+        if (x.parentNode) {
+          x.parentNode.insertBefore(s, x);
         }
-        if (document.readyState === 'complete') {
-          l();
-        } else {
-          w.addEventListener('DOMContentLoaded', l);
-          w.addEventListener('load', l);
-        }
-      })();
-      ChannelIO('boot', { pluginKey: 'e5aabd3f-f5c3-44c3-94bd-fd257edb7f2e' });
-    </script>
+      }
+      if (document.readyState === 'complete') {
+        l();
+      } else {
+        w.addEventListener('DOMContentLoaded', l);
+        w.addEventListener('load', l);
+      }
+    })();
+    ChannelIO('boot', { pluginKey: 'e5aabd3f-f5c3-44c3-94bd-fd257edb7f2e' });
+  </script>
 
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
-    <!-- Organization (글로벌 기준) -->
-    <script type="application/ld+json">
+  <!-- Organization (글로벌 기준) -->
+  <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "Organization",
@@ -112,8 +92,8 @@
       }
     </script>
 
-    <!-- Local SEO (보조 신호) -->
-    <script type="application/ld+json">
+  <!-- Local SEO (보조 신호) -->
+  <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "LocalBusiness",
@@ -131,8 +111,8 @@
       }
     </script>
 
-    <!-- FAQ SEO -->
-    <script type="application/ld+json">
+  <!-- FAQ SEO -->
+  <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "FAQPage",
@@ -156,27 +136,23 @@
         ]
       }
     </script>
-  </head>
+</head>
 
-  <body>
-    <noscript>YKINAS</noscript>
-    <div id="root"></div>
+<body>
+  <noscript>YKINAS</noscript>
+  <div id="root"></div>
 
-    <form
-      name="project-inquiry"
-      data-netlify="true"
-      netlify-honeypot="bot-field"
-      hidden
-    >
-      <input type="text" name="name" />
-      <input type="text" name="contact" />
-      <select name="type">
-        <option value="consulting"></option>
-        <option value="software"></option>
-        <option value="maintenance"></option>
-      </select>
-      <textarea name="message"></textarea>
-      <input type="checkbox" name="agreement" />
-    </form>
-  </body>
+  <form name="project-inquiry" data-netlify="true" netlify-honeypot="bot-field" hidden>
+    <input type="text" name="name" />
+    <input type="text" name="contact" />
+    <select name="type">
+      <option value="consulting"></option>
+      <option value="software"></option>
+      <option value="maintenance"></option>
+    </select>
+    <textarea name="message"></textarea>
+    <input type="checkbox" name="agreement" />
+  </form>
+</body>
+
 </html>
