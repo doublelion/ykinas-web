@@ -175,15 +175,53 @@
           line-height: 1.3;
         }
 
-        p {
-          color: var(--footer-text);
-          font-size: 1.5rem;
-          line-height: 1.6;
-          margin-bottom: 25px;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
+        .desc-wrap {
+          position: relative;
+          margin-bottom: 20px;
+
+          .desc-text {
+            color: var(--footer-text);
+            font-size: 1.5rem;
+            line-height: 1.6;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            word-break: break-all;
+          }
+
+          .btn-inline-more {
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(to right, transparent, var(--card-bg) 20%);
+            padding-left: 20px;
+            border: none;
+            color: $ykinas-blue;
+            font-size: 1.4rem;
+            font-weight: 700;
+            cursor: pointer;
+            line-height: 1.6;
+
+            &:hover {
+              color: $ykinas-teal;
+            }
+          }
+
+          &.expanded {
+            .desc-text {
+              display: block;
+              -webkit-line-clamp: unset;
+              overflow: visible;
+            }
+
+            .btn-inline-more {
+              position: relative; // 확장 시에는 텍스트 바로 뒤에 붙도록 변경
+              display: inline-block;
+              background: none;
+              padding-left: 5px;
+            }
+          }
         }
 
         .tags {
@@ -200,8 +238,29 @@
             border: 1px solid var(--border-line);
           }
         }
+
+
+        .btn-more {
+          display: block;
+          background: none;
+          border: none;
+          color: $ykinas-blue;
+          font-size: 1.3rem;
+          font-weight: 600;
+          cursor: pointer;
+          margin-bottom: 25px;
+          padding: 0;
+          text-decoration: underline;
+          text-underline-offset: 4px;
+
+          &:hover {
+            color: $ykinas-teal;
+          }
+        }
       }
     }
+
+
   }
 
   .portfolio-footer {

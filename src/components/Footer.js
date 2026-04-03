@@ -21,6 +21,12 @@ function Footer() {
             <strong>주소</strong> 인천광역시 부평구 시장로 33, 7층 (부평동, 한남시티프라자)
           </span>
         </div>
+        <div className="cert-badge">
+          <span className="badge-icon">✔</span>
+          <span className="badge-text">
+            중소벤처기업부 확인 중소기업
+          </span>
+        </div>
         <p className="copyright">
           &copy; {currentYear} <strong>YKINAS</strong>. All rights reserved.
         </p>

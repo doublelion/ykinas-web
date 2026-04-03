@@ -63,12 +63,59 @@
 
     .business-info {
       gap: 5px 10px;
+
       .info-item {
         font-size: 11px;
+
         &:not(:last-child)::after {
           margin-left: 10px;
         }
       }
     }
   }
+}
+
+.cert-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-line);
+  border-radius: 10px;
+  background-color: var(--bg-color);
+  font-size: 1.2rem;
+  color: var(--text-color);
+  transition: all 0.3s $ease-ykinas;
+
+  .badge-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    font-size: 1rem;
+    opacity: 0.8;
+  }
+
+  .badge-text {
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    opacity: 0.8;
+  }
+}
+
+@media (max-width: 768px) {
+  .footer {
+    .cert-badge {
+      margin-top: 12px;
+      font-size: 1.1rem;
+      padding: 5px 10px;
+    }
+  }
+}
+
+.cert-badge {
+  backdrop-filter: blur(6px);
 }

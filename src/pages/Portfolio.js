@@ -1,46 +1,90 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import Button from '../components/Button';
 import '../style/Portfolio.scss';
+
+// 개별 아이템의 텍스트 길이를 체크하기 위한 서브 컴포넌트
+const PortfolioItem = ({ project, expandedId, setExpandedId }) => {
+  const isExpanded = expandedId === project.id;
+  const descriptionRef = useRef(null);
+  const [showBtn, setShowBtn] = useState(false);
+
+  useEffect(() => {
+    if (descriptionRef.current) {
+      // 실제 텍스트 높이가 컨테이너 높이보다 크면 버튼 노출
+      setShowBtn(descriptionRef.current.scrollHeight > descriptionRef.current.clientHeight);
+    }
+  }, [project.desc]);
+
+  return (
+    <article className="portfolio-item">
+      <div className="item-image">
+        <img src={project.img_url} alt={project.title} loading="lazy" />
+        <div className="overlay">
+          <a href={project.link_url} target="_blank" rel="noreferrer">
+            <Button text="자세히 보기" />
+          </a>
+        </div>
+      </div>
+      <div className="item-info">
+        <span className="category">{project.category}</span>
+        <h3>{project.title}</h3>
+
+        <div className={`desc-wrap ${isExpanded ? 'expanded' : ''}`}>
+          <p className="desc-text" ref={descriptionRef}>
+            {project.desc}
+          </p>
+          {(showBtn || isExpanded) && (
+            <button className="btn-inline-more" onClick={() => setExpandedId(isExpanded ? null : project.id)}>
+              {isExpanded ? ' [접기]' : '... 더보기'}
+            </button>
+          )}
+        </div>
+
+        <div className="tags">
+          {Array.isArray(project.tags) ? (
+            project.tags.map((tag, idx) => <span key={idx} className="tag">{tag}</span>)
+          ) : (
+            project.tags?.split(',').map((tag, idx) => <span key={idx} className="tag">{tag.trim()}</span>)
+          )}
+        </div>
+      </div>
+    </article>
+  );
+};
 
 function Portfolio() {
   const [projects, setProjects] = useState([]);
   const [filter, setFilter] = useState('ALL');
   const [hasMore, setHasMore] = useState(true);
+  const [expandedId, setExpandedId] = useState(null);
   const ITEMS_PER_PAGE = 6;
 
-  // [1] 카테고리 정의 수정
   const categories = useMemo(() => [
     { id: 'ALL', name: 'ALL' },
-    { id: 'COMMERCE', name: 'E-COMMERCE' }, // 카페24, 쇼핑몰, 결제 시스템 특화
-    { id: 'CORPORATE', name: 'CORPORATE' }, // 기업 홈페이지, 브랜드 사이트, 랜딩페이지
-    { id: 'SOLUTION', name: 'WEB SOLUTION' } // 예약 시스템, 맞춤형 기능, 관리자 툴
+    { id: 'COMMERCE', name: 'E-COMMERCE' },
+    { id: 'CORPORATE', name: 'CORPORATE' },
+    { id: 'SOLUTION', name: 'WEB SOLUTION' }
   ], []);
 
-  // [1] 데이터 가져오기 핵심 함수
   const fetchProjects = useCallback(async (isInitial = false) => {
-    // 필터 변경 시 0부터 시작, 추가 로딩 시 현재 길이부터 시작
     const start = isInitial ? 0 : projects.length;
     const end = start + ITEMS_PER_PAGE - 1;
 
     let query = supabase.from('projects').select('*', { count: 'exact' });
+    if (filter !== 'ALL') query = query.ilike('category', `%${filter.trim()}%`);
 
-    if (filter !== 'ALL') {
-      query = query.ilike('category', `%${filter.trim()}%`);
-    }
-
-    const { data, error, count } = await query
-      .order('sort_order', { ascending: true }) // 이 줄로 교체
+    const { data, count } = await query
+      .order('sort_order', { ascending: true })
       .range(start, end);
 
     setProjects(prev => isInitial ? data : [...prev, ...data]);
-    setHasMore(count > (isInitial ? data.length : projects.length + data.length));
-  }, [filter]); // projects.length 의존성 제거 (무한루프 방지)
+    setHasMore(count > (isInitial ? (data?.length || 0) : projects.length + (data?.length || 0)));
+  }, [filter, projects.length]);
 
-  // [2] 필터 변경 감지 및 초기화
   useEffect(() => {
     fetchProjects(true);
-  }, [filter, fetchProjects]);
+  }, [filter]);
 
   return (
     <section className="ykinas-portfolio">
@@ -63,32 +107,20 @@ function Portfolio() {
 
       <div className="portfolio-grid">
         {projects.map((project) => (
-          <article key={project.id} className="portfolio-item">
-            <div className="item-image">
-              <img src={project.img_url} alt={project.title} loading="lazy" />
-              <div className="overlay">
-                <a href={project.link_url} target="_blank" rel="noreferrer">
-                  <Button text="자세히 보기" />
-                </a>
-              </div>
-            </div>
-            <div className="item-info">
-              <span className="category">{project.category}</span>
-              <h3>{project.title}</h3>
-              <p>{project.desc}</p>
-              <div className="tags">
-                {Array.isArray(project.tags) ? (
-                  project.tags.map((tag, idx) => <span key={idx} className="tag">{tag}</span>)
-                ) : (
-                  project.tags?.split(',').map((tag, idx) => <span key={idx} className="tag">{tag.trim()}</span>)
-                )}
-              </div>
-            </div>
-          </article>
+          <PortfolioItem
+            key={project.id}
+            project={project}
+            expandedId={expandedId}
+            setExpandedId={setExpandedId}
+          />
         ))}
       </div>
 
-      {/* 위치를 그리드 밖 하단 중앙으로 고정 */}
+      {hasMore && (
+        <div className="portfolio-footer">
+          <button className="btn-loadmore" onClick={() => fetchProjects()}>LOAD MORE</button>
+        </div>
+      )}
       {!hasMore && projects.length > 0 && (
         <div className="portfolio-footer">
           <p className="end-msg">모든 프로젝트를 불러왔습니다.</p>
