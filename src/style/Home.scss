@@ -582,17 +582,17 @@
       flex: 1;
 
       h3 {
-        font-size: 2.8rem;
-        margin-bottom: 2rem;
-        color: var(--text-color);
-        font-weight: 800;
+        font-size: 3.2rem; // 제목 강조
+        word-break: keep-all;
       }
 
       .highlight-desc {
         font-size: 1.6rem;
-        color: var(--footer-text);
         line-height: 1.8;
-        margin-bottom: 3rem;
+        white-space: pre-wrap; 
+        word-break: keep-all;
+        opacity: 0.8;
+        margin-bottom: 3.5rem;
       }
 
       .feature-list {

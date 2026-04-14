@@ -28,7 +28,7 @@ function Footer() {
           </span>
         </div>
         <p className="copyright">
-          &copy; {currentYear} <strong>YKINAS</strong>. All rights reserved.
+          &copy; {currentYear} <strong>YKINΛS</strong>. All rights reserved.
         </p>
       </div>
     </footer>

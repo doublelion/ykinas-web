@@ -83,7 +83,7 @@ const PreviewItem = ({ project, navigate }) => {
       <div className="item-info">
         <span className="category">{project.category}</span>
         <h3>{project.title}</h3>
-        
+
         <div className={`desc-wrap ${isExpanded ? 'expanded' : ''}`}>
           <p className="desc-text" ref={descriptionRef}>
             {project.desc}
@@ -117,20 +117,35 @@ const PreviewItem = ({ project, navigate }) => {
 function Home() {
   const navigate = useNavigate();
   const [previewProjects, setPreviewProjects] = useState([]);
+  const [latestTemplate, setLatestTemplate] = useState(null);
 
   useEffect(() => {
+    // 최신 포트폴리오 2개 페칭
     const fetchLatestProjects = async () => {
       const { data, error } = await supabase
         .from('projects')
         .select('*')
         .order('sort_order', { ascending: true })
-        .range(0, 1); // 최신순으로 2개만 가져옴
+        .range(0, 1);
 
-      if (!error && data) {
-        setPreviewProjects(data);
-      }
+      if (!error && data) setPreviewProjects(data);
     };
+
+    // 최신 템플릿 1개 페칭 (CORPORATE 제외)
+    const fetchLatestTemplate = async () => {
+      const { data, error } = await supabase
+        .from('templates')
+        .select('*')
+        .neq('category', 'CORPORATE')
+        .order('created_at', { ascending: false }) // 최신 등록순
+        .limit(1)
+        .single(); // 1개만 가져오기
+
+      if (!error && data) setLatestTemplate(data);
+    };
+
     fetchLatestProjects();
+    fetchLatestTemplate();
   }, []);
 
   const handleInquiry = () => {
@@ -185,28 +200,33 @@ function Home() {
             <span>PREMIUM SOLUTION</span>
             <h2>Template Line-up</h2>
           </div>
-          <div className="highlight-flex">
-            <div className="highlight-content">
-              <h3>ARISTIDE.INSPIRED</h3>
-              <p className="highlight-desc">
-                단순한 템플릿을 넘어 브랜드의 가치를 증명합니다. <br />
-                최신 최적화 기술이 집약된 와이키나스의 첫 번째 솔루션.
-              </p>
-              <ul className="feature-list">
-                <li><Sparkles size={18} /> 4K 비주얼 및 하이엔드 디자인</li>
-                <li><Sparkles size={18} /> Lighthouse 성능 지수 최적화</li>
-                <li><Sparkles size={18} /> SEO 엔진 최적화 및 모바일 대응</li>
-              </ul>
-              <Button text="상세 정보 보기" onClick={() => navigate('/templates')} />
+
+          {latestTemplate ? (
+            <div className="highlight-flex">
+              <div className="highlight-content">
+                <span className="cat-tag">{latestTemplate.category}</span>
+                <h3>{latestTemplate.title}</h3>
+                <p className="highlight-desc">
+                  {latestTemplate.description}
+                </p>
+                <ul className="feature-list">
+                  <li><Sparkles size={18} /> 하이엔드 최적화 UI/UX 디자인</li>
+                  <li><Sparkles size={18} /> {latestTemplate.price_info || '상담 후 결정'}</li>
+                  <li><Sparkles size={18} /> SEO 엔진 최적화 및 모바일 대응</li>
+                </ul>
+                <Button text="템플릿 자세히 보기" onClick={() => navigate('/templates')} />
+              </div>
+              <div className="highlight-image" onClick={() => navigate('/templates')}>
+                <img
+                  alt={latestTemplate.title}
+                  src={latestTemplate.thumbnail_url}
+                  onError={(e) => e.target.src = 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800'}
+                />
+              </div>
             </div>
-            <div className="highlight-image" onClick={() => navigate('/templates')}>
-              <img
-                alt="Aristide Template"
-                src="/templates/tpl-01/src/images/silence.webp"
-                style={{ width: '100%', height: 'auto' }}
-              />
-            </div>
-          </div>
+          ) : (
+            <div className="loading-shimmer">템플릿을 불러오는 중입니다...</div>
+          )}
         </div>
       </section>
 
