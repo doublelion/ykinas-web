@@ -24,17 +24,16 @@ $fold-screen: 280px;
 // ==========================================
 @mixin inject-ykinas-theme {
   :root {
+    --font-main: 'D-DIN', 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
     // [LIGHT MODE - 기본값]
     --bg-color: #f7f9f8;
     --text-color: #1a2b2f;
     --card-bg: #ffffff;
     --nav-text: rgba(0, 0, 0, 0.7);
     --border-line: rgba(0, 0, 0, 0.08);
-    --header-grad: linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.9) 0%,
-      rgba(255, 255, 255, 0) 100%
-    );
+    --header-grad: linear-gradient(180deg,
+        rgba(255, 255, 255, 0.9) 0%,
+        rgba(255, 255, 255, 0) 100%);
     --footer-text: #666666; // 라이트 모드: 진한 회색 (가독성 확보)
 
     // Hero Section (Light)
@@ -42,12 +41,10 @@ $fold-screen: 280px;
     --hero-after-shadow: inset 0 0 100px 50px #f7f9f8;
     --hero-bg-layers: url('../assets/images/hero_bg_01.webp');
 
-    --header-grad: linear-gradient(
-      180deg,
-      rgba(247, 249, 248, 0.9) 0%,
-      // 배경색과 맞춘 미색
-      rgba(247, 249, 248, 0) 100%
-    );
+    --header-grad: linear-gradient(180deg,
+        rgba(247, 249, 248, 0.9) 0%,
+        // 배경색과 맞춘 미색
+        rgba(247, 249, 248, 0) 100%);
 
     --header-bg: rgba(247, 249, 248, 0.8);
     --header-filter: saturate(180%) blur(20px);
@@ -73,11 +70,9 @@ $fold-screen: 280px;
     --card-bg: #111111;
     --nav-text: rgba(255, 255, 255, 0.8);
     --border-line: rgba(255, 255, 255, 0.15);
-    --header-grad: linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0.6) 0%,
-      rgba(0, 0, 0, 0) 100%
-    );
+    --header-grad: linear-gradient(180deg,
+        rgba(0, 0, 0, 0.6) 0%,
+        rgba(0, 0, 0, 0) 100%);
 
     --header-bg: rgba(0, 0, 0, 0.7);
     --header-filter: none; // 혹은 다크용 필터가 필요하면 추가 가능
@@ -85,31 +80,23 @@ $fold-screen: 280px;
     // Hero Section (Dark)
     --hero-text-color: #ffffff;
     --hero-after-shadow: inset 0 0 100px 50px #000000;
-    --hero-bg-layers: linear-gradient(
-        to bottom,
+    --hero-bg-layers: linear-gradient(to bottom,
         #000 0%,
         transparent 15%,
         transparent 85%,
-        #000 100%
-      ),
-      linear-gradient(
-        to bottom,
+        #000 100%),
+      linear-gradient(to bottom,
         rgba(0, 0, 0, 0.7) 0%,
         rgba(0, 0, 0, 0.4) 30%,
-        rgba(0, 0, 0, 0.8) 100%
-      ),
-      radial-gradient(
-        circle at 20% 30%,
+        rgba(0, 0, 0, 0.8) 100%),
+      radial-gradient(circle at 20% 30%,
         rgba(0, 242, 255, 0.15) 0%,
-        transparent 40%
-      ),
+        transparent 40%),
       url('../assets/images/hero_bg_01.webp');
-    --header-grad: linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0.8) 0%,
-      rgba(0, 0, 0, 0.4) 40%,
-      rgba(0, 0, 0, 0) 100%
-    );
+    --header-grad: linear-gradient(180deg,
+        rgba(0, 0, 0, 0.8) 0%,
+        rgba(0, 0, 0, 0.4) 40%,
+        rgba(0, 0, 0, 0) 100%);
     --header-before-opacity: 1;
 
     // [DARK MODE - Button]

@@ -23,10 +23,14 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Local History 및 캐시 제외
+# Local History (VS Code plugin 등)
 .history/
 **/.history/
-*.log
+.vscode-local-history/
+
+# 캐시 및 IDE 설정
+.cache/
+.vscode/
 
 # 빌드 결과물 제외 (CSS/MAP)
 src/**/*.css
