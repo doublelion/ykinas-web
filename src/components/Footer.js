@@ -13,6 +13,7 @@ function Footer() {
           <span className="info-item"><strong>상호명</strong> 와이키나스 (YKINAS)</span>
           <span className="info-item"><strong>대표자</strong> 김용관</span>
           <span className="info-item"><strong>사업자등록번호</strong> 699-22-02120</span>
+          <span className="info-item"><strong>통신판매업신고번호</strong> 제2026—인천부평-0920호</span>
           <span className="info-item"><strong>주소</strong> 인천광역시 부평구 시장로 33, 7층</span>
         </div>
         
