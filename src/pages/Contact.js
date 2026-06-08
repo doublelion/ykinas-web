@@ -115,7 +115,7 @@ function Contact() {
             <Map />
             <div className="contact-details-text">
                <p><strong>주소:</strong> 인천 부평구 시장로 33 한남시티프라자 7층</p>
-               <p><strong>이메일:</strong> idkwane@naver.com</p>
+               <p><strong>이메일:</strong> ykinas@naver.com</p>
             </div>
           </div>
         </div>
