@@ -2,17 +2,22 @@
 @use './style/variables' as *;
 
 /* 모든 모바일 브라우저에서 자동 확대를 방지하는 가장 깔끔한 방법 */
-input[type="text"], 
-input[type="number"], 
-select, 
+input[type="text"],
+input[type="number"],
+select,
 textarea {
-  font-size: 16px !important; /* 16px 미만은 절대 금지 */
-  line-height: normal; /* 행간에 의한 높이 왜곡 방지 */
+  font-size: 16px !important;
+  /* 16px 미만은 절대 금지 */
+  line-height: normal;
+  /* 행간에 의한 높이 왜곡 방지 */
 }
 
 /* iOS Safari 전용 대응: 폰트 크기를 유지하면서 시스템 줌 방지 */
 @supports (-webkit-overflow-scrolling: touch) {
-  input, select, textarea {
+
+  input,
+  select,
+  textarea {
     font-size: 16px;
   }
 }
@@ -385,4 +390,50 @@ textarea {
   letter-spacing: 0.4rem;
   font-size: 1.4rem;
   text-transform: uppercase;
+}
+
+// 포트폴리오 하단 영역 & LOAD MORE 버튼
+.portfolio-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 4rem;
+  padding-bottom: 2rem;
+
+  .btn-loadmore {
+    /* 브라우저 기본 스타일(흰 배경) 완벽 제거 */
+    background: transparent;
+    background-color: transparent;
+
+    /* 테마 연동 및 미니멀 타이포그래피 */
+    color: var(--text-color);
+    border: 1px solid var(--border-line);
+    font-family: 'D-DIN-Bold', sans-serif;
+    font-size: 1.4rem;
+    letter-spacing: 0.2rem;
+    padding: 1.2rem 4rem;
+    border-radius: 40px;
+    /* 라운드 처리로 세련된 UI 연출 */
+    cursor: pointer;
+    transition: all 0.3s $ease-ykinas; // 기존 변수 활용
+
+    /* 호버 시 브랜드 블루 컬러로 엣지있는 강조 */
+    &:hover {
+      border-color: $ykinas-blue;
+      color: $ykinas-blue;
+      background: rgba(43, 98, 246, 0.05); // 블루 컬러의 은은한 배경
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    &:focus {
+      outline: none;
+    }
+  }
+
+  .end-msg {
+    font-size: 1.3rem;
+    color: var(--footer-text); // 기존 푸터 텍스트 변수 활용
+    letter-spacing: 0.05rem;
+    opacity: 0.7;
+  }
 }
