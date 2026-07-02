@@ -64,7 +64,7 @@ function Portfolio() {
     { id: 'ALL', name: 'ALL' },
     { id: 'COMMERCE', name: 'E-COMMERCE' },
     { id: 'CORPORATE', name: 'CORPORATE' },
-    { id: 'SOLUTION', name: 'WEB SOLUTION' }
+    { id: 'APP', name: 'APP' }
   ], []);
 
   const fetchProjects = useCallback(async (isInitial = false) => {
