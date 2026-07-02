@@ -14,7 +14,7 @@ function Footer() {
           <span className="info-item"><strong>대표자</strong> 김용관</span>
           <span className="info-item"><strong>사업자등록번호</strong> 699-22-02120</span>
           <span className="info-item">
-            <strong>사업자등록번호</strong> 699-22-02120
+            <strong>통신판매업신고번호</strong> 제2026—인천부평-0920호
             {/* 톤앤매너에 맞춘 팝업 버튼 추가 */}
             <button
               type="button"
