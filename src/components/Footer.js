@@ -13,10 +13,20 @@ function Footer() {
           <span className="info-item"><strong>상호명</strong> 와이키나스 (YKINAS)</span>
           <span className="info-item"><strong>대표자</strong> 김용관</span>
           <span className="info-item"><strong>사업자등록번호</strong> 699-22-02120</span>
-          <span className="info-item"><strong>통신판매업신고번호</strong> 제2026—인천부평-0920호</span>
+          <span className="info-item">
+            <strong>사업자등록번호</strong> 699-22-02120
+            {/* 톤앤매너에 맞춘 팝업 버튼 추가 */}
+            <button
+              type="button"
+              className="biz-info-btn"
+              onClick={() => window.open('http://www.ftc.go.kr/bizCommPop.do?wrkr_no=6992202120', 'bizCommPop', 'width=750, height=950, scrollbars=yes')}
+            >
+              [사업자정보확인]
+            </button>
+          </span>
           <span className="info-item"><strong>주소</strong> 인천광역시 부평구 시장로 33, 7층</span>
         </div>
-        
+
         {/* 중단: 인증 배지 및 소셜 링크 */}
         <div className="footer-middle">
           <div className="cert-badge">
@@ -25,10 +35,10 @@ function Footer() {
           </div>
 
           <div className="social-links">
-            <a 
-              href="https://blog.naver.com/ykinas" 
-              target="_blank" 
-              rel="noopener noreferrer" 
+            <a
+              href="https://blog.naver.com/ykinas"
+              target="_blank"
+              rel="noopener noreferrer"
               className="naver-blog-btn"
             >
               <img src={naverTalkIcon} alt="와이키나스 네이버 블로그" />
