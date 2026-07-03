@@ -1,4 +1,4 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
-Sitemap: https://ykinas.com/sitemap.xml
+Sitemap: https://www.ykinas.com/sitemap.xml
