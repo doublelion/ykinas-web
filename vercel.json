@@ -14,11 +14,11 @@
   ],
   "rewrites": [
     {
-      "source": "/templates/tpl-01/(.*)",
-      "destination": "/templates/tpl-01/$1"
+      "source": "/templates/tpl-01/:path*",
+      "destination": "/templates/tpl-01/:path*"
     },
     {
-      "source": "/((?!.*\\.(?:html|xml|txt|png|jpg|ico|json)$).*|$)",
+      "source": "/((?!templates/tpl-01|sitemap\\.xml|robots\\.txt|.*\\.).*)",
       "destination": "/index.html"
     }
   ]
