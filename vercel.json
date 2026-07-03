@@ -18,7 +18,7 @@
       "destination": "/templates/tpl-01/:path*"
     },
     {
-      "source": "/((?!templates/tpl-01|sitemap\\.xml|robots\\.txt|.*\\.).*)",
+      "source": "/:path*",
       "destination": "/index.html"
     }
   ]
