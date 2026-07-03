@@ -1,11 +1,24 @@
 {
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "ykinas.com"
+        }
+      ],
+      "destination": "https://www.ykinas.com/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/templates/tpl-01/(.*)",
       "destination": "/templates/tpl-01/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!.*\\.(?:html|xml|txt|png|jpg|ico|json)$).*|$)",
       "destination": "/index.html"
     }
   ]
