@@ -106,11 +106,37 @@
         }
       }
 
+      /* 기존 .item-image 내부를 다음과 같이 수정/추가합니다 */
+
       .item-image {
         position: relative;
         height: 260px;
         overflow: hidden;
         background: var(--bg-color);
+
+        /* ✅ 신뢰감을 주는 프리미엄 뱃지 추가 */
+        .badge-premium {
+          position: absolute;
+          top: 20px;
+          left: 20px;
+          z-index: 15;
+          /* overlay보다 위에 위치하되, 호버 시 자연스럽게 보이도록 */
+          background: rgba(10, 15, 20, 0.7);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: $ykinas-teal;
+          /* 브랜드 포인트 컬러 사용 */
+          padding: 6px 16px;
+          border-radius: 20px;
+          font-size: 1.15rem;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          pointer-events: none;
+          /* 클릭 방해 방지 */
+        }
 
         img {
           width: 100%;
@@ -120,6 +146,7 @@
         }
 
         .overlay {
+          /* 기존 코드 유지 */
           position: absolute;
           top: 0;
           left: 0;
@@ -132,24 +159,22 @@
           justify-content: center;
           opacity: 0;
           transition: opacity 0.3s ease;
-          z-index: 10; // [추가] 이미지보다 확실히 위에 오도록 설정
+          z-index: 10;
 
-          // 버튼을 감싸는 링크가 영역을 꽉 채우거나 중앙에 오도록 설정
           a {
             text-decoration: none;
-            display: block; // 버튼 크기에 맞게 조절
-            transform: translateY(20px); // 살짝 아래에서 위로 올라오는 효과 추가용
+            display: block;
+            transform: translateY(20px);
             transition: transform 0.3s ease;
           }
         }
 
-        // 호버 시 처리
         &:hover {
           .overlay {
             opacity: 1;
 
             a {
-              transform: translateY(0); // 호버 시 제자리로
+              transform: translateY(0);
             }
           }
         }

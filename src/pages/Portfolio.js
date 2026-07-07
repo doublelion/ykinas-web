@@ -11,7 +11,6 @@ const PortfolioItem = ({ project, expandedId, setExpandedId }) => {
 
   useEffect(() => {
     if (descriptionRef.current) {
-      // 실제 텍스트 높이가 컨테이너 높이보다 크면 버튼 노출
       setShowBtn(descriptionRef.current.scrollHeight > descriptionRef.current.clientHeight);
     }
   }, [project.desc]);
@@ -19,6 +18,10 @@ const PortfolioItem = ({ project, expandedId, setExpandedId }) => {
   return (
     <article className="portfolio-item">
       <div className="item-image">
+        {/* ✅ badge 데이터가 있을 경우 렌더링 (예: 'UI/UX', 'PROMO') */}
+        {project.badge && (
+          <span className="badge-premium">{project.badge}</span>
+        )}
         <img src={project.img_url} alt={project.title} loading="lazy" />
         <div className="overlay">
           <a href={project.link_url} target="_blank" rel="noreferrer">
