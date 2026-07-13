@@ -70,7 +70,7 @@ function Header() {
 
           <Link to="/portfolio">포트폴리오</Link>
           <Link to="/contact">프로젝트 의뢰</Link>
-          <button className="theme-toggle" onClick={() => setIsDark(!isDark)}>
+          <button className="theme-toggle" aria-label="화면 테마 변경" onClick={() => setIsDark(!isDark)}>
             {isDark ? (
               <Sun size={20} className="icon-svg" />
             ) : (
@@ -99,7 +99,7 @@ function Header() {
       {/* 모바일 사이드바 */}
       <nav className={`nav-mobile ${isOpen ? 'open' : ''}`}>
         <div className="mobile-menu-header">
-          <button className="theme-toggle" onClick={() => setIsDark(!isDark)}>
+          <button className="theme-toggle" aria-label="화면 테마 변경" onClick={() => setIsDark(!isDark)}>
             {isDark ? (
               <Sun size={20} className="icon-svg" />
             ) : (
