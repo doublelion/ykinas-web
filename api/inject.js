@@ -89,62 +89,33 @@ export default async function handler(req, res) {
             
             <style>
               :host { all: initial; font-family: 'Noto Sans KR', sans-serif; }
-              * { font-family: 'Noto Sans KR', sans-serif; }
+              * { font-family: 'Noto Sans KR', sans-serif; box-sizing: border-box; }
               
-              /* ========================================================
-                 [핵심 수정] 레이아웃 & Z-index 완벽 고정 (Tailwind 의존 탈피)
-                 ======================================================== */
-              #global-login-drawer {
-                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                width: 100vw; height: 100vh;
-                z-index: 999999;
-                display: none; 
-                justify-content: flex-end;
-              }
-              
-              #login-backdrop {
-                position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-                background-color: rgba(0, 0, 0, 0.4);
-                backdrop-filter: blur(4px);
-                opacity: 0;
-                transition: opacity 0.4s ease;
-                cursor: pointer;
-              }
+              /* 레이아웃 Fixed 고정 */
+              #global-login-drawer { position: fixed; inset: 0; z-index: 999999; display: none; justify-content: flex-end; }
+              #login-backdrop { position: absolute; inset: 0; background-color: rgba(0,0,0,0.4); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.4s ease; cursor: pointer; }
               #login-backdrop.is-open { opacity: 1; }
-
-              #login-panel {
-                position: relative;
-                width: 100%; max-width: 420px; height: 100%;
-                background-color: #ffffff;
-                box-shadow: -10px 0 40px rgba(0,0,0,0.1);
-                transform: translateX(100%);
-                transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-                display: flex; flex-direction: column;
-                z-index: 10;
-              }
+              #login-panel { position: relative; width: 100%; max-width: 420px; height: 100%; background-color: #ffffff; box-shadow: -10px 0 40px rgba(0,0,0,0.1); transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; z-index: 10; }
               #login-panel.is-open { transform: translateX(0); }
-              /* ======================================================== */
 
+              /* 스크롤바 미니멀 */
               .custom-scrollbar-02 { overflow-y: auto; }
               .custom-scrollbar-02::-webkit-scrollbar { width: 4px; }
               .custom-scrollbar-02::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
 
-              .minimal-input {
-                border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important;
-                background-color: transparent !important; box-shadow: none !important; outline: none !important;
-                transition: border-bottom-color 0.3s ease !important;
-              }
+              /* 미니멀 인풋 (잔상 제거) */
+              .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; }
               .minimal-input:focus { border-bottom-color: #111 !important; }
               
-              .floating-label {
-                position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af;
-                transition: transform 0.3s ease, color 0.3s ease; pointer-events: none;
-              }
-              .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label {
-                transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top;
-              }
+              .floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
+              .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
 
-              /* JIT 커스텀 컬러 클래스 CSS로 대체 */
+              /* 스위칭 애니메이션 */
+              .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
+              @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+              .mode-hidden { display: none !important; }
+
+              /* 버튼 컬러 (JIT 대응) */
               .bg-kakao { background-color: #FEE500; color: #191919; }
               .bg-naver-icon { background-color: #03C75A; color: #ffffff; }
               .bg-btn-primary { background-color: #111111; color: #ffffff; }
@@ -159,109 +130,186 @@ export default async function handler(req, res) {
                 </button>
                 
                 <div class="px-8 sm:px-10 py-16 flex-1 flex flex-col justify-center">
-                  <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
-                  <p class="text-sm text-gray-500 mb-10">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                   
-                  <div class="space-y-3 mb-5">
-                    <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3.5 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
-                      <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
-                      카카오로 시작하기
-                    </button>
-                    <div class="flex gap-2">
-                      <button type="button" id="btn_sns_naver" class="flex-1 flex items-center justify-center py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
-                        <span class="w-4 h-4 bg-naver-icon flex items-center justify-center font-bold text-[10px] rounded mr-2">N</span>네이버
+                  <!-- ==============================================
+                       [모드 A] 회원 로그인 UI 
+                  =============================================== -->
+                  <div id="ui-login-mode" class="fade-in">
+                    <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
+                    <p class="text-sm text-gray-500 mb-10">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
+                    
+                    <div class="space-y-3 mb-5">
+                      <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3.5 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
+                        <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
+                        카카오로 시작하기
                       </button>
-                      <button type="button" id="btn_sns_google" class="flex-1 flex items-center justify-center py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
-                        <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
-                        구글
+                      <div class="flex gap-2">
+                        <button type="button" id="btn_sns_naver" class="flex-1 flex items-center justify-center py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
+                          <span class="w-4 h-4 bg-naver-icon flex items-center justify-center font-bold text-[10px] rounded mr-2">N</span>네이버
+                        </button>
+                        <button type="button" id="btn_sns_google" class="flex-1 flex items-center justify-center py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
+                          <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+                          구글
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="relative flex items-center py-2">
+                      <div class="flex-grow border-t border-gray-200"></div>
+                      <span class="flex-shrink-0 mx-4 text-xs text-gray-400">또는 아이디로 로그인</span>
+                      <div class="flex-grow border-t border-gray-200"></div>
+                    </div>
+                    
+                    <div class="space-y-4 mt-5">
+                      <div class="relative w-full">
+                        <input type="text" id="s_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                        <label class="floating-label">아이디</label>
+                      </div>
+                      <div class="relative w-full">
+                        <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
+                        <label class="floating-label">비밀번호</label>
+                        <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black"><i class="ph ph-eye text-lg"></i></button>
+                      </div>
+                      <div class="flex items-center justify-between mt-2 mb-4">
+                        <label class="flex items-center cursor-pointer group">
+                          <input type="checkbox" id="s_save_id" class="w-4 h-4 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
+                          <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
+                        </label>
+                      </div>
+                      <button type="button" id="btn_submit_login" class="w-full py-4 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded shadow-md">로그인</button>
+                    </div>
+
+                    <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500">
+                      <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-3 bg-gray-300"></span>
+                      <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-3 bg-gray-300"></span>
+                      <a href="/member/agreement.html" class="font-bold text-black border-b border-black pb-0.5">회원가입</a>
+                    </div>
+
+                    <div class="mt-12 text-center border-t border-gray-100 pt-8">
+                      <p class="text-xs text-gray-400 font-light mb-4">비회원으로 주문하셨나요?</p>
+                      <button type="button" id="btn_switch_to_guest" class="w-full bg-white border border-black text-black py-4 text-sm font-medium tracking-widest hover:bg-black hover:text-white transition-colors duration-300">
+                        비회원 주문 조회하기
                       </button>
                     </div>
                   </div>
 
-                  <div class="relative flex items-center py-1">
-                    <div class="flex-grow border-t border-gray-200"></div>
-                    <span class="flex-shrink-0 mx-4 text-xs text-gray-400">또는 아이디로 로그인</span>
-                    <div class="flex-grow border-t border-gray-200"></div>
+                  <!-- ==============================================
+                       [모드 B] 비회원 주문조회 전용 UI 
+                  =============================================== -->
+                  <div id="ui-guest-mode" class="mode-hidden fade-in">
+                    <div class="mb-10 text-center">
+                      <div class="inline-block mb-3"><i class="ph ph-package text-4xl text-gray-400"></i></div>
+                      <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">비회원 주문조회</h1>
+                      <p class="text-sm text-gray-500">주문 시 입력하신 정보를 입력해 주세요.</p>
+                    </div>
+
+                    <div class="space-y-6 mt-6">
+                      <div class="relative w-full">
+                        <input type="text" id="g_order_name" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                        <label class="floating-label">주문자명</label>
+                      </div>
+                      <div class="relative w-full">
+                        <input type="text" id="g_order_id" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                        <label class="floating-label">주문번호 (하이픈 포함)</label>
+                      </div>
+                      <div class="relative w-full">
+                        <input type="password" id="g_order_pw" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
+                        <label class="floating-label">주문 비밀번호</label>
+                        <button type="button" id="btn_toggle_guest_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
+                          <i class="ph ph-eye text-lg"></i>
+                        </button>
+                      </div>
+                      
+                      <button type="button" id="btn_submit_guest" class="w-full py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors mt-4 rounded shadow-sm">
+                        주문 추적하기
+                      </button>
+                    </div>
+
+                    <div class="mt-12 text-center border-t border-gray-100 pt-6">
+                      <button type="button" id="btn_switch_to_login" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">
+                        회원 로그인으로 돌아가기
+                      </button>
+                    </div>
                   </div>
                   
-                  <div class="space-y-4 mt-5">
-                    <div class="relative w-full">
-                      <input type="text" id="s_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
-                      <label class="floating-label">아이디</label>
-                    </div>
-                    <div class="relative w-full">
-                      <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
-                      <label class="floating-label">비밀번호</label>
-                      <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black"><i class="ph ph-eye text-lg"></i></button>
-                    </div>
-                    <div class="flex items-center justify-between mt-2 mb-4">
-                      <label class="flex items-center cursor-pointer group">
-                        <input type="checkbox" id="s_save_id" class="w-4 h-4 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
-                        <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
-                      </label>
-                    </div>
-                    <button type="button" id="btn_submit_login" class="w-full py-4 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded shadow-md">로그인</button>
-                  </div>
-
-                  <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500">
-                    <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-3 bg-gray-300"></span>
-                    <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-3 bg-gray-300"></span>
-                    <a href="/member/agreement.html" class="font-bold text-black border-b border-black pb-0.5">회원가입</a>
-                  </div>
-
-                  <div class="mt-12 text-center border-t border-gray-100 pt-8">
-                    <p class="text-xs text-gray-400 font-light mb-4">비회원으로 주문하셨나요?</p>
-                    <a href="/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html" class="inline-flex items-center justify-center w-full bg-white border border-black text-black py-4 text-sm font-medium tracking-widest hover:bg-black hover:text-white transition-colors duration-300">
-                      비회원 주문 조회하기
-                    </a>
-                  </div>
                 </div>
               </div>
             </div>
           \`;
 
+          // --- 엘리먼트 캐싱 ---
           drawer = shadowRoot.querySelector('#global-login-drawer');
           backdrop = shadowRoot.querySelector('#login-backdrop');
           panel = shadowRoot.querySelector('#login-panel');
+          const loginMode = shadowRoot.querySelector('#ui-login-mode');
+          const guestMode = shadowRoot.querySelector('#ui-guest-mode');
 
+          // --- 이벤트 리스너 바인딩 ---
+          
+          // 1. 드로어 닫기
           shadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
           backdrop.addEventListener('click', window.YkinasLogin.close);
           
-          shadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
-            const pwInput = shadowRoot.querySelector('#s_pw');
-            pwInput.type = pwInput.type === 'password' ? 'text' : 'password';
+          // 2. 모드 스위칭 로직 (로그인 ↔ 비회원)
+          shadowRoot.querySelector('#btn_switch_to_guest').addEventListener('click', () => {
+            loginMode.classList.add('mode-hidden');
+            guestMode.classList.remove('mode-hidden');
+            panel.scrollTop = 0; // 스크롤 최상단 리셋
+          });
+          shadowRoot.querySelector('#btn_switch_to_login').addEventListener('click', () => {
+            guestMode.classList.add('mode-hidden');
+            loginMode.classList.remove('mode-hidden');
+            panel.scrollTop = 0;
           });
 
+          // 3. 비밀번호 토글
+          shadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
+            const pw = shadowRoot.querySelector('#s_pw');
+            pw.type = pw.type === 'password' ? 'text' : 'password';
+          });
+          shadowRoot.querySelector('#btn_toggle_guest_pw').addEventListener('click', function() {
+            const pw = shadowRoot.querySelector('#g_order_pw');
+            pw.type = pw.type === 'password' ? 'text' : 'password';
+          });
+
+          // 4. 일반 로그인 제출 대리 클릭
           shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
              const idVal = shadowRoot.querySelector('#s_id').value.trim();
              const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
+             if (!idVal || !pwVal) { alert("아이디와 비밀번호를 모두 입력해주세요."); return; }
              
-             if (!idVal || !pwVal) {
-               alert("아이디와 비밀번호를 모두 입력해주세요.");
-               return;
-             }
-
              const originId = document.querySelector('input[name="member_id"]');
              const originPw = document.querySelector('input[name="member_passwd"]');
              const originBtn = document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login');
+             if(originId && originPw && originBtn) { originId.value = idVal; originPw.value = pwVal; originBtn.click(); }
+          });
+
+          // 5. 비회원 조회 제출 대리 클릭
+          shadowRoot.querySelector('#btn_submit_guest').addEventListener('click', function() {
+             const nameVal = shadowRoot.querySelector('#g_order_name').value.trim();
+             const idVal = shadowRoot.querySelector('#g_order_id').value.trim();
+             const pwVal = shadowRoot.querySelector('#g_order_pw').value.trim();
              
-             if(originId && originPw && originBtn) {
-                originId.value = idVal;
-                originPw.value = pwVal;
-                originBtn.click();
+             if (!nameVal || !idVal || !pwVal) { alert("주문자 정보를 정확히 입력해주세요."); return; }
+             
+             const originName = document.querySelector('input[name="order_name"]');
+             const originId = document.querySelector('input[name="order_id"]');
+             const originPw = document.querySelector('input[name="order_password"]');
+             const originBtn = document.getElementById('origin_btn_order_history');
+             
+             if(originName && originId && originPw && originBtn) {
+               originName.value = nameVal; originId.value = idVal; originPw.value = pwVal; originBtn.click();
              }
           });
 
+          // 6. SNS 로그인 대리 클릭 (클릭 시 카페24 팝업 가림 방지를 위해 드로어 닫기)
           const currUrl = window.location.pathname + window.location.search;
-          
           function handleSnsLogin(provider) {
             if (window.MemberAction) {
               window.MemberAction.snsLogin(provider, currUrl);
-              // 클릭 즉시 드로어를 닫아 카페24 약관 팝업이 딤 처리에 가려지지 않게 함
-              window.YkinasLogin.close(); 
+              window.YkinasLogin.close();
             }
           }
-
           shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => handleSnsLogin('kakao'));
           shadowRoot.querySelector('#btn_sns_naver').addEventListener('click', () => handleSnsLogin('naver'));
           shadowRoot.querySelector('#btn_sns_google').addEventListener('click', () => handleSnsLogin('google'));
