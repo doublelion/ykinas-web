@@ -253,9 +253,18 @@ export default async function handler(req, res) {
           });
 
           const currUrl = window.location.pathname + window.location.search;
-          shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => { if(window.MemberAction) window.MemberAction.snsLogin('kakao', currUrl); });
-          shadowRoot.querySelector('#btn_sns_naver').addEventListener('click', () => { if(window.MemberAction) window.MemberAction.snsLogin('naver', currUrl); });
-          shadowRoot.querySelector('#btn_sns_google').addEventListener('click', () => { if(window.MemberAction) window.MemberAction.snsLogin('google', currUrl); });
+          
+          function handleSnsLogin(provider) {
+            if (window.MemberAction) {
+              window.MemberAction.snsLogin(provider, currUrl);
+              // 클릭 즉시 드로어를 닫아 카페24 약관 팝업이 딤 처리에 가려지지 않게 함
+              window.YkinasLogin.close(); 
+            }
+          }
+
+          shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => handleSnsLogin('kakao'));
+          shadowRoot.querySelector('#btn_sns_naver').addEventListener('click', () => handleSnsLogin('naver'));
+          shadowRoot.querySelector('#btn_sns_google').addEventListener('click', () => handleSnsLogin('google'));
         }
 
         if (document.readyState === 'loading') {
