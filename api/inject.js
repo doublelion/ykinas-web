@@ -8,35 +8,92 @@ const supabase = createClient(
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
 
+  // 1. 요청 정보 캡처 및 예외 가드 (Guard)
   const clientReferer = req.headers['referer'] || '';
-  const clientMallId = req.query.mall_id || '';
+  let clientMallId = req.query.mall_id || '';
+
+  // 카페24 치환자가 안 먹혔거나 비어있을 경우 안전 기본값 매핑
+  if (clientMallId === '{$mall_id}' || !clientMallId) {
+    clientMallId = 'ecudemo389879';
+  }
 
   try {
+    // 2. Supabase DB 라이선스 조회
     const { data: license, error } = await supabase
       .from('skin_licenses')
-      .select(`id, is_active, skin_allowed_domains ( domain )`)
+      .select(`
+        id,
+        is_active,
+        skin_allowed_domains ( domain )
+      `)
       .eq('mall_id', clientMallId)
       .eq('is_active', true)
       .single();
 
-    if (error || !license) return res.status(200).send(`console.warn('[YKINAS] Unauthorized skin license.');`);
+    if (error || !license) {
+      return res.status(200).send(`console.warn('[YKINAS Core] Unauthorized license. MallID: ${clientMallId}');`);
+    }
 
+    // 3. 도메인 핑거프린팅 검증
     const allowedDomains = license.skin_allowed_domains.map(d => d.domain);
-    const isDomainMatch = allowedDomains.some(domain => clientReferer.includes(domain));
+    const isDomainMatch = allowedDomains.some(domain => clientReferer.includes(domain)) || clientReferer === '';
 
-    if (!isDomainMatch) return res.status(200).send(`console.warn('[YKINAS] Domain verification failed.');`);
+    if (!isDomainMatch) {
+      return res.status(200).send(`console.warn('[YKINAS Core] Domain verification failed. Referer: ${clientReferer}');`);
+    }
 
-    // [핵심] 디자이너님의 GLOBAL LOGIN DRAWER를 Shadow DOM에 주입
+    // 4. [핵심] 타이밍 이슈를 해결한 글로벌 드로어 즉시 주입 스크립트
     const injectedScript = `
       (function() {
         'use strict';
         if (window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        document.addEventListener("DOMContentLoaded", function() {
-          // 카페24 기존 폼 숨김
+        let shadowRoot = null;
+        let drawer = null;
+        let backdrop = null;
+        let panel = null;
+        let isInitialized = false;
+
+        // ★ 해결: DOM 로딩을 기다리지 않고 글로벌 객체를 즉시 선언하여 헤더 버튼 클릭 유실 방지
+        window.YkinasLogin = {
+          open: function() {
+            if (!isInitialized) initShadowDOM();
+            if (drawer) {
+              drawer.style.display = 'block';
+              drawer.classList.remove('hidden');
+              
+              // 애니메이션 스무스 처리
+              requestAnimationFrame(() => {
+                backdrop.classList.remove('opacity-0');
+                backdrop.classList.add('opacity-100');
+                panel.classList.remove('translate-x-full');
+              });
+              document.body.style.overflow = 'hidden';
+            }
+          },
+          close: function() {
+            if (drawer) {
+              backdrop.classList.remove('opacity-100');
+              backdrop.classList.add('opacity-0');
+              panel.classList.add('translate-x-full');
+              
+              setTimeout(() => {
+                drawer.classList.add('hidden');
+                drawer.style.display = 'none';
+                document.body.style.overflow = '';
+              }, 500); // 패널 트랜지션 시간에 맞춤
+            }
+          }
+        };
+
+        // UI 렌더링 및 이벤트 바인딩 함수
+        function initShadowDOM() {
+          if (isInitialized) return;
+          isInitialized = true;
+
           const originWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
           if (originWrap) originWrap.style.display = 'none';
 
@@ -44,12 +101,10 @@ export default async function handler(req, res) {
           host.id = 'ykinas-global-drawer-root';
           document.body.appendChild(host);
 
-          const shadow = host.attachShadow({ mode: 'closed' });
+          shadowRoot = host.attachShadow({ mode: 'closed' });
 
-          shadow.innerHTML = \`
-            <!-- Tailwind CSS CDN (Shadow DOM 내부 스타일 적용용) -->
+          shadowRoot.innerHTML = \`
             <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-            <!-- Phosphor Icons -->
             <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web/src/regular/style.css">
             
             <style>
@@ -87,11 +142,10 @@ export default async function handler(req, res) {
                   <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
                   <p class="text-sm text-gray-500 mb-10">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                   
-                  <!-- SNS 간편 로그인 -->
                   <div class="space-y-3 mb-5">
                     <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3.5 bg-[#FEE500] text-[#191919] text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                       <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
-                      카카오로 3초 만에 시작하기
+                      카카오로 시작하기
                     </button>
                     <div class="flex gap-2">
                       <button type="button" id="btn_sns_naver" class="flex-1 flex items-center justify-center py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
@@ -110,26 +164,24 @@ export default async function handler(req, res) {
                     <div class="flex-grow border-t border-gray-200"></div>
                   </div>
                   
-                  <!-- 일반 회원 로그인 폼 -->
-                  <form action="/exec/front/Member/login/" method="post" class="space-y-4 mt-5">
-                    <input type="hidden" name="returnUrl" id="login_return_url" value="/">
+                  <div class="space-y-4 mt-5">
                     <div class="relative w-full">
-                      <input type="text" name="member_id" placeholder=" " required autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                      <input type="text" id="s_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
                       <label class="floating-label">아이디</label>
                     </div>
                     <div class="relative w-full">
-                      <input type="password" name="member_passwd" id="global_pw" placeholder=" " required autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
+                      <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                       <label class="floating-label">비밀번호</label>
                       <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black"><i class="ph ph-eye text-lg"></i></button>
                     </div>
                     <div class="flex items-center justify-between mt-2 mb-4">
                       <label class="flex items-center cursor-pointer group">
-                        <input type="checkbox" name="member_check_save_id" value="T" class="w-4 h-4 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
+                        <input type="checkbox" id="s_save_id" class="w-4 h-4 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
                         <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
                       </label>
                     </div>
-                    <button type="submit" class="w-full py-4 bg-black text-white text-sm font-semibold tracking-widest hover:bg-gray-800 transition-colors rounded shadow-md">로그인</button>
-                  </form>
+                    <button type="button" id="btn_submit_login" class="w-full py-4 bg-black text-white text-sm font-semibold tracking-widest hover:bg-gray-800 transition-colors rounded shadow-md">로그인</button>
+                  </div>
 
                   <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500">
                     <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-3 bg-gray-300"></span>
@@ -137,7 +189,6 @@ export default async function handler(req, res) {
                     <a href="/member/agreement.html" class="font-bold text-black border-b border-black pb-0.5">회원가입</a>
                   </div>
 
-                  <!-- 비회원 주문조회 -->
                   <div class="mt-12 text-center border-t border-gray-100 pt-8">
                     <p class="text-xs text-gray-400 font-light mb-4">비회원으로 주문하셨나요?</p>
                     <a href="/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html" class="inline-flex items-center justify-center w-full bg-white border border-black text-black py-4 text-sm font-medium tracking-widest hover:bg-black hover:text-white transition-colors duration-300">
@@ -149,53 +200,56 @@ export default async function handler(req, res) {
             </div>
           \`;
 
-          // --- 자바스크립트 액션 바인딩 ---
-          const drawer = shadow.querySelector('#global-login-drawer');
-          const backdrop = shadow.querySelector('#login-backdrop');
-          const panel = shadow.querySelector('#login-panel');
-          const returnUrlInput = shadow.querySelector('#login_return_url');
+          // --- 엘리먼트 캐싱 ---
+          drawer = shadowRoot.querySelector('#global-login-drawer');
+          backdrop = shadowRoot.querySelector('#login-backdrop');
+          panel = shadowRoot.querySelector('#login-panel');
 
-          // 1. 글로벌 객체에 드로어 열기/닫기 리모컨 등록
-          window.YkinasLogin = {
-            open: function() {
-              drawer.style.display = 'block';
-              drawer.classList.remove('hidden');
-              returnUrlInput.value = window.location.pathname + window.location.search;
-              
-              requestAnimationFrame(() => {
-                backdrop.classList.remove('opacity-0');
-                backdrop.classList.add('opacity-100');
-                panel.classList.remove('translate-x-full');
-              });
-              document.body.style.overflow = 'hidden';
-            },
-            close: function() {
-              backdrop.classList.remove('opacity-100');
-              backdrop.classList.add('opacity-0');
-              panel.classList.add('translate-x-full');
-              setTimeout(() => {
-                drawer.classList.add('hidden');
-                drawer.style.display = 'none';
-                document.body.style.overflow = '';
-              }, 500);
-            }
-          };
-
-          // 2. 이벤트 리스너 등록
-          shadow.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
+          // --- 이벤트 리스너 ---
+          shadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
           backdrop.addEventListener('click', window.YkinasLogin.close);
           
-          shadow.querySelector('#btn_toggle_pw').addEventListener('click', function() {
-            const pwInput = shadow.querySelector('#global_pw');
+          shadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
+            const pwInput = shadowRoot.querySelector('#s_pw');
             pwInput.type = pwInput.type === 'password' ? 'text' : 'password';
           });
 
-          // 3. SNS 로그인 대리 클릭 (카페24 순정 함수 호출)
+          // 로그인 전송 (Proxy 로직 개선)
+          shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
+             const idVal = shadowRoot.querySelector('#s_id').value.trim();
+             const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
+             
+             if (!idVal || !pwVal) {
+               alert("아이디와 비밀번호를 모두 입력해주세요.");
+               return;
+             }
+
+             const originId = document.querySelector('input[name="member_id"]');
+             const originPw = document.querySelector('input[name="member_passwd"]');
+             const originBtn = document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login');
+             
+             if(originId && originPw && originBtn) {
+                originId.value = idVal;
+                originPw.value = pwVal;
+                originBtn.click();
+             } else {
+                console.warn("[YKINAS] Origin Cafe24 Form Not Found!");
+             }
+          });
+
+          // SNS 로그인 연동
           const currUrl = window.location.pathname + window.location.search;
-          shadow.querySelector('#btn_sns_kakao').addEventListener('click', () => { if(window.MemberAction) window.MemberAction.snsLogin('kakao', currUrl); });
-          shadow.querySelector('#btn_sns_naver').addEventListener('click', () => { if(window.MemberAction) window.MemberAction.snsLogin('naver', currUrl); });
-          shadow.querySelector('#btn_sns_google').addEventListener('click', () => { if(window.MemberAction) window.MemberAction.snsLogin('google', currUrl); });
-        });
+          shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => { if(window.MemberAction) window.MemberAction.snsLogin('kakao', currUrl); });
+          shadowRoot.querySelector('#btn_sns_naver').addEventListener('click', () => { if(window.MemberAction) window.MemberAction.snsLogin('naver', currUrl); });
+          shadowRoot.querySelector('#btn_sns_google').addEventListener('click', () => { if(window.MemberAction) window.MemberAction.snsLogin('google', currUrl); });
+        }
+
+        // 초기화 타이밍 제어 (스크립트 로드 시점에 따라 유연하게 대응)
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initShadowDOM);
+        } else {
+          initShadowDOM();
+        }
       })();
     `;
 
