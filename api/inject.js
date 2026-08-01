@@ -185,9 +185,9 @@ export default async function handler(req, res) {
                       <p class="text-xs text-gray-400 font-light mb-4">비회원으로 주문하셨나요?</p>
                       <!-- ★ 링크 이동 차단, 내부 UI 스위칭 버튼으로 변경 ★ -->
                       <!-- [수정 후: 현재 스킨 경로(skin4 등) 자동 유지 방식] -->
-<button type="button" onclick="goToGuestOrderKeepSkin()" class="inline-flex items-center justify-center w-full bg-white border border-black text-black py-4 text-sm font-medium tracking-widest hover:bg-black hover:text-white transition-colors duration-300 cursor-pointer">
-  비회원 주문 조회하기
-</button>
+                      <button type="button" onclick="goToGuestOrderKeepSkin()" class="inline-flex items-center justify-center w-full bg-white border border-black text-black py-4 text-sm font-medium tracking-widest hover:bg-black hover:text-white transition-colors duration-300 cursor-pointer">
+                        비회원 주문 조회하기
+                      </button>
                     </div>
                   </div>
 
@@ -235,13 +235,33 @@ export default async function handler(req, res) {
             </div>
           \`;
 
+          function goToGuestOrderKeepSkin() {
+            // 1. 현재 접속된 브라우저 주소의 Path를 추출 (예: /skin-skin4/member/login.html 또는 /member/login.html)
+            let currentPath = window.location.pathname;
+            
+            // 만약 메인 페이지 등에서 호출되었을 경우 /member/login.html 경로를 조합
+            if (!currentPath.includes('/member/login.html')) {
+              // 스킨 경로가 포함된 경우 (예: /skin-skin4/)
+              if (currentPath.endsWith('/')) {
+                currentPath += 'member/login.html';
+              } else {
+                currentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) + '/member/login.html';
+              }
+            }
+
+            // 2. 비회원 주문조회 필수 파라미터 조합 (현재 스킨 주소 온전히 유지)
+            const targetUrl = currentPath + '?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
+            
+            // 3. 스킨 이탈 없이 이동
+            window.location.href = targetUrl;
+          }
+            
           drawer = shadowRoot.querySelector('#global-login-drawer');
           backdrop = shadowRoot.querySelector('#login-backdrop');
           panel = shadowRoot.querySelector('#login-panel');
           const loginMode = shadowRoot.querySelector('#ui-login-mode');
           const guestMode = shadowRoot.querySelector('#ui-guest-mode');
 
-          // --- 이벤트 리스너 바인딩 ---
           
           // 1. 드로어 닫기
           shadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
