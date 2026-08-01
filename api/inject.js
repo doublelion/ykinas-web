@@ -107,7 +107,6 @@ export default async function handler(req, res) {
               .floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
               .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
 
-              /* 모드 스위칭용 (display: none 처리로 스크롤 꼬임 완벽 방지) */
               .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
               @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
               .mode-hidden { display: none !important; }
@@ -134,6 +133,7 @@ export default async function handler(req, res) {
                     <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
                     <p class="text-sm text-gray-500 mb-10">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                     
+                    <!-- SNS 간편 로그인 -->
                     <div class="space-y-3 mb-5">
                       <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3.5 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                         <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
@@ -156,6 +156,7 @@ export default async function handler(req, res) {
                       <div class="flex-grow border-t border-gray-200"></div>
                     </div>
                     
+                    <!-- 일반 회원 폼 -->
                     <div class="space-y-4 mt-5">
                       <div class="relative w-full">
                         <input type="text" id="s_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
@@ -183,9 +184,8 @@ export default async function handler(req, res) {
 
                     <div class="mt-12 text-center border-t border-gray-100 pt-8">
                       <p class="text-xs text-gray-400 font-light mb-4">비회원으로 주문하셨나요?</p>
-                      <!-- ★ 링크 이동 차단, 내부 UI 스위칭 버튼으로 변경 ★ -->
-                      <!-- [수정 후: 현재 스킨 경로(skin4 등) 자동 유지 방식] -->
-                      <button type="button" onclick="goToGuestOrderKeepSkin()" class="inline-flex items-center justify-center w-full bg-white border border-black text-black py-4 text-sm font-medium tracking-widest hover:bg-black hover:text-white transition-colors duration-300 cursor-pointer">
+                      <!-- ★ 링크 이동 완전 제거. ID 기반 스위칭 버튼으로 변경 ★ -->
+                      <button type="button" id="btn_switch_to_guest" class="inline-flex items-center justify-center w-full bg-white border border-black text-black py-4 text-sm font-medium tracking-widest hover:bg-black hover:text-white transition-colors duration-300 cursor-pointer">
                         비회원 주문 조회하기
                       </button>
                     </div>
@@ -235,34 +235,12 @@ export default async function handler(req, res) {
             </div>
           \`;
 
-          function goToGuestOrderKeepSkin() {
-            // 1. 현재 접속된 브라우저 주소의 Path를 추출 (예: /skin-skin4/member/login.html 또는 /member/login.html)
-            let currentPath = window.location.pathname;
-            
-            // 만약 메인 페이지 등에서 호출되었을 경우 /member/login.html 경로를 조합
-            if (!currentPath.includes('/member/login.html')) {
-              // 스킨 경로가 포함된 경우 (예: /skin-skin4/)
-              if (currentPath.endsWith('/')) {
-                currentPath += 'member/login.html';
-              } else {
-                currentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) + '/member/login.html';
-              }
-            }
-
-            // 2. 비회원 주문조회 필수 파라미터 조합 (현재 스킨 주소 온전히 유지)
-            const targetUrl = currentPath + '?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
-            
-            // 3. 스킨 이탈 없이 이동
-            window.location.href = targetUrl;
-          }
-            
           drawer = shadowRoot.querySelector('#global-login-drawer');
           backdrop = shadowRoot.querySelector('#login-backdrop');
           panel = shadowRoot.querySelector('#login-panel');
           const loginMode = shadowRoot.querySelector('#ui-login-mode');
           const guestMode = shadowRoot.querySelector('#ui-guest-mode');
 
-          
           // 1. 드로어 닫기
           shadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
           backdrop.addEventListener('click', window.YkinasLogin.close);
