@@ -72,6 +72,7 @@ export default async function handler(req, res) {
           if (isInitialized) return;
           isInitialized = true;
 
+          // 1. 카페24 오리지널 폼 숨김 처리
           const originWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
           if (originWrap) originWrap.style.display = 'none';
 
@@ -183,7 +184,6 @@ export default async function handler(req, res) {
                       </button>
                     </div>
                   </div>
-                  
                 </div>
               </div>
             </div>
@@ -193,7 +193,7 @@ export default async function handler(req, res) {
           backdrop = shadowRoot.querySelector('#login-backdrop');
           panel = shadowRoot.querySelector('#login-panel');
 
-          // --- [핵심] 스킨 경로 동적 보존 로직 ---
+          // --- [핵심 유지] 스킨 경로 동적 보존 로직 ---
           const skinMatch = window.location.pathname.match(/^\\/skin-[^\\/]+/);
           const skinPrefix = skinMatch ? skinMatch[0] : '';
           
@@ -217,19 +217,36 @@ export default async function handler(req, res) {
             pw.type = pw.type === 'password' ? 'text' : 'password';
           });
 
-          // 3. 일반 로그인 제출 대리 클릭
+          // 3. 일반 로그인 제출 대리 클릭 (★ 핵심 수정: Scope 좁혀서 충돌 완벽 방어)
           shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
              const idVal = shadowRoot.querySelector('#s_id').value.trim();
              const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
-             if (!idVal || !pwVal) { alert("아이디와 비밀번호를 모두 입력해주세요."); return; }
+             if (!idVal || !pwVal) { 
+               alert("아이디와 비밀번호를 모두 입력해주세요."); 
+               return; 
+             }
              
-             const originId = document.querySelector('input[name="member_id"]');
-             const originPw = document.querySelector('input[name="member_passwd"]');
+             // 문서 전체가 아닌, 우리가 숨겨둔 오리지널 폼 안에서만 input을 찾습니다!
+             const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
+             if (!originWrapInner) {
+               console.warn('[YKINAS] Origin form wrap not found.');
+               return;
+             }
+
+             const originId = originWrapInner.querySelector('input[name="member_id"]');
+             const originPw = originWrapInner.querySelector('input[name="member_passwd"]');
              const originBtn = document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login');
-             if(originId && originPw && originBtn) { originId.value = idVal; originPw.value = pwVal; originBtn.click(); }
+             
+             if(originId && originPw && originBtn) { 
+               originId.value = idVal; 
+               originPw.value = pwVal; 
+               originBtn.click(); 
+             } else {
+               console.warn('[YKINAS] Origin input fields or submit button missing inside the wrap.');
+             }
           });
 
-          // 4. 비회원 페이지 이동 (스킨 파라미터 안전 보존)
+          // 4. 비회원 페이지 이동 (스킨 파라미터 안전 보존 유지)
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
             let currentPath = window.location.pathname;
             
@@ -245,12 +262,12 @@ export default async function handler(req, res) {
             window.location.href = targetUrl;
           });
 
-          // 5. SNS 로그인 연동 (클릭 즉시 드로어를 닫아 카페24 약관 팝업 가림 방지)
+          // 5. SNS 로그인 연동 (딤 가림 방지 유지)
           const currUrl = window.location.pathname + window.location.search;
           function handleSnsLogin(provider) {
             if (window.MemberAction) {
               window.MemberAction.snsLogin(provider, currUrl);
-              window.YkinasLogin.close(); 
+              window.YkinasLogin.close();
             }
           }
           shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => handleSnsLogin('kakao'));
