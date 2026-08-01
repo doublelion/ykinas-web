@@ -90,7 +90,6 @@ export default async function handler(req, res) {
               :host { all: initial; font-family: 'Noto Sans KR', sans-serif; }
               * { font-family: 'Noto Sans KR', sans-serif; box-sizing: border-box; }
               
-              /* 레이아웃 Fixed 고정 */
               #global-login-drawer { position: fixed; inset: 0; z-index: 999999; display: none; justify-content: flex-end; }
               #login-backdrop { position: absolute; inset: 0; background-color: rgba(0,0,0,0.4); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.4s ease; cursor: pointer; }
               #login-backdrop.is-open { opacity: 1; }
@@ -107,10 +106,8 @@ export default async function handler(req, res) {
               .floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
               .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
 
-              /* 모드 스위칭용 (display: none 처리로 스크롤 꼬임 완벽 방지) */
               .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
               @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-              .mode-hidden { display: none !important; }
 
               .bg-kakao { background-color: #FEE500; color: #191919; }
               .bg-naver-icon { background-color: #03C75A; color: #ffffff; }
@@ -127,13 +124,11 @@ export default async function handler(req, res) {
                 
                 <div class="px-8 sm:px-10 py-16 flex-1 flex flex-col justify-center">
                   
-                  <!-- ==============================================
-                       [모드 A] 회원 로그인 UI 
-                  =============================================== -->
-                  <div id="ui-login-mode" class="fade-in">
+                  <div class="fade-in">
                     <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
                     <p class="text-sm text-gray-500 mb-10">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                     
+                    <!-- SNS 간편 로그인 -->
                     <div class="space-y-3 mb-5">
                       <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3.5 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                         <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
@@ -156,6 +151,7 @@ export default async function handler(req, res) {
                       <div class="flex-grow border-t border-gray-200"></div>
                     </div>
                     
+                    <!-- 일반 회원 폼 -->
                     <div class="space-y-4 mt-5">
                       <div class="relative w-full">
                         <input type="text" id="s_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
@@ -183,49 +179,10 @@ export default async function handler(req, res) {
 
                     <div class="mt-12 text-center border-t border-gray-100 pt-8">
                       <p class="text-xs text-gray-400 font-light mb-4">비회원으로 주문하셨나요?</p>
-                      <!-- ★ 링크 이동 차단, 내부 UI 스위칭 버튼으로 변경 ★ -->
-                      <button type="button" id="btn_switch_to_guest" class="w-full bg-white border border-black text-black py-4 text-sm font-medium tracking-widest hover:bg-black hover:text-white transition-colors duration-300">
+                      <!-- ★ 카페24 유효성 검사 회피를 위한 단독 페이지(login.html) 파라미터 리다이렉트 ★ -->
+                      <a href="/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html" class="inline-flex items-center justify-center w-full bg-white border border-black text-black py-4 text-sm font-medium tracking-widest hover:bg-black hover:text-white transition-colors duration-300">
                         비회원 주문 조회하기
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- ==============================================
-                       [모드 B] 비회원 주문조회 전용 UI 
-                  =============================================== -->
-                  <div id="ui-guest-mode" class="mode-hidden fade-in">
-                    <div class="mb-10 text-center">
-                      <div class="inline-block mb-3"><i class="ph ph-package text-4xl text-gray-400"></i></div>
-                      <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">비회원 주문조회</h1>
-                      <p class="text-sm text-gray-500">주문 시 입력하신 정보를 입력해 주세요.</p>
-                    </div>
-
-                    <div class="space-y-6 mt-6">
-                      <div class="relative w-full">
-                        <input type="text" id="g_order_name" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
-                        <label class="floating-label">주문자명</label>
-                      </div>
-                      <div class="relative w-full">
-                        <input type="text" id="g_order_id" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
-                        <label class="floating-label">주문번호 (하이픈 포함)</label>
-                      </div>
-                      <div class="relative w-full">
-                        <input type="password" id="g_order_pw" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
-                        <label class="floating-label">주문 비밀번호</label>
-                        <button type="button" id="btn_toggle_guest_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
-                          <i class="ph ph-eye text-lg"></i>
-                        </button>
-                      </div>
-                      
-                      <button type="button" id="btn_submit_guest" class="w-full py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors mt-4 rounded shadow-sm">
-                        주문 추적하기
-                      </button>
-                    </div>
-
-                    <div class="mt-12 text-center border-t border-gray-100 pt-6">
-                      <button type="button" id="btn_switch_to_login" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">
-                        회원 로그인으로 돌아가기
-                      </button>
+                      </a>
                     </div>
                   </div>
                   
@@ -237,48 +194,18 @@ export default async function handler(req, res) {
           drawer = shadowRoot.querySelector('#global-login-drawer');
           backdrop = shadowRoot.querySelector('#login-backdrop');
           panel = shadowRoot.querySelector('#login-panel');
-          const loginMode = shadowRoot.querySelector('#ui-login-mode');
-          const guestMode = shadowRoot.querySelector('#ui-guest-mode');
 
-          // --- 이벤트 리스너 바인딩 ---
-          
           // 1. 드로어 닫기
           shadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
           backdrop.addEventListener('click', window.YkinasLogin.close);
 
-          // 2. 모드 스위칭 함수 (로그인 ↔ 비회원)
-          function switchMode(mode) {
-            if (mode === 'guest') {
-              loginMode.classList.add('mode-hidden');
-              guestMode.classList.remove('mode-hidden');
-            } else {
-              guestMode.classList.add('mode-hidden');
-              loginMode.classList.remove('mode-hidden');
-            }
-            panel.scrollTop = 0; // 스크롤 최상단 리셋
-          }
-          
-          shadowRoot.querySelector('#btn_switch_to_guest').addEventListener('click', () => switchMode('guest'));
-          shadowRoot.querySelector('#btn_switch_to_login').addEventListener('click', () => switchMode('login'));
-
-          // ★ 핵심 해결: URL 파라미터 감지하여 자동으로 비회원 폼 띄우기
-          const urlParams = new URLSearchParams(window.location.search);
-          const returnUrl = urlParams.get('returnUrl') || '';
-          if (returnUrl.indexOf('order/list.html') !== -1 || window.location.search.includes('noMemberOrder')) {
-            switchMode('guest');
-          }
-
-          // 3. 비밀번호 토글
+          // 2. 비밀번호 토글
           shadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
             const pw = shadowRoot.querySelector('#s_pw');
             pw.type = pw.type === 'password' ? 'text' : 'password';
           });
-          shadowRoot.querySelector('#btn_toggle_guest_pw').addEventListener('click', function() {
-            const pw = shadowRoot.querySelector('#g_order_pw');
-            pw.type = pw.type === 'password' ? 'text' : 'password';
-          });
 
-          // 4. 일반 로그인 제출 대리 클릭 (카페24 엔진 탑승)
+          // 3. 일반 로그인 제출 대리 클릭
           shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
              const idVal = shadowRoot.querySelector('#s_id').value.trim();
              const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
@@ -290,32 +217,12 @@ export default async function handler(req, res) {
              if(originId && originPw && originBtn) { originId.value = idVal; originPw.value = pwVal; originBtn.click(); }
           });
 
-          // 5. 비회원 조회 제출 대리 클릭 (카페24 엔진 탑승)
-          shadowRoot.querySelector('#btn_submit_guest').addEventListener('click', function() {
-             const nameVal = shadowRoot.querySelector('#g_order_name').value.trim();
-             const idVal = shadowRoot.querySelector('#g_order_id').value.trim();
-             const pwVal = shadowRoot.querySelector('#g_order_pw').value.trim();
-             
-             if (!nameVal || !idVal || !pwVal) { alert("주문자 정보를 정확히 입력해주세요."); return; }
-             
-             const originName = document.querySelector('input[name="order_name"]');
-             const originId = document.querySelector('input[name="order_id"]');
-             const originPw = document.querySelector('input[name="order_password"]');
-             const originBtn = document.getElementById('origin_btn_order_history');
-             
-             if(originName && originId && originPw && originBtn) {
-               originName.value = nameVal; originId.value = idVal; originPw.value = pwVal; originBtn.click();
-             } else {
-               alert("페이지 내 비회원 주문조회 모듈을 찾을 수 없습니다.");
-             }
-          });
-
-          // 6. SNS 로그인 연동 (클릭 즉시 드로어를 닫아 카페24 약관 팝업 가림 방지)
+          // 4. SNS 로그인 대리 클릭 (dimming 방지)
           const currUrl = window.location.pathname + window.location.search;
           function handleSnsLogin(provider) {
             if (window.MemberAction) {
               window.MemberAction.snsLogin(provider, currUrl);
-              window.YkinasLogin.close(); // 딤(Backdrop) 제거
+              window.YkinasLogin.close();
             }
           }
           shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => handleSnsLogin('kakao'));
