@@ -72,6 +72,19 @@ export default async function handler(req, res) {
           if (isInitialized) return;
           isInitialized = true;
 
+          // ★ [핵심] 히든 프록시 아이프레임 생성 (보안 토큰 및 세션 자동 획득용)
+          const skinMatch = window.location.pathname.match(/^\\/skin-[^\\/]+/);
+          const skinPrefix = skinMatch ? skinMatch[0] : '';
+          
+          let proxyIframe = document.getElementById('ykinas_proxy_iframe');
+          if (!proxyIframe) {
+            proxyIframe = document.createElement('iframe');
+            proxyIframe.id = 'ykinas_proxy_iframe';
+            proxyIframe.src = skinPrefix + '/member/login.html';
+            proxyIframe.style.cssText = 'position:absolute; width:1px; height:1px; left:-9999px; opacity:0; pointer-events:none;';
+            document.body.appendChild(proxyIframe);
+          }
+
           const originWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
           if (originWrap) originWrap.style.display = 'none';
 
@@ -164,13 +177,7 @@ export default async function handler(req, res) {
                         <label class="floating-label">비밀번호</label>
                         <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black"><i class="ph ph-eye text-lg"></i></button>
                       </div>
-                      <div class="flex items-center justify-between mt-2 mb-4">
-                        <label class="flex items-center cursor-pointer group">
-                          <input type="checkbox" id="s_save_id" class="w-4 h-4 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
-                          <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
-                        </label>
-                      </div>
-                      <button type="button" id="btn_submit_login" class="w-full py-4 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded shadow-md">로그인</button>
+                      <button type="button" id="btn_submit_login" class="w-full py-4 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded shadow-md mt-6">로그인</button>
                     </div>
 
                     <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500">
@@ -186,43 +193,6 @@ export default async function handler(req, res) {
                       </button>
                     </div>
                   </div>
-
-                  <div id="ui-guest-mode" class="mode-hidden fade-in">
-                    <div class="mb-10 text-center">
-                      <div class="inline-block mb-3"><i class="ph ph-package text-4xl text-gray-400"></i></div>
-                      <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">비회원 주문조회</h1>
-                      <p class="text-sm text-gray-500">주문 시 입력하신 정보를 입력해 주세요.</p>
-                    </div>
-
-                    <div class="space-y-6 mt-6">
-                      <div class="relative w-full">
-                        <input type="text" id="g_order_name" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
-                        <label class="floating-label">주문자명</label>
-                      </div>
-                      <div class="relative w-full">
-                        <input type="text" id="g_order_id" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
-                        <label class="floating-label">주문번호 (하이픈 포함)</label>
-                      </div>
-                      <div class="relative w-full">
-                        <input type="password" id="g_order_pw" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
-                        <label class="floating-label">주문 비밀번호</label>
-                        <button type="button" id="btn_toggle_guest_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
-                          <i class="ph ph-eye text-lg"></i>
-                        </button>
-                      </div>
-                      
-                      <button type="button" id="btn_submit_guest" class="w-full py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors mt-4 rounded shadow-sm">
-                        주문 추적하기
-                      </button>
-                    </div>
-
-                    <div class="mt-12 text-center border-t border-gray-100 pt-6">
-                      <button type="button" id="btn_switch_to_login" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">
-                        회원 로그인으로 돌아가기
-                      </button>
-                    </div>
-                  </div>
-                  
                 </div>
               </div>
             </div>
@@ -232,9 +202,6 @@ export default async function handler(req, res) {
           backdrop = shadowRoot.querySelector('#login-backdrop');
           panel = shadowRoot.querySelector('#login-panel');
 
-          const skinMatch = window.location.pathname.match(/^\\/skin-[^\\/]+/);
-          const skinPrefix = skinMatch ? skinMatch[0] : '';
-          
           if (skinPrefix) {
             const allLinks = shadowRoot.querySelectorAll('a');
             allLinks.forEach(link => {
@@ -253,53 +220,93 @@ export default async function handler(req, res) {
             pw.type = pw.type === 'password' ? 'text' : 'password';
           });
 
-          // [핵심 변경: 일반 로그인] 
-          // 폼이 없으면 프리미엄 login.html로 우아하게 리다이렉트
+          // [핵심 변경 1] 일반 로그인: 히든 아이프레임 안의 폼을 조종하여 완벽 전송
           shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
-             const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-             let originId = originWrapInner ? originWrapInner.querySelector('input[name="member_id"]') : null;
-             let originPw = originWrapInner ? originWrapInner.querySelector('input[name="member_passwd"]') : null;
-             let originBtn = document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login');
+             const idVal = shadowRoot.querySelector('#s_id').value.trim();
+             const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
+             if (!idVal || !pwVal) { 
+               alert("아이디와 비밀번호를 모두 입력해주세요."); 
+               return; 
+             }
              
-             if (originId && originPw && originBtn) { 
-               // login.html 페이지 내부라면 100% 정상 작동
-               const idVal = shadowRoot.querySelector('#s_id').value.trim();
-               const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
-               if (!idVal || !pwVal) { alert("아이디와 비밀번호를 모두 입력해주세요."); return; }
-               originId.value = idVal; 
-               originPw.value = pwVal; 
-               originBtn.click(); 
+             const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
+             if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
+               // login.html 내부일 경우
+               originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
+               originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
+               (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
              } else {
-               // 그 외 페이지: 에러 방지를 위해 프리미엄 풀스크린 login.html로 스무스하게 이동
-               let loginPath = '/member/login.html';
-               if (skinPrefix) loginPath = skinPrefix + loginPath;
-               window.location.href = loginPath + '?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+               // 메인/상세 페이지일 경우 -> 히든 아이프레임 조종
+               try {
+                 const iframe = document.getElementById('ykinas_proxy_iframe');
+                 const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                 const ifId = iframeDoc.querySelector('input[name="member_id"]');
+                 const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
+                 const ifBtn = iframeDoc.getElementById('origin_btn_login');
+
+                 if (ifId && ifPw && ifBtn) {
+                   ifId.value = idVal;
+                   ifPw.value = pwVal;
+                   
+                   const form = ifId.closest('form');
+                   if (form) {
+                     form.target = "_parent"; // 전송 결과(로그인 성공)를 부모창에 적용!
+                     let retInput = form.querySelector('input[name="returnUrl"]');
+                     if (!retInput) {
+                       retInput = iframeDoc.createElement('input');
+                       retInput.type = 'hidden';
+                       retInput.name = 'returnUrl';
+                       form.appendChild(retInput);
+                     }
+                     retInput.value = window.location.pathname + window.location.search;
+                   }
+                   ifBtn.click();
+                 } else {
+                   throw new Error("Iframe form not found");
+                 }
+               } catch (e) {
+                 // 아이프레임 로드 전 0.1초 찰나에 클릭한 경우 안전장치 이동
+                 window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+               }
              }
           });
 
-          // 비회원 주문조회 이동
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
-            let loginPath = '/member/login.html';
-            if (skinPrefix) loginPath = skinPrefix + loginPath;
-            window.location.href = loginPath + '?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
+            let currentPath = window.location.pathname;
+            if (!currentPath.includes('/member/login.html')) {
+              if (currentPath.endsWith('/')) {
+                currentPath += 'member/login.html';
+              } else {
+                currentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) + '/member/login.html';
+              }
+            }
+            window.location.href = currentPath + '?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
           });
 
-          // [핵심 변경: SNS 로그인]
-          // 스크립트가 없으면 에러팝업 대신 프리미엄 login.html로 리다이렉트
+          // [핵심 변경 2] SNS 로그인: 히든 아이프레임 안의 순정 함수를 대리 실행
           function handleSnsLogin(provider) {
             const currUrl = window.location.pathname + window.location.search;
             
-            // 카페24 순정 스크립트가 로드된 페이지 (login.html)
             if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
               window.MemberAction.snsLogin(provider, currUrl);
-              window.YkinasLogin.close();
             } else {
-              // 에러 방지를 위해 프리미엄 풀스크린 login.html로 이동
-              let loginPath = '/member/login.html';
-              if (skinPrefix) loginPath = skinPrefix + loginPath;
-              window.location.href = loginPath + '?returnUrl=' + encodeURIComponent(currUrl);
+              try {
+                const iframe = document.getElementById('ykinas_proxy_iframe');
+                if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
+                  // 배경의 투명 프레임 안에서 카카오 로그인을 실행시킵니다!
+                  iframe.contentWindow.MemberAction.snsLogin(provider, currUrl);
+                } else {
+                  throw new Error("Iframe MemberAction not ready");
+                }
+              } catch (e) {
+                // 아이프레임 로드 실패 시 다이렉트 팝업 호출 (하얀 창 방지용 대문자 포맷)
+                const pName = provider === 'kakao' ? 'Kakao' : (provider === 'naver' ? 'Naver' : 'Google');
+                window.open('/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodeURIComponent(currUrl), 'snsLoginPopup', 'width=500,height=500');
+              }
             }
+            window.YkinasLogin.close();
           }
+
           shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => handleSnsLogin('kakao'));
           shadowRoot.querySelector('#btn_sns_naver').addEventListener('click', () => handleSnsLogin('naver'));
           shadowRoot.querySelector('#btn_sns_google').addEventListener('click', () => handleSnsLogin('google'));
