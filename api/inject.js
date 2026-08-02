@@ -72,7 +72,6 @@ export default async function handler(req, res) {
           if (isInitialized) return;
           isInitialized = true;
 
-          // 1. 카페24 오리지널 폼 숨김 처리
           const originWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
           if (originWrap) originWrap.style.display = 'none';
 
@@ -95,8 +94,13 @@ export default async function handler(req, res) {
               #global-login-drawer { position: fixed; inset: 0; z-index: 999999; display: none; justify-content: flex-end; }
               #login-backdrop { position: absolute; inset: 0; background-color: rgba(0,0,0,0.4); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.4s ease; cursor: pointer; }
               #login-backdrop.is-open { opacity: 1; }
+              
               #login-panel { position: relative; width: 100%; max-width: 420px; height: 100%; background-color: #ffffff; box-shadow: -10px 0 40px rgba(0,0,0,0.1); transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; z-index: 10; }
               #login-panel.is-open { transform: translateX(0); }
+
+              /* ★ 핵심: 내부 콘텐츠 대각선 상승 애니메이션 (Staggered Entrance) */
+              .drawer-content-wrapper { opacity: 0; transform: translateY(30px); transition: opacity 0.5s ease 0.15s, transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s; }
+              #login-panel.is-open .drawer-content-wrapper { opacity: 1; transform: translateY(0); }
 
               .custom-scrollbar-02 { overflow-y: auto; }
               .custom-scrollbar-02::-webkit-scrollbar { width: 4px; }
@@ -110,6 +114,7 @@ export default async function handler(req, res) {
 
               .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
               @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+              .mode-hidden { display: none !important; }
 
               .bg-kakao { background-color: #FEE500; color: #191919; }
               .bg-naver-icon { background-color: #03C75A; color: #ffffff; }
@@ -124,7 +129,8 @@ export default async function handler(req, res) {
                   <i class="ph ph-x text-2xl"></i>
                 </button>
                 
-                <div class="px-8 sm:px-10 py-16 flex-1 flex flex-col justify-center">
+                <!-- 내부 콘텐츠를 묶어 애니메이션을 지연시키는 래퍼 추가 -->
+                <div class="px-8 sm:px-10 py-16 flex-1 flex flex-col justify-center drawer-content-wrapper">
                   
                   <div id="ui-login-mode" class="fade-in">
                     <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
@@ -184,6 +190,43 @@ export default async function handler(req, res) {
                       </button>
                     </div>
                   </div>
+
+                  <div id="ui-guest-mode" class="mode-hidden fade-in">
+                    <div class="mb-10 text-center">
+                      <div class="inline-block mb-3"><i class="ph ph-package text-4xl text-gray-400"></i></div>
+                      <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">비회원 주문조회</h1>
+                      <p class="text-sm text-gray-500">주문 시 입력하신 정보를 입력해 주세요.</p>
+                    </div>
+
+                    <div class="space-y-6 mt-6">
+                      <div class="relative w-full">
+                        <input type="text" id="g_order_name" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                        <label class="floating-label">주문자명</label>
+                      </div>
+                      <div class="relative w-full">
+                        <input type="text" id="g_order_id" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                        <label class="floating-label">주문번호 (하이픈 포함)</label>
+                      </div>
+                      <div class="relative w-full">
+                        <input type="password" id="g_order_pw" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
+                        <label class="floating-label">주문 비밀번호</label>
+                        <button type="button" id="btn_toggle_guest_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
+                          <i class="ph ph-eye text-lg"></i>
+                        </button>
+                      </div>
+                      
+                      <button type="button" id="btn_submit_guest" class="w-full py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors mt-4 rounded shadow-sm">
+                        주문 추적하기
+                      </button>
+                    </div>
+
+                    <div class="mt-12 text-center border-t border-gray-100 pt-6">
+                      <button type="button" id="btn_switch_to_login" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">
+                        회원 로그인으로 돌아가기
+                      </button>
+                    </div>
+                  </div>
+                  
                 </div>
               </div>
             </div>
@@ -193,7 +236,6 @@ export default async function handler(req, res) {
           backdrop = shadowRoot.querySelector('#login-backdrop');
           panel = shadowRoot.querySelector('#login-panel');
 
-          // --- [핵심 유지] 스킨 경로 동적 보존 로직 ---
           const skinMatch = window.location.pathname.match(/^\\/skin-[^\\/]+/);
           const skinPrefix = skinMatch ? skinMatch[0] : '';
           
@@ -207,17 +249,14 @@ export default async function handler(req, res) {
             });
           }
 
-          // 1. 드로어 닫기
           shadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
           backdrop.addEventListener('click', window.YkinasLogin.close);
 
-          // 2. 비밀번호 토글
           shadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
             const pw = shadowRoot.querySelector('#s_pw');
             pw.type = pw.type === 'password' ? 'text' : 'password';
           });
 
-          // 3. 일반 로그인 제출 대리 클릭 (★ 핵심 수정: Scope 좁혀서 충돌 완벽 방어)
           shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
              const idVal = shadowRoot.querySelector('#s_id').value.trim();
              const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
@@ -226,12 +265,8 @@ export default async function handler(req, res) {
                return; 
              }
              
-             // 문서 전체가 아닌, 우리가 숨겨둔 오리지널 폼 안에서만 input을 찾습니다!
              const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-             if (!originWrapInner) {
-               console.warn('[YKINAS] Origin form wrap not found.');
-               return;
-             }
+             if (!originWrapInner) return;
 
              const originId = originWrapInner.querySelector('input[name="member_id"]');
              const originPw = originWrapInner.querySelector('input[name="member_passwd"]');
@@ -241,12 +276,9 @@ export default async function handler(req, res) {
                originId.value = idVal; 
                originPw.value = pwVal; 
                originBtn.click(); 
-             } else {
-               console.warn('[YKINAS] Origin input fields or submit button missing inside the wrap.');
              }
           });
 
-          // 4. 비회원 페이지 이동 (스킨 파라미터 안전 보존 유지)
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
             let currentPath = window.location.pathname;
             
@@ -262,7 +294,6 @@ export default async function handler(req, res) {
             window.location.href = targetUrl;
           });
 
-          // 5. SNS 로그인 연동 (딤 가림 방지 유지)
           const currUrl = window.location.pathname + window.location.search;
           function handleSnsLogin(provider) {
             if (window.MemberAction) {
