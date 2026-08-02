@@ -35,6 +35,10 @@ export default async function handler(req, res) {
     const injectedScript = `
       (function() {
         'use strict';
+        
+        // ★ [핵심 방어 코드] 현재 창이 아이프레임 내부라면 무한루프 방지를 위해 즉시 종료!
+        if (window.self !== window.top) return; 
+
         if (window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
@@ -72,7 +76,7 @@ export default async function handler(req, res) {
           if (isInitialized) return;
           isInitialized = true;
 
-          // ★ [핵심] 히든 프록시 아이프레임 생성 (보안 토큰 및 세션 자동 획득용)
+          // 프록시 아이프레임 생성 (메인 화면에서 단 한 번만 실행됨)
           const skinMatch = window.location.pathname.match(/^\\/skin-[^\\/]+/);
           const skinPrefix = skinMatch ? skinMatch[0] : '';
           
@@ -177,6 +181,12 @@ export default async function handler(req, res) {
                         <label class="floating-label">비밀번호</label>
                         <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black"><i class="ph ph-eye text-lg"></i></button>
                       </div>
+                      <div class="flex items-center justify-between mt-2 mb-4">
+                        <label class="flex items-center cursor-pointer group">
+                          <input type="checkbox" id="s_save_id" class="w-4 h-4 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
+                          <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
+                        </label>
+                      </div>
                       <button type="button" id="btn_submit_login" class="w-full py-4 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded shadow-md mt-6">로그인</button>
                     </div>
 
@@ -220,7 +230,6 @@ export default async function handler(req, res) {
             pw.type = pw.type === 'password' ? 'text' : 'password';
           });
 
-          // [핵심 변경 1] 일반 로그인: 히든 아이프레임 안의 폼을 조종하여 완벽 전송
           shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
              const idVal = shadowRoot.querySelector('#s_id').value.trim();
              const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
@@ -231,12 +240,10 @@ export default async function handler(req, res) {
              
              const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
              if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
-               // login.html 내부일 경우
                originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
                originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
                (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
              } else {
-               // 메인/상세 페이지일 경우 -> 히든 아이프레임 조종
                try {
                  const iframe = document.getElementById('ykinas_proxy_iframe');
                  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
@@ -250,7 +257,7 @@ export default async function handler(req, res) {
                    
                    const form = ifId.closest('form');
                    if (form) {
-                     form.target = "_parent"; // 전송 결과(로그인 성공)를 부모창에 적용!
+                     form.target = "_parent"; 
                      let retInput = form.querySelector('input[name="returnUrl"]');
                      if (!retInput) {
                        retInput = iframeDoc.createElement('input');
@@ -265,7 +272,6 @@ export default async function handler(req, res) {
                    throw new Error("Iframe form not found");
                  }
                } catch (e) {
-                 // 아이프레임 로드 전 0.1초 찰나에 클릭한 경우 안전장치 이동
                  window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
                }
              }
@@ -283,7 +289,6 @@ export default async function handler(req, res) {
             window.location.href = currentPath + '?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
           });
 
-          // [핵심 변경 2] SNS 로그인: 히든 아이프레임 안의 순정 함수를 대리 실행
           function handleSnsLogin(provider) {
             const currUrl = window.location.pathname + window.location.search;
             
@@ -293,13 +298,11 @@ export default async function handler(req, res) {
               try {
                 const iframe = document.getElementById('ykinas_proxy_iframe');
                 if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
-                  // 배경의 투명 프레임 안에서 카카오 로그인을 실행시킵니다!
                   iframe.contentWindow.MemberAction.snsLogin(provider, currUrl);
                 } else {
                   throw new Error("Iframe MemberAction not ready");
                 }
               } catch (e) {
-                // 아이프레임 로드 실패 시 다이렉트 팝업 호출 (하얀 창 방지용 대문자 포맷)
                 const pName = provider === 'kakao' ? 'Kakao' : (provider === 'naver' ? 'Naver' : 'Google');
                 window.open('/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodeURIComponent(currUrl), 'snsLoginPopup', 'width=500,height=500');
               }
