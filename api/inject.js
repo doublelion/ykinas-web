@@ -277,16 +277,10 @@ export default async function handler(req, res) {
              }
           });
 
+          // ★ [핵심 픽스] 깊은 경로에서 버그가 발생하지 않도록 절대 경로(skinPrefix)로 라우팅 고정
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
-            let currentPath = window.location.pathname;
-            if (!currentPath.includes('/member/login.html')) {
-              if (currentPath.endsWith('/')) {
-                currentPath += 'member/login.html';
-              } else {
-                currentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) + '/member/login.html';
-              }
-            }
-            window.location.href = currentPath + '?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
+            const targetUrl = skinPrefix + '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
+            window.location.href = targetUrl;
           });
 
           function handleSnsLogin(provider) {
