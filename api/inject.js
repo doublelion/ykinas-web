@@ -97,7 +97,6 @@ export default async function handler(req, res) {
               #login-panel { position: relative; width: 100%; max-width: 420px; height: 100%; background-color: #ffffff; box-shadow: -10px 0 40px rgba(0,0,0,0.1); transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; z-index: 10; }
               #login-panel.is-open { transform: translateX(0); }
 
-              /* ★ 핵심 수정: 패널이 0.4초 동안 들어온 뒤, 0.3초 딜레이 후에 콘텐츠가 올라오도록 수정 (대각선 현상 방지) */
               .drawer-content-wrapper { opacity: 0; transform: translateY(30px); transition: opacity 0.4s ease 0.3s, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.3s; }
               #login-panel.is-open .drawer-content-wrapper { opacity: 1; transform: translateY(0); }
 
@@ -110,6 +109,10 @@ export default async function handler(req, res) {
               
               .floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
               .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
+
+              .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
+              @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+              .mode-hidden { display: none !important; }
 
               .bg-kakao { background-color: #FEE500; color: #191919; }
               .bg-naver-icon { background-color: #03C75A; color: #ffffff; }
@@ -125,8 +128,7 @@ export default async function handler(req, res) {
                 </button>
                 
                 <div class="px-8 sm:px-10 py-16 flex-1 flex flex-col justify-center drawer-content-wrapper">
-                  
-                  <div id="ui-login-mode">
+                  <div id="ui-login-mode" class="fade-in">
                     <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
                     <p class="text-sm text-gray-500 mb-10">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                     
@@ -214,6 +216,7 @@ export default async function handler(req, res) {
             pw.type = pw.type === 'password' ? 'text' : 'password';
           });
 
+          // [핵심 변경 1] 일반 로그인: 폼이 없으면 API로 폼을 동적 생성하여 강제 전송
           shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
              const idVal = shadowRoot.querySelector('#s_id').value.trim();
              const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
@@ -223,22 +226,47 @@ export default async function handler(req, res) {
              }
              
              const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-             if (!originWrapInner) return;
-
-             const originId = originWrapInner.querySelector('input[name="member_id"]');
-             const originPw = originWrapInner.querySelector('input[name="member_passwd"]');
-             const originBtn = document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login');
+             let originId = originWrapInner ? originWrapInner.querySelector('input[name="member_id"]') : null;
+             let originPw = originWrapInner ? originWrapInner.querySelector('input[name="member_passwd"]') : null;
+             let originBtn = document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login');
              
-             if(originId && originPw && originBtn) { 
+             if (originId && originPw && originBtn) { 
+               // login.html 페이지인 경우 기존 방식
                originId.value = idVal; 
                originPw.value = pwVal; 
                originBtn.click(); 
+             } else {
+               // 메인 페이지 등 로그인 모듈이 없는 경우 동적 폼 제출 (Global Fallback)
+               const form = document.createElement('form');
+               form.method = 'post';
+               form.action = '/exec/front/Member/login/';
+               form.style.display = 'none';
+
+               const returnUrlInput = document.createElement('input');
+               returnUrlInput.type = 'hidden';
+               returnUrlInput.name = 'returnUrl';
+               returnUrlInput.value = window.location.pathname + window.location.search;
+               form.appendChild(returnUrlInput);
+
+               const idInput = document.createElement('input');
+               idInput.type = 'hidden';
+               idInput.name = 'member_id';
+               idInput.value = idVal;
+               form.appendChild(idInput);
+
+               const pwInput = document.createElement('input');
+               pwInput.type = 'hidden';
+               pwInput.name = 'member_passwd';
+               pwInput.value = pwVal;
+               form.appendChild(pwInput);
+
+               document.body.appendChild(form);
+               form.submit();
              }
           });
 
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
             let currentPath = window.location.pathname;
-            
             if (!currentPath.includes('/member/login.html')) {
               if (currentPath.endsWith('/')) {
                 currentPath += 'member/login.html';
@@ -246,18 +274,26 @@ export default async function handler(req, res) {
                 currentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) + '/member/login.html';
               }
             }
-
             const targetUrl = currentPath + '?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
             window.location.href = targetUrl;
           });
 
-          const currUrl = window.location.pathname + window.location.search;
+          // [핵심 변경 2] SNS 로그인: 스크립트가 없으면 직접 API 팝업 호출
           function handleSnsLogin(provider) {
-            if (window.MemberAction) {
+            const currUrl = window.location.pathname + window.location.search;
+            
+            // 카페24 순정 스크립트가 로드된 페이지인 경우 (login.html)
+            if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
               window.MemberAction.snsLogin(provider, currUrl);
-              window.YkinasLogin.close();
+            } else {
+              // 메인 페이지 등 순정 스크립트가 없는 경우 직접 팝업 호출 (Global Fallback)
+              const pName = provider === 'kakao' ? 'Kakao' : (provider === 'naver' ? 'Naver' : 'Google');
+              const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodeURIComponent(currUrl);
+              window.open(popupUrl, 'snsLoginPopup', 'width=500,height=500');
             }
+            window.YkinasLogin.close();
           }
+
           shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => handleSnsLogin('kakao'));
           shadowRoot.querySelector('#btn_sns_naver').addEventListener('click', () => handleSnsLogin('naver'));
           shadowRoot.querySelector('#btn_sns_google').addEventListener('click', () => handleSnsLogin('google'));
