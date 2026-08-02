@@ -186,6 +186,43 @@ export default async function handler(req, res) {
                       </button>
                     </div>
                   </div>
+
+                  <div id="ui-guest-mode" class="mode-hidden fade-in">
+                    <div class="mb-10 text-center">
+                      <div class="inline-block mb-3"><i class="ph ph-package text-4xl text-gray-400"></i></div>
+                      <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">비회원 주문조회</h1>
+                      <p class="text-sm text-gray-500">주문 시 입력하신 정보를 입력해 주세요.</p>
+                    </div>
+
+                    <div class="space-y-6 mt-6">
+                      <div class="relative w-full">
+                        <input type="text" id="g_order_name" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                        <label class="floating-label">주문자명</label>
+                      </div>
+                      <div class="relative w-full">
+                        <input type="text" id="g_order_id" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                        <label class="floating-label">주문번호 (하이픈 포함)</label>
+                      </div>
+                      <div class="relative w-full">
+                        <input type="password" id="g_order_pw" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
+                        <label class="floating-label">주문 비밀번호</label>
+                        <button type="button" id="btn_toggle_guest_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
+                          <i class="ph ph-eye text-lg"></i>
+                        </button>
+                      </div>
+                      
+                      <button type="button" id="btn_submit_guest" class="w-full py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors mt-4 rounded shadow-sm">
+                        주문 추적하기
+                      </button>
+                    </div>
+
+                    <div class="mt-12 text-center border-t border-gray-100 pt-6">
+                      <button type="button" id="btn_switch_to_login" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">
+                        회원 로그인으로 돌아가기
+                      </button>
+                    </div>
+                  </div>
+                  
                 </div>
               </div>
             </div>
@@ -216,84 +253,53 @@ export default async function handler(req, res) {
             pw.type = pw.type === 'password' ? 'text' : 'password';
           });
 
-          // [핵심 변경 1] 일반 로그인: 폼이 없으면 API로 폼을 동적 생성하여 강제 전송
+          // [핵심 변경: 일반 로그인] 
+          // 폼이 없으면 프리미엄 login.html로 우아하게 리다이렉트
           shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
-             const idVal = shadowRoot.querySelector('#s_id').value.trim();
-             const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
-             if (!idVal || !pwVal) { 
-               alert("아이디와 비밀번호를 모두 입력해주세요."); 
-               return; 
-             }
-             
              const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
              let originId = originWrapInner ? originWrapInner.querySelector('input[name="member_id"]') : null;
              let originPw = originWrapInner ? originWrapInner.querySelector('input[name="member_passwd"]') : null;
              let originBtn = document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login');
              
              if (originId && originPw && originBtn) { 
-               // login.html 페이지인 경우 기존 방식
+               // login.html 페이지 내부라면 100% 정상 작동
+               const idVal = shadowRoot.querySelector('#s_id').value.trim();
+               const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
+               if (!idVal || !pwVal) { alert("아이디와 비밀번호를 모두 입력해주세요."); return; }
                originId.value = idVal; 
                originPw.value = pwVal; 
                originBtn.click(); 
              } else {
-               // 메인 페이지 등 로그인 모듈이 없는 경우 동적 폼 제출 (Global Fallback)
-               const form = document.createElement('form');
-               form.method = 'post';
-               form.action = '/exec/front/Member/login/';
-               form.style.display = 'none';
-
-               const returnUrlInput = document.createElement('input');
-               returnUrlInput.type = 'hidden';
-               returnUrlInput.name = 'returnUrl';
-               returnUrlInput.value = window.location.pathname + window.location.search;
-               form.appendChild(returnUrlInput);
-
-               const idInput = document.createElement('input');
-               idInput.type = 'hidden';
-               idInput.name = 'member_id';
-               idInput.value = idVal;
-               form.appendChild(idInput);
-
-               const pwInput = document.createElement('input');
-               pwInput.type = 'hidden';
-               pwInput.name = 'member_passwd';
-               pwInput.value = pwVal;
-               form.appendChild(pwInput);
-
-               document.body.appendChild(form);
-               form.submit();
+               // 그 외 페이지: 에러 방지를 위해 프리미엄 풀스크린 login.html로 스무스하게 이동
+               let loginPath = '/member/login.html';
+               if (skinPrefix) loginPath = skinPrefix + loginPath;
+               window.location.href = loginPath + '?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
              }
           });
 
+          // 비회원 주문조회 이동
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
-            let currentPath = window.location.pathname;
-            if (!currentPath.includes('/member/login.html')) {
-              if (currentPath.endsWith('/')) {
-                currentPath += 'member/login.html';
-              } else {
-                currentPath = currentPath.substring(0, currentPath.lastIndexOf('/')) + '/member/login.html';
-              }
-            }
-            const targetUrl = currentPath + '?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
-            window.location.href = targetUrl;
+            let loginPath = '/member/login.html';
+            if (skinPrefix) loginPath = skinPrefix + loginPath;
+            window.location.href = loginPath + '?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
           });
 
-          // [핵심 변경 2] SNS 로그인: 스크립트가 없으면 직접 API 팝업 호출
+          // [핵심 변경: SNS 로그인]
+          // 스크립트가 없으면 에러팝업 대신 프리미엄 login.html로 리다이렉트
           function handleSnsLogin(provider) {
             const currUrl = window.location.pathname + window.location.search;
             
-            // 카페24 순정 스크립트가 로드된 페이지인 경우 (login.html)
+            // 카페24 순정 스크립트가 로드된 페이지 (login.html)
             if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
               window.MemberAction.snsLogin(provider, currUrl);
+              window.YkinasLogin.close();
             } else {
-              // 메인 페이지 등 순정 스크립트가 없는 경우 직접 팝업 호출 (Global Fallback)
-              const pName = provider === 'kakao' ? 'Kakao' : (provider === 'naver' ? 'Naver' : 'Google');
-              const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodeURIComponent(currUrl);
-              window.open(popupUrl, 'snsLoginPopup', 'width=500,height=500');
+              // 에러 방지를 위해 프리미엄 풀스크린 login.html로 이동
+              let loginPath = '/member/login.html';
+              if (skinPrefix) loginPath = skinPrefix + loginPath;
+              window.location.href = loginPath + '?returnUrl=' + encodeURIComponent(currUrl);
             }
-            window.YkinasLogin.close();
           }
-
           shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => handleSnsLogin('kakao'));
           shadowRoot.querySelector('#btn_sns_naver').addEventListener('click', () => handleSnsLogin('naver'));
           shadowRoot.querySelector('#btn_sns_google').addEventListener('click', () => handleSnsLogin('google'));
