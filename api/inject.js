@@ -11,10 +11,11 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
 
   const clientReferer = req.headers['referer'] || '';
-  let clientMallId = req.query.mall_id || '';
+  const clientMallId = req.query.mall_id || '';
 
-  if (clientMallId === '{$mall_id}' || !clientMallId) {
-    clientMallId = 'ecudemo389879';
+  // ★ 하드코딩된 특정 테스트 스킨 ID(ecudemo389879) 조건 완전 제거
+  if (!clientMallId || clientMallId === '{$mall_id}') {
+    return res.status(200).send(`console.warn('[YKINAS Core] Invalid Mall ID.');`);
   }
 
   try {
@@ -45,9 +46,24 @@ export default async function handler(req, res) {
         const currentPath = window.location.pathname;
         const currentSearch = window.location.search;
 
-        // ★ [핵심 방어 2] 카페24 로그인 페이지 접근 시 드로어 스크립트 완전 종료
-        // 쿠폰 다운로드, 관심상품 등 리다이렉트로 넘어온 찐 로그인 페이지에서는 카페24 네이티브 로직을 온전히 타게 둡니다.
+        // ★ [단독 로그인 페이지 패치]
+        // 로그인 페이지에서는 드로어를 차단하고, 
+        // 고객님께서 구축하신 switchMode('guest') 버튼의 동작을 가로채서 강제 리프레시 이동시킵니다.
         if (currentPath.includes('/member/login.html')) {
+            document.addEventListener('DOMContentLoaded', () => {
+                const switchBtns = document.querySelectorAll('button');
+                switchBtns.forEach(btn => {
+                    const onClickAttr = btn.getAttribute('onclick');
+                    if (onClickAttr && onClickAttr.includes("switchMode('guest')")) {
+                        btn.removeAttribute('onclick'); // 기존 탭 전환 동작 무력화
+                        btn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            // ★ 무조건 뒤에 파라미터가 이렇게 변경되며 비회원 조회 화면으로 리프레시
+                            window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
+                        });
+                    }
+                });
+            });
             return;
         }
 
@@ -215,9 +231,9 @@ export default async function handler(req, res) {
                     </div>
 
                     <div class="mt-12 text-center border-t border-gray-100 pt-8">
-                      <p class="text-xs text-gray-400 font-light mb-4">비회원으로 주문하셨나요?</p>
-                      <button type="button" id="btn_go_guest" class="inline-flex items-center justify-center w-full bg-white border border-black text-black py-4 text-sm font-medium tracking-widest hover:bg-black hover:text-white transition-colors duration-300 cursor-pointer">
-                        비회원 주문 조회하기
+                      <!-- ★ 요청하신 프리미엄 UX 기반의 버튼 마크업 적용 -->
+                      <button type="button" id="btn_go_guest" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">
+                        비회원으로 주문하셨나요?
                       </button>
                     </div>
                   </div>
@@ -261,7 +277,6 @@ export default async function handler(req, res) {
                originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
                originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
                
-               // ★ [적용] 추출해둔 targetReturnUrl을 hidden input에 업데이트
                let wrapRetInput = originWrapInner.querySelector('input[name="returnUrl"]');
                if (wrapRetInput) wrapRetInput.value = targetReturnUrl;
 
@@ -288,7 +303,6 @@ export default async function handler(req, res) {
                        retInput.name = 'returnUrl';
                        form.appendChild(retInput);
                      }
-                     // ★ [적용] 아이프레임 폼 제출 시에도 targetReturnUrl 사용
                      retInput.value = targetReturnUrl;
                    }
                    ifBtn.click();
@@ -301,13 +315,12 @@ export default async function handler(req, res) {
              }
           });
 
+          // ★ 드로어 내 비회원 주문조회 버튼 클릭 시, 요청하신 지정된 파라미터로 무조건 강제 리프레시 이동
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
-            const targetUrl = skinPrefix + '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
-            window.location.href = targetUrl;
+            window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
           });
 
           function handleSnsLogin(provider) {
-            // ★ [적용] 간편 로그인 콜백 후 원래 페이지(targetReturnUrl)로 튕겨내도록 파라미터 적용
             if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
               window.MemberAction.snsLogin(provider, targetReturnUrl);
             } else {
