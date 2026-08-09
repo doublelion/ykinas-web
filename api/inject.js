@@ -11,10 +11,14 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
 
   const clientReferer = req.headers['referer'] || '';
-  let clientMallId = req.query.mall_id || '';
 
-  if (clientMallId === '{$mall_id}' || !clientMallId) {
-    clientMallId = 'ecudemo389879';
+  // 1. 하드코딩 제거 및 동적 mall_id 매핑 로직 완벽 적용
+  const clientMallId = (req.query.mall_id && req.query.mall_id !== '{$mall_id}')
+    ? req.query.mall_id
+    : null;
+
+  if (!clientMallId) {
+    return res.status(200).send(`console.warn('[YKINAS Core] Invalid mall_id.');`);
   }
 
   try {
@@ -25,18 +29,21 @@ export default async function handler(req, res) {
       .eq('is_active', true)
       .single();
 
-    if (error || !license) return res.status(200).send(`console.warn('[YKINAS Core] Unauthorized.');`);
+    if (error || !license) {
+      return res.status(200).send(`console.warn('[YKINAS Core] Unauthorized.');`);
+    }
 
     const allowedDomains = license.skin_allowed_domains.map(d => d.domain);
-    const isDomainMatch = allowedDomains.some(domain => clientReferer.includes(domain)) || clientReferer === '';
+    const isDomainMatch = allowedDomains.some(domain => clientReferer.includes(domain)) || !clientReferer;
 
-    if (!isDomainMatch) return res.status(200).send(`console.warn('[YKINAS Core] Domain error.');`);
+    if (!isDomainMatch) {
+      return res.status(200).send(`console.warn('[YKINAS Core] Domain error.');`);
+    }
 
     const injectedScript = `
       (function() {
         'use strict';
         
-        // ★ [핵심 방어 코드] 현재 창이 아이프레임 내부라면 무한루프 방지를 위해 즉시 종료!
         if (window.self !== window.top) return; 
 
         if (window.__YKINAS_SKIN_LOADED__) return;
@@ -76,7 +83,6 @@ export default async function handler(req, res) {
           if (isInitialized) return;
           isInitialized = true;
 
-          // 프록시 아이프레임 생성 (메인 화면에서 단 한 번만 실행됨)
           const skinMatch = window.location.pathname.match(/^\\/skin-[^\\/]+/);
           const skinPrefix = skinMatch ? skinMatch[0] : '';
           
@@ -101,35 +107,25 @@ export default async function handler(req, res) {
 
           shadowRoot.innerHTML = \`
             <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-            
             <style>
               :host { all: initial; font-family: 'Noto Sans KR', sans-serif; }
               * { font-family: 'Noto Sans KR', sans-serif; box-sizing: border-box; }
-              
               #global-login-drawer { position: fixed; inset: 0; z-index: 999999; display: none; justify-content: flex-end; }
               #login-backdrop { position: absolute; inset: 0; background-color: rgba(0,0,0,0.4); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.4s ease; cursor: pointer; }
               #login-backdrop.is-open { opacity: 1; }
-              
               #login-panel { position: relative; width: 100%; max-width: 420px; height: 100%; background-color: #ffffff; box-shadow: -10px 0 40px rgba(0,0,0,0.1); transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; z-index: 10; }
               #login-panel.is-open { transform: translateX(0); }
-
               .drawer-content-wrapper { opacity: 0; transform: translateY(30px); transition: opacity 0.4s ease 0.3s, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.3s; }
               #login-panel.is-open .drawer-content-wrapper { opacity: 1; transform: translateY(0); }
-
               .custom-scrollbar-02 { overflow-y: auto; }
               .custom-scrollbar-02::-webkit-scrollbar { width: 4px; }
               .custom-scrollbar-02::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
-
               .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; }
               .minimal-input:focus { border-bottom-color: #111 !important; }
-              
               .floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
               .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
-
               .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
               @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-              .mode-hidden { display: none !important; }
-
               .bg-kakao { background-color: #FEE500; color: #191919; }
               .bg-naver-icon { background-color: #03C75A; color: #ffffff; }
               .bg-btn-primary { background-color: #111111; color: #ffffff; }
@@ -140,9 +136,7 @@ export default async function handler(req, res) {
               <div id="login-backdrop"></div>
               <div id="login-panel" class="custom-scrollbar-02">
                 <button type="button" id="btn_close_drawer" class="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors z-50">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-label="닫기" role="button">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
                 
                 <div class="px-8 sm:px-10 py-16 flex-1 flex flex-col justify-center drawer-content-wrapper">
@@ -156,20 +150,13 @@ export default async function handler(req, res) {
                         카카오로 시작하기
                       </button>
                       <div class="flex gap-2">
-                        <button type="button" id="btn_sns_naver" class="flex-1 flex items-center justify-center py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
-                          <span class="w-4 h-4 bg-naver-icon flex items-center justify-center font-bold text-[10px] rounded mr-2">N</span>네이버
-                        </button>
-                        <button type="button" id="btn_sns_google" class="flex-1 flex items-center justify-center py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
-                          <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
-                          구글
-                        </button>
+                        <button type="button" id="btn_sns_naver" class="flex-1 flex items-center justify-center py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-50 transition-colors"><span class="w-4 h-4 bg-naver-icon flex items-center justify-center font-bold text-[10px] rounded mr-2">N</span>네이버</button>
+                        <button type="button" id="btn_sns_google" class="flex-1 flex items-center justify-center py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-50 transition-colors"><svg class="w-4 h-4 mr-2" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>구글</button>
                       </div>
                     </div>
 
                     <div class="relative flex items-center py-2">
-                      <div class="flex-grow border-t border-gray-200"></div>
-                      <span class="flex-shrink-0 mx-4 text-xs text-gray-400">또는 아이디로 로그인</span>
-                      <div class="flex-grow border-t border-gray-200"></div>
+                      <div class="flex-grow border-t border-gray-200"></div><span class="flex-shrink-0 mx-4 text-xs text-gray-400">또는 아이디로 로그인</span><div class="flex-grow border-t border-gray-200"></div>
                     </div>
                     
                     <div class="space-y-4 mt-5">
@@ -181,10 +168,7 @@ export default async function handler(req, res) {
                         <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                         <label class="floating-label">비밀번호</label>
                         <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                         </button>
                       </div>
                       <div class="flex items-center justify-between mt-2 mb-4">
@@ -219,12 +203,9 @@ export default async function handler(req, res) {
           panel = shadowRoot.querySelector('#login-panel');
 
           if (skinPrefix) {
-            const allLinks = shadowRoot.querySelectorAll('a');
-            allLinks.forEach(link => {
+            shadowRoot.querySelectorAll('a').forEach(link => {
               const href = link.getAttribute('href');
-              if (href && href.startsWith('/')) {
-                link.setAttribute('href', skinPrefix + href);
-              }
+              if (href && href.startsWith('/')) link.setAttribute('href', skinPrefix + href);
             });
           }
 
@@ -239,10 +220,7 @@ export default async function handler(req, res) {
           shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
              const idVal = shadowRoot.querySelector('#s_id').value.trim();
              const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
-             if (!idVal || !pwVal) { 
-               alert("아이디와 비밀번호를 모두 입력해주세요."); 
-               return; 
-             }
+             if (!idVal || !pwVal) { alert("아이디와 비밀번호를 모두 입력해주세요."); return; }
              
              const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
              if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
@@ -258,9 +236,7 @@ export default async function handler(req, res) {
                  const ifBtn = iframeDoc.getElementById('origin_btn_login');
 
                  if (ifId && ifPw && ifBtn) {
-                   ifId.value = idVal;
-                   ifPw.value = pwVal;
-                   
+                   ifId.value = idVal; ifPw.value = pwVal;
                    const form = ifId.closest('form');
                    if (form) {
                      form.target = "_parent"; 
@@ -274,24 +250,27 @@ export default async function handler(req, res) {
                      retInput.value = window.location.pathname + window.location.search;
                    }
                    ifBtn.click();
-                 } else {
-                   throw new Error("Iframe form not found");
-                 }
+                 } else throw new Error("Iframe form not found");
                } catch (e) {
                  window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
                }
              }
           });
 
-          // ★ [핵심 픽스] 깊은 경로에서 버그가 발생하지 않도록 절대 경로(skinPrefix)로 라우팅 고정
+          // 2. 비회원 주문조회 시 다른 파라미터 간섭 억제 및 강제 Replace 라우팅 보장
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
-            const targetUrl = skinPrefix + '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
-            window.location.href = targetUrl;
+            const guestTrackingUrl = skinPrefix + '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
+            
+            // 로그인 페이지 내부(위시리스트 등에서 리다이렉트 된 상태)인 경우 브라우저 히스토리 조작 후 새로고침 (파라미터 덮어쓰기)
+            if (window.location.pathname.includes('/member/login.html')) {
+              window.location.replace(guestTrackingUrl);
+            } else {
+              window.location.href = guestTrackingUrl;
+            }
           });
 
           function handleSnsLogin(provider) {
             const currUrl = window.location.pathname + window.location.search;
-            
             if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
               window.MemberAction.snsLogin(provider, currUrl);
             } else {
@@ -299,9 +278,7 @@ export default async function handler(req, res) {
                 const iframe = document.getElementById('ykinas_proxy_iframe');
                 if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
                   iframe.contentWindow.MemberAction.snsLogin(provider, currUrl);
-                } else {
-                  throw new Error("Iframe MemberAction not ready");
-                }
+                } else throw new Error("Iframe MemberAction not ready");
               } catch (e) {
                 const pName = provider === 'kakao' ? 'Kakao' : (provider === 'naver' ? 'Naver' : 'Google');
                 window.open('/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodeURIComponent(currUrl), 'snsLoginPopup', 'width=500,height=500');
