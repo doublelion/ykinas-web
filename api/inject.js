@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       (function() {
         'use strict';
         
-        // ★ [핵심 방어 코드] 아이프레임 내부 실행 방지
+        // ★ [핵심 방어 1] 현재 창이 아이프레임 내부라면 무한루프 방지를 위해 즉시 종료
         if (window.self !== window.top) return; 
 
         if (window.__YKINAS_SKIN_LOADED__) return;
@@ -44,13 +44,14 @@ export default async function handler(req, res) {
 
         const currentPath = window.location.pathname;
         const currentSearch = window.location.search;
-        
-        // ★ [충돌 해결] 현재 경로가 로그인 페이지라면 드로어 주입을 완전히 차단합니다.
-        // 스크린샷처럼 구축된 로그인 UI 위에 드로어가 이중으로 뜨는 것을 방지하고 카페24 네이티브 로직을 보장합니다.
+
+        // ★ [핵심 방어 2] 카페24 로그인 페이지 접근 시 드로어 스크립트 완전 종료
+        // 쿠폰 다운로드, 관심상품 등 리다이렉트로 넘어온 찐 로그인 페이지에서는 카페24 네이티브 로직을 온전히 타게 둡니다.
         if (currentPath.includes('/member/login.html')) {
-            return; 
+            return;
         }
 
+        // ★ [공통 처리] URL에 returnUrl 파라미터가 있다면 우선 수집하고, 없다면 현재 위치를 목적지로 지정
         const urlParams = new URLSearchParams(currentSearch);
         const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
 
@@ -112,6 +113,7 @@ export default async function handler(req, res) {
 
           shadowRoot.innerHTML = \`
             <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+            
             <style>
               :host { all: initial; font-family: 'Noto Sans KR', sans-serif; }
               * { font-family: 'Noto Sans KR', sans-serif; box-sizing: border-box; }
@@ -138,6 +140,7 @@ export default async function handler(req, res) {
 
               .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
               @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+              .mode-hidden { display: none !important; }
 
               .bg-kakao { background-color: #FEE500; color: #191919; }
               .bg-naver-icon { background-color: #03C75A; color: #ffffff; }
@@ -149,7 +152,7 @@ export default async function handler(req, res) {
               <div id="login-backdrop"></div>
               <div id="login-panel" class="custom-scrollbar-02">
                 <button type="button" id="btn_close_drawer" class="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors z-50">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-label="닫기" role="button">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -190,7 +193,7 @@ export default async function handler(req, res) {
                         <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                         <label class="floating-label">비밀번호</label>
                         <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
@@ -258,6 +261,7 @@ export default async function handler(req, res) {
                originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
                originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
                
+               // ★ [적용] 추출해둔 targetReturnUrl을 hidden input에 업데이트
                let wrapRetInput = originWrapInner.querySelector('input[name="returnUrl"]');
                if (wrapRetInput) wrapRetInput.value = targetReturnUrl;
 
@@ -284,6 +288,7 @@ export default async function handler(req, res) {
                        retInput.name = 'returnUrl';
                        form.appendChild(retInput);
                      }
+                     // ★ [적용] 아이프레임 폼 제출 시에도 targetReturnUrl 사용
                      retInput.value = targetReturnUrl;
                    }
                    ifBtn.click();
@@ -296,13 +301,13 @@ export default async function handler(req, res) {
              }
           });
 
-          // 비회원 주문조회 버튼 클릭 시, 로그인 페이지로 이동하여 네이티브 로직 작동 유도
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
             const targetUrl = skinPrefix + '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
             window.location.href = targetUrl;
           });
 
           function handleSnsLogin(provider) {
+            // ★ [적용] 간편 로그인 콜백 후 원래 페이지(targetReturnUrl)로 튕겨내도록 파라미터 적용
             if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
               window.MemberAction.snsLogin(provider, targetReturnUrl);
             } else {
@@ -326,7 +331,6 @@ export default async function handler(req, res) {
           shadowRoot.querySelector('#btn_sns_google').addEventListener('click', () => handleSnsLogin('google'));
         }
 
-        // 로그인 페이지 자동 오픈 로직 제거 (순수 초기화만 진행)
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', initShadowDOM);
         } else {
