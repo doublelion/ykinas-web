@@ -36,26 +36,22 @@ export default async function handler(req, res) {
       (function() {
         'use strict';
         
-        // ★ [핵심 방어 코드] 현재 창이 아이프레임 내부라면 무한루프 방지를 위해 즉시 종료!
+        // ★ [핵심 방어 코드] 아이프레임 내부 실행 방지
         if (window.self !== window.top) return; 
 
         if (window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        // ★ [상태 감지] 현재 페이지가 로그인 페이지인지, 비회원 주문조회인지 판별
         const currentPath = window.location.pathname;
         const currentSearch = window.location.search;
-        const urlParams = new URLSearchParams(currentSearch);
         
-        const isLoginPage = currentPath.includes('/member/login.html');
-        const isGuestOrder = urlParams.has('noMemberOrder') || urlParams.has('order_id');
-
-        // ★ [충돌 해결] 비회원 주문조회 상태라면 카페24 네이티브 로직을 타도록 스크립트 중단
-        if (isLoginPage && isGuestOrder) {
+        // ★ [충돌 해결] 현재 경로가 로그인 페이지라면 드로어 주입을 완전히 차단합니다.
+        // 스크린샷처럼 구축된 로그인 UI 위에 드로어가 이중으로 뜨는 것을 방지하고 카페24 네이티브 로직을 보장합니다.
+        if (currentPath.includes('/member/login.html')) {
             return; 
         }
 
-        // ★ [UX 보정] 목적지 URL 파싱 (파라미터가 있으면 그것을, 없으면 현재 위치를 저장)
+        const urlParams = new URLSearchParams(currentSearch);
         const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
 
         let shadowRoot = null;
@@ -83,15 +79,6 @@ export default async function handler(req, res) {
               setTimeout(() => {
                 drawer.style.display = 'none';
                 document.body.style.overflow = '';
-                
-                // ★ [UX 보정] 독립적인 로그인 페이지에서 닫기를 누르면 빈 화면이 남지 않도록 뒤로가기 처리
-                if (isLoginPage) {
-                    if (document.referrer && !document.referrer.includes('/member/login.html')) {
-                        window.history.back();
-                    } else {
-                        window.location.href = '/'; // 돌아갈 곳이 없으면 메인으로
-                    }
-                }
               }, 400); 
             }
           }
@@ -125,7 +112,6 @@ export default async function handler(req, res) {
 
           shadowRoot.innerHTML = \`
             <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-            
             <style>
               :host { all: initial; font-family: 'Noto Sans KR', sans-serif; }
               * { font-family: 'Noto Sans KR', sans-serif; box-sizing: border-box; }
@@ -152,7 +138,6 @@ export default async function handler(req, res) {
 
               .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
               @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-              .mode-hidden { display: none !important; }
 
               .bg-kakao { background-color: #FEE500; color: #191919; }
               .bg-naver-icon { background-color: #03C75A; color: #ffffff; }
@@ -164,7 +149,7 @@ export default async function handler(req, res) {
               <div id="login-backdrop"></div>
               <div id="login-panel" class="custom-scrollbar-02">
                 <button type="button" id="btn_close_drawer" class="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors z-50">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-label="닫기" role="button">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -205,7 +190,7 @@ export default async function handler(req, res) {
                         <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                         <label class="floating-label">비밀번호</label>
                         <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                           </svg>
@@ -273,7 +258,6 @@ export default async function handler(req, res) {
                originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
                originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
                
-               // ★ [수정됨] returnUrl 파라미터를 원래 가려던 곳(targetReturnUrl)으로 교체
                let wrapRetInput = originWrapInner.querySelector('input[name="returnUrl"]');
                if (wrapRetInput) wrapRetInput.value = targetReturnUrl;
 
@@ -300,7 +284,6 @@ export default async function handler(req, res) {
                        retInput.name = 'returnUrl';
                        form.appendChild(retInput);
                      }
-                     // ★ [핵심 픽스] 엉뚱한 현재 주소가 아닌, 파싱해둔 원래 목적지로 반환
                      retInput.value = targetReturnUrl;
                    }
                    ifBtn.click();
@@ -308,19 +291,18 @@ export default async function handler(req, res) {
                    throw new Error("Iframe form not found");
                  }
                } catch (e) {
-                 // ★ [수정됨] targetReturnUrl 반영
                  window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(targetReturnUrl);
                }
              }
           });
 
+          // 비회원 주문조회 버튼 클릭 시, 로그인 페이지로 이동하여 네이티브 로직 작동 유도
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
             const targetUrl = skinPrefix + '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
             window.location.href = targetUrl;
           });
 
           function handleSnsLogin(provider) {
-            // ★ [수정됨] SNS 로그인도 원래 목적지(targetReturnUrl)로 돌아가도록 설정
             if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
               window.MemberAction.snsLogin(provider, targetReturnUrl);
             } else {
@@ -344,18 +326,11 @@ export default async function handler(req, res) {
           shadowRoot.querySelector('#btn_sns_google').addEventListener('click', () => handleSnsLogin('google'));
         }
 
+        // 로그인 페이지 자동 오픈 로직 제거 (순수 초기화만 진행)
         if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', () => {
-             initShadowDOM();
-             if (isLoginPage && !isGuestOrder) {
-                 window.YkinasLogin.open(); // 로그인 페이지 접근 시 드로어 자동 오픈
-             }
-          });
+          document.addEventListener('DOMContentLoaded', initShadowDOM);
         } else {
           initShadowDOM();
-          if (isLoginPage && !isGuestOrder) {
-              window.YkinasLogin.open(); // 로그인 페이지 접근 시 드로어 자동 오픈
-          }
         }
       })();
     `;
