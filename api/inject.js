@@ -11,10 +11,10 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
 
   const clientReferer = req.headers['referer'] || '';
-  const clientMallId = req.query.mall_id || '';
+  let clientMallId = req.query.mall_id || '';
 
-  if (!clientMallId) {
-    return res.status(200).send(`console.warn('[YKINAS Core] Invalid Mall ID.');`);
+  if (clientMallId === '{$mall_id}' || !clientMallId) {
+    clientMallId = 'ecudemo389879';
   }
 
   try {
@@ -36,43 +36,11 @@ export default async function handler(req, res) {
       (function() {
         'use strict';
         
+        // ★ [핵심 방어 코드] 현재 창이 아이프레임 내부라면 무한루프 방지를 위해 즉시 종료!
         if (window.self !== window.top) return; 
 
         if (window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
-
-        const currentPath = window.location.pathname;
-        const currentSearch = window.location.search;
-        const isLoginPage = currentPath.includes('/member/login.html');
-
-        // ★ [핵심 픽스: 로그인 페이지 완벽 격리 & 파라미터 리셋]
-        if (isLoginPage) {
-            // 1. 커스텀 드로어를 아예 생성하지 않아 네이티브 로그인 폼 충돌/새로고침 에러를 원천 차단합니다.
-            // 2. 고객님이 구축하신 HTML의 '비회원 주문' 버튼 이벤트만 정밀하게 낚아챕니다.
-            document.addEventListener('click', function(e) {
-                const target = e.target.closest('button, a');
-                if (!target) return;
-                
-                const onClickAttr = target.getAttribute('onclick') || '';
-                
-                // switchMode('guest')가 포함된 버튼을 클릭했을 때
-                if (onClickAttr.includes("switchMode('guest')")) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    // 기존에 덕지덕지 붙어있던 ?returnUrl=... 파라미터를 모두 버리고, 
-                    // 무조건 카페24 비회원 주문조회 뷰로 새롭게 매핑하여 하드 리프레시합니다.
-                    window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
-                }
-            }, true);
-
-            // ★ 여기서 스크립트를 즉시 종료합니다. (아래 드로어 코드는 로그인 페이지에서 절대 실행되지 않음)
-            return; 
-        }
-
-        // --- 이하 일반 페이지(상세, 메인 등) 전용 커스텀 로그인 드로어 로직 ---
-        const urlParams = new URLSearchParams(currentSearch);
-        const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
 
         let shadowRoot = null;
         let drawer = null;
@@ -108,7 +76,8 @@ export default async function handler(req, res) {
           if (isInitialized) return;
           isInitialized = true;
 
-          const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
+          // 프록시 아이프레임 생성 (메인 화면에서 단 한 번만 실행됨)
+          const skinMatch = window.location.pathname.match(/^\\/skin-[^\\/]+/);
           const skinPrefix = skinMatch ? skinMatch[0] : '';
           
           let proxyIframe = document.getElementById('ykinas_proxy_iframe');
@@ -234,9 +203,9 @@ export default async function handler(req, res) {
                     </div>
 
                     <div class="mt-12 text-center border-t border-gray-100 pt-8">
-                      <!-- 드로어 내 비회원 주문조회 버튼 (여기도 매핑된 URL로 동작) -->
-                      <button type="button" id="btn_go_guest" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">
-                        비회원으로 주문하셨나요?
+                      <p class="text-xs text-gray-400 font-light mb-4">비회원으로 주문하셨나요?</p>
+                      <button type="button" id="btn_go_guest" class="inline-flex items-center justify-center w-full bg-white border border-black text-black py-4 text-sm font-medium tracking-widest hover:bg-black hover:text-white transition-colors duration-300 cursor-pointer">
+                        비회원 주문 조회하기
                       </button>
                     </div>
                   </div>
@@ -279,10 +248,6 @@ export default async function handler(req, res) {
              if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
                originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
                originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
-               
-               let wrapRetInput = originWrapInner.querySelector('input[name="returnUrl"]');
-               if (wrapRetInput) wrapRetInput.value = targetReturnUrl;
-
                (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
              } else {
                try {
@@ -306,37 +271,40 @@ export default async function handler(req, res) {
                        retInput.name = 'returnUrl';
                        form.appendChild(retInput);
                      }
-                     retInput.value = targetReturnUrl;
+                     retInput.value = window.location.pathname + window.location.search;
                    }
                    ifBtn.click();
                  } else {
                    throw new Error("Iframe form not found");
                  }
                } catch (e) {
-                 window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(targetReturnUrl);
+                 window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
                }
              }
           });
 
-          // 드로어 내부의 비회원 버튼 또한 동일한 지정 파라미터로 매핑
+          // ★ [핵심 픽스] 깊은 경로에서 버그가 발생하지 않도록 절대 경로(skinPrefix)로 라우팅 고정
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
-            window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
+            const targetUrl = skinPrefix + '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
+            window.location.href = targetUrl;
           });
 
           function handleSnsLogin(provider) {
+            const currUrl = window.location.pathname + window.location.search;
+            
             if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-              window.MemberAction.snsLogin(provider, targetReturnUrl);
+              window.MemberAction.snsLogin(provider, currUrl);
             } else {
               try {
                 const iframe = document.getElementById('ykinas_proxy_iframe');
                 if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
-                  iframe.contentWindow.MemberAction.snsLogin(provider, targetReturnUrl);
+                  iframe.contentWindow.MemberAction.snsLogin(provider, currUrl);
                 } else {
                   throw new Error("Iframe MemberAction not ready");
                 }
               } catch (e) {
                 const pName = provider === 'kakao' ? 'Kakao' : (provider === 'naver' ? 'Naver' : 'Google');
-                window.open('/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodeURIComponent(targetReturnUrl), 'snsLoginPopup', 'width=500,height=500');
+                window.open('/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodeURIComponent(currUrl), 'snsLoginPopup', 'width=500,height=500');
               }
             }
             window.YkinasLogin.close();
