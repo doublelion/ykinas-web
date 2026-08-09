@@ -42,6 +42,22 @@ export default async function handler(req, res) {
         if (window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
+        // ★ [상태 감지] 현재 페이지가 로그인 페이지인지, 비회원 주문조회인지 판별
+        const currentPath = window.location.pathname;
+        const currentSearch = window.location.search;
+        const urlParams = new URLSearchParams(currentSearch);
+        
+        const isLoginPage = currentPath.includes('/member/login.html');
+        const isGuestOrder = urlParams.has('noMemberOrder') || urlParams.has('order_id');
+
+        // ★ [충돌 해결] 비회원 주문조회 상태라면 카페24 네이티브 로직을 타도록 스크립트 중단
+        if (isLoginPage && isGuestOrder) {
+            return; 
+        }
+
+        // ★ [UX 보정] 목적지 URL 파싱 (파라미터가 있으면 그것을, 없으면 현재 위치를 저장)
+        const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
+
         let shadowRoot = null;
         let drawer = null;
         let backdrop = null;
@@ -67,6 +83,15 @@ export default async function handler(req, res) {
               setTimeout(() => {
                 drawer.style.display = 'none';
                 document.body.style.overflow = '';
+                
+                // ★ [UX 보정] 독립적인 로그인 페이지에서 닫기를 누르면 빈 화면이 남지 않도록 뒤로가기 처리
+                if (isLoginPage) {
+                    if (document.referrer && !document.referrer.includes('/member/login.html')) {
+                        window.history.back();
+                    } else {
+                        window.location.href = '/'; // 돌아갈 곳이 없으면 메인으로
+                    }
+                }
               }, 400); 
             }
           }
@@ -76,8 +101,7 @@ export default async function handler(req, res) {
           if (isInitialized) return;
           isInitialized = true;
 
-          // 프록시 아이프레임 생성 (메인 화면에서 단 한 번만 실행됨)
-          const skinMatch = window.location.pathname.match(/^\\/skin-[^\\/]+/);
+          const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
           const skinPrefix = skinMatch ? skinMatch[0] : '';
           
           let proxyIframe = document.getElementById('ykinas_proxy_iframe');
@@ -248,6 +272,11 @@ export default async function handler(req, res) {
              if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
                originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
                originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
+               
+               // ★ [수정됨] returnUrl 파라미터를 원래 가려던 곳(targetReturnUrl)으로 교체
+               let wrapRetInput = originWrapInner.querySelector('input[name="returnUrl"]');
+               if (wrapRetInput) wrapRetInput.value = targetReturnUrl;
+
                (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
              } else {
                try {
@@ -271,40 +300,40 @@ export default async function handler(req, res) {
                        retInput.name = 'returnUrl';
                        form.appendChild(retInput);
                      }
-                     retInput.value = window.location.pathname + window.location.search;
+                     // ★ [핵심 픽스] 엉뚱한 현재 주소가 아닌, 파싱해둔 원래 목적지로 반환
+                     retInput.value = targetReturnUrl;
                    }
                    ifBtn.click();
                  } else {
                    throw new Error("Iframe form not found");
                  }
                } catch (e) {
-                 window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+                 // ★ [수정됨] targetReturnUrl 반영
+                 window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(targetReturnUrl);
                }
              }
           });
 
-          // ★ [핵심 픽스] 깊은 경로에서 버그가 발생하지 않도록 절대 경로(skinPrefix)로 라우팅 고정
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
             const targetUrl = skinPrefix + '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
             window.location.href = targetUrl;
           });
 
           function handleSnsLogin(provider) {
-            const currUrl = window.location.pathname + window.location.search;
-            
+            // ★ [수정됨] SNS 로그인도 원래 목적지(targetReturnUrl)로 돌아가도록 설정
             if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-              window.MemberAction.snsLogin(provider, currUrl);
+              window.MemberAction.snsLogin(provider, targetReturnUrl);
             } else {
               try {
                 const iframe = document.getElementById('ykinas_proxy_iframe');
                 if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
-                  iframe.contentWindow.MemberAction.snsLogin(provider, currUrl);
+                  iframe.contentWindow.MemberAction.snsLogin(provider, targetReturnUrl);
                 } else {
                   throw new Error("Iframe MemberAction not ready");
                 }
               } catch (e) {
                 const pName = provider === 'kakao' ? 'Kakao' : (provider === 'naver' ? 'Naver' : 'Google');
-                window.open('/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodeURIComponent(currUrl), 'snsLoginPopup', 'width=500,height=500');
+                window.open('/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodeURIComponent(targetReturnUrl), 'snsLoginPopup', 'width=500,height=500');
               }
             }
             window.YkinasLogin.close();
@@ -316,9 +345,17 @@ export default async function handler(req, res) {
         }
 
         if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', initShadowDOM);
+          document.addEventListener('DOMContentLoaded', () => {
+             initShadowDOM();
+             if (isLoginPage && !isGuestOrder) {
+                 window.YkinasLogin.open(); // 로그인 페이지 접근 시 드로어 자동 오픈
+             }
+          });
         } else {
           initShadowDOM();
+          if (isLoginPage && !isGuestOrder) {
+              window.YkinasLogin.open(); // 로그인 페이지 접근 시 드로어 자동 오픈
+          }
         }
       })();
     `;
