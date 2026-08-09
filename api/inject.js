@@ -13,7 +13,6 @@ export default async function handler(req, res) {
   const clientReferer = req.headers['referer'] || '';
   const clientMallId = req.query.mall_id || '';
 
-  // ★ 하드코딩된 특정 테스트 스킨 ID 조건 완전 제거
   if (!clientMallId) {
     return res.status(200).send(`console.warn('[YKINAS Core] Invalid Mall ID.');`);
   }
@@ -46,25 +45,32 @@ export default async function handler(req, res) {
         const currentSearch = window.location.search;
         const isLoginPage = currentPath.includes('/member/login.html');
 
-        // ★ [핵심 픽스 1] 비회원 주문조회 강제 리다이렉트 (모든 꼬인 파라미터 리셋)
-        // 캡처링(true) 단계를 사용하여 클릭 이벤트를 최우선으로 가로챕니다.
-        // 기존 스크립트 흐름을 끊지 않으면서, 오직 "switchMode('guest')" 버튼이나 "btn_go_guest"를 눌렀을 때만 작동합니다.
-        document.addEventListener('click', function(e) {
-            const target = e.target.closest('button, a');
-            if (!target) return;
-            
-            const onClickAttr = target.getAttribute('onclick') || '';
-            const isGuestBtn = onClickAttr.includes("switchMode('guest')") || target.id === 'btn_go_guest';
-            
-            if (isGuestBtn) {
-                e.preventDefault();
-                e.stopPropagation();
-                // 모든 잡다한 파라미터(?returnUrl=쿠폰 등)를 무시하고 무조건 지정된 주소로 하드 리프레시
-                window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
-            }
-        }, true);
+        // ★ [핵심 픽스: 로그인 페이지 완벽 격리 & 파라미터 리셋]
+        if (isLoginPage) {
+            // 1. 커스텀 드로어를 아예 생성하지 않아 네이티브 로그인 폼 충돌/새로고침 에러를 원천 차단합니다.
+            // 2. 고객님이 구축하신 HTML의 '비회원 주문' 버튼 이벤트만 정밀하게 낚아챕니다.
+            document.addEventListener('click', function(e) {
+                const target = e.target.closest('button, a');
+                if (!target) return;
+                
+                const onClickAttr = target.getAttribute('onclick') || '';
+                
+                // switchMode('guest')가 포함된 버튼을 클릭했을 때
+                if (onClickAttr.includes("switchMode('guest')")) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // 기존에 덕지덕지 붙어있던 ?returnUrl=... 파라미터를 모두 버리고, 
+                    // 무조건 카페24 비회원 주문조회 뷰로 새롭게 매핑하여 하드 리프레시합니다.
+                    window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
+                }
+            }, true);
 
-        // ★ [공통 처리] URL에 returnUrl 파라미터가 있다면 우선 수집하고, 없다면 현재 위치를 목적지로 지정
+            // ★ 여기서 스크립트를 즉시 종료합니다. (아래 드로어 코드는 로그인 페이지에서 절대 실행되지 않음)
+            return; 
+        }
+
+        // --- 이하 일반 페이지(상세, 메인 등) 전용 커스텀 로그인 드로어 로직 ---
         const urlParams = new URLSearchParams(currentSearch);
         const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
 
@@ -114,12 +120,8 @@ export default async function handler(req, res) {
             document.body.appendChild(proxyIframe);
           }
 
-          // ★ [핵심 픽스 2] 단독 로그인 페이지에서는 오리지널 폼을 유지합니다.
-          // 이전에 스크립트를 중단(return)시켜 로그인이 깨진 원인을 바로잡았습니다.
-          if (!isLoginPage) {
-              const originWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-              if (originWrap) originWrap.style.display = 'none';
-          }
+          const originWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
+          if (originWrap) originWrap.style.display = 'none';
 
           const host = document.createElement('div');
           host.id = 'ykinas-global-drawer-root';
@@ -232,7 +234,7 @@ export default async function handler(req, res) {
                     </div>
 
                     <div class="mt-12 text-center border-t border-gray-100 pt-8">
-                      <!-- ★ 커스텀 버튼 디자인 유지 (여기서도 전역 클릭 이벤트가 감지되어 리다이렉트 처리됨) -->
+                      <!-- 드로어 내 비회원 주문조회 버튼 (여기도 매핑된 URL로 동작) -->
                       <button type="button" id="btn_go_guest" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">
                         비회원으로 주문하셨나요?
                       </button>
@@ -314,6 +316,11 @@ export default async function handler(req, res) {
                  window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(targetReturnUrl);
                }
              }
+          });
+
+          // 드로어 내부의 비회원 버튼 또한 동일한 지정 파라미터로 매핑
+          shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
+            window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
           });
 
           function handleSnsLogin(provider) {
