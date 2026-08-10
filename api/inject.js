@@ -8,8 +8,6 @@ const supabase = createClient(
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-
-  // ★ [핵심 픽스 1] 개발 및 트러블슈팅을 위해 강력한 캐시 방지(No-Cache) 적용
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
@@ -18,7 +16,7 @@ export default async function handler(req, res) {
   const clientMallId = req.query.mall_id || '';
 
   const generateFallback = (errMsg) => `
-    console.error('[YKINAS Core] Validation Failed: ${errMsg}');
+    console.error('[YKINAS Core] Server Validation Failed:', '${errMsg}');
     window.YkinasLogin = { open: function() { window.location.href = '/member/login.html'; } };
   `;
 
@@ -32,31 +30,34 @@ export default async function handler(req, res) {
       .eq('is_active', true)
       .single();
 
-    // ★ [핵심 픽스 2] DB 조회 실패 시, 넘어온 mall_id 값을 콘솔에 직관적으로 표출
     if (error || !license) {
-      return res.status(200).send(generateFallback(`Unauthorized or Inactive License. (Requested ID: "${clientMallId}")`));
+      return res.status(200).send(generateFallback(`License not found for: ${clientMallId}`));
     }
-
-    const allowedDomains = license.skin_allowed_domains.map(d => d.domain);
-    const isDomainMatch = allowedDomains.some(domain => clientReferer.includes(domain)) || clientReferer === '';
-
-    if (!isDomainMatch) return res.status(200).send(generateFallback('Domain mismatch.'));
 
     const injectedScript = `
       (function() {
         'use strict';
         
-        if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
+        console.log('%c[YKINAS Core]', 'background:#2563EB;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold;', '1. Server Connection Success! Mall_ID:', '${clientMallId}');
+
+        if (window.self !== window.top) {
+            console.log('[YKINAS Core] Iframe environment detected. Aborting.');
+            return;
+        }
+        if (window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
         let isDrawerReady = false;
         let isOpenQueued = false;
 
+        // ★ 글로벌 객체 바인딩
         window.YkinasLogin = {
           open: function() {
+            console.log('%c[YKINAS Core]', 'background:#059669;color:#fff;padding:2px 6px;border-radius:3px;', '2. open() triggered by HTML click.');
             if (isDrawerReady) {
               this._executeOpen();
             } else {
+              console.log('[YKINAS Core] DOM not ready, queuing open event...');
               isOpenQueued = true;
               initShadowDOM();
             }
@@ -73,8 +74,9 @@ export default async function handler(req, res) {
             }, 400);
           },
           _executeOpen: function() {
+            console.log('%c[YKINAS Core]', 'background:#D97706;color:#fff;padding:2px 6px;border-radius:3px;', '3. Executing Drawer Animation.');
             const shadow = document.getElementById('ykinas-global-drawer-root')?.shadowRoot;
-            if (!shadow) return;
+            if (!shadow) return console.error('[YKINAS Core] Shadow Root missing.');
             const drawer = shadow.querySelector('#global-login-drawer');
             const backdrop = shadow.querySelector('#login-backdrop');
             const panel = shadow.querySelector('#login-panel');
@@ -95,11 +97,11 @@ export default async function handler(req, res) {
         const isLoginPage = currentPath.includes('/member/login.html');
 
         if (isLoginPage) {
+            console.log('[YKINAS Core] Native Login Page detected.');
             document.addEventListener('click', function(e) {
                 const target = e.target.closest('button, a');
                 if (target && (target.getAttribute('onclick') || '').includes("switchMode('guest')")) {
-                    e.preventDefault();
-                    e.stopPropagation();
+                    e.preventDefault(); e.stopPropagation();
                     window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
                 }
             }, true);
@@ -114,6 +116,7 @@ export default async function handler(req, res) {
         function initShadowDOM() {
           if (window._ykinasInitialized || !document.body) return;
           window._ykinasInitialized = true;
+          console.log('[YKINAS Core] Mounting Shadow DOM...');
 
           const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
           const skinPrefix = skinMatch ? skinMatch[0] : '';
@@ -204,73 +207,13 @@ export default async function handler(req, res) {
 
           shadowRoot.querySelector('#btn_close_drawer').addEventListener('click', () => window.YkinasLogin.close());
           shadowRoot.querySelector('#login-backdrop').addEventListener('click', () => window.YkinasLogin.close());
-
           shadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
             const pw = shadowRoot.querySelector('#s_pw');
             pw.type = pw.type === 'password' ? 'text' : 'password';
           });
-
-          shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
-             const idVal = shadowRoot.querySelector('#s_id').value.trim();
-             const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
-             if (!idVal || !pwVal) return alert("아이디와 비밀번호를 모두 입력해주세요."); 
-             
-             const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-             if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
-               originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
-               originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
-               let wrapRetInput = originWrapInner.querySelector('input[name="returnUrl"]');
-               if (wrapRetInput) wrapRetInput.value = targetReturnUrl;
-               (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
-             } else {
-               try {
-                 const iframeDoc = proxyIframe.contentDocument || proxyIframe.contentWindow.document;
-                 const ifId = iframeDoc.querySelector('input[name="member_id"]');
-                 const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
-                 const ifBtn = iframeDoc.getElementById('origin_btn_login');
-
-                 if (ifId && ifPw && ifBtn) {
-                   ifId.value = idVal; ifPw.value = pwVal;
-                   const form = ifId.closest('form');
-                   if (form) {
-                     form.target = "_parent"; 
-                     let retInput = form.querySelector('input[name="returnUrl"]');
-                     if (!retInput) { retInput = iframeDoc.createElement('input'); retInput.type = 'hidden'; retInput.name = 'returnUrl'; form.appendChild(retInput); }
-                     retInput.value = targetReturnUrl;
-                   }
-                   ifBtn.click();
-                 } else throw new Error();
-               } catch (e) {
-                 window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(targetReturnUrl);
-               }
-             }
-          });
-
-          shadowRoot.querySelector('#btn_go_guest').addEventListener('click', () => {
-            window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
-          });
-
-          function handleSnsLogin(provider) {
-            if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-              window.MemberAction.snsLogin(provider, targetReturnUrl);
-            } else {
-              try {
-                if (proxyIframe.contentWindow && typeof proxyIframe.contentWindow.MemberAction.snsLogin === 'function') {
-                  proxyIframe.contentWindow.MemberAction.snsLogin(provider, targetReturnUrl);
-                } else throw new Error();
-              } catch (e) {
-                const pName = provider === 'kakao' ? 'Kakao' : (provider === 'naver' ? 'Naver' : 'Google');
-                window.open('/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodeURIComponent(targetReturnUrl), 'snsLoginPopup', 'width=500,height=500');
-              }
-            }
-            window.YkinasLogin.close();
-          }
-
-          shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => handleSnsLogin('kakao'));
-          shadowRoot.querySelector('#btn_sns_naver').addEventListener('click', () => handleSnsLogin('naver'));
-          shadowRoot.querySelector('#btn_sns_google').addEventListener('click', () => handleSnsLogin('google'));
           
           isDrawerReady = true;
+          console.log('[YKINAS Core] Drawer Initialization Complete.');
           if (isOpenQueued) window.YkinasLogin._executeOpen();
         }
 
