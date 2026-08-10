@@ -41,26 +41,49 @@ export default async function handler(req, res) {
         if (window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        // ★ [핵심 픽스 1] 비동기 로딩 및 레이스 컨디션 방어: 전역 객체 즉시 선언
-        window.YkinasLogin = window.YkinasLogin || {
+        const currentPath = window.location.pathname;
+        const currentSearch = window.location.search;
+        const isLoginPage = currentPath.includes('/member/login.html');
+
+        // ★ [핵심 픽스: 로그인 페이지 완벽 격리 & 파라미터 리셋]
+        if (isLoginPage) {
+            // 1. 커스텀 드로어를 아예 생성하지 않아 네이티브 로그인 폼 충돌/새로고침 에러를 원천 차단합니다.
+            // 2. 고객님이 구축하신 HTML의 '비회원 주문' 버튼 이벤트만 정밀하게 낚아챕니다.
+            document.addEventListener('click', function(e) {
+                const target = e.target.closest('button, a');
+                if (!target) return;
+                
+                const onClickAttr = target.getAttribute('onclick') || '';
+                
+                // switchMode('guest')가 포함된 버튼을 클릭했을 때
+                if (onClickAttr.includes("switchMode('guest')")) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // 기존에 덕지덕지 붙어있던 ?returnUrl=... 파라미터를 모두 버리고, 
+                    // 무조건 카페24 비회원 주문조회 뷰로 새롭게 매핑하여 하드 리프레시합니다.
+                    window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
+                }
+            }, true);
+
+            // ★ 여기서 스크립트를 즉시 종료합니다. (아래 드로어 코드는 로그인 페이지에서 절대 실행되지 않음)
+            return; 
+        }
+
+        // --- 이하 일반 페이지(상세, 메인 등) 전용 커스텀 로그인 드로어 로직 ---
+        const urlParams = new URLSearchParams(currentSearch);
+        const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
+
+        let shadowRoot = null;
+        let drawer = null;
+        let backdrop = null;
+        let panel = null;
+        let isInitialized = false;
+
+        window.YkinasLogin = {
           open: function() {
-            if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', () => this._triggerOpen());
-            } else {
-              this._triggerOpen();
-            }
-          },
-          _triggerOpen: function() {
-            if (!window._ykinasInitialized) initShadowDOM();
-            
-            const host = document.getElementById('ykinas-global-drawer-root');
-            if (!host || !host.shadowRoot) return;
-            
-            const drawer = host.shadowRoot.querySelector('#global-login-drawer');
-            const backdrop = host.shadowRoot.querySelector('#login-backdrop');
-            const panel = host.shadowRoot.querySelector('#login-panel');
-            
-            if (drawer && backdrop && panel) {
+            if (!isInitialized) initShadowDOM();
+            if (drawer) {
               drawer.style.display = 'flex';
               requestAnimationFrame(() => {
                 backdrop.classList.add('is-open');
@@ -70,14 +93,7 @@ export default async function handler(req, res) {
             }
           },
           close: function() {
-            const host = document.getElementById('ykinas-global-drawer-root');
-            if (!host || !host.shadowRoot) return;
-            
-            const drawer = host.shadowRoot.querySelector('#global-login-drawer');
-            const backdrop = host.shadowRoot.querySelector('#login-backdrop');
-            const panel = host.shadowRoot.querySelector('#login-panel');
-            
-            if (drawer && backdrop && panel) {
+            if (drawer) {
               backdrop.classList.remove('is-open');
               panel.classList.remove('is-open');
               setTimeout(() => {
@@ -88,50 +104,9 @@ export default async function handler(req, res) {
           }
         };
 
-        const currentPath = window.location.pathname;
-        const currentSearch = window.location.search;
-        const isLoginPage = currentPath.includes('/member/login.html');
-
-        if (isLoginPage) {
-            document.addEventListener('click', function(e) {
-                const target = e.target.closest('button, a');
-                if (!target) return;
-                
-                const onClickAttr = target.getAttribute('onclick') || '';
-                
-                if (onClickAttr.includes("switchMode('guest')")) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
-                }
-            }, true);
-            return; 
-        }
-
-        // ★ [핵심 픽스 2] 강력한 캡처링 단계 이벤트 인터셉트 
-        // <a> 태그를 통한 순수 로그인 페이지 이동만 정밀하게 낚아챕니다.
-        document.addEventListener('click', function(e) {
-          const target = e.target.closest('a');
-          if (!target) return;
-          
-          const href = target.getAttribute('href') || '';
-          
-          if (href.includes('/member/login.html') && !href.includes('noMemberOrder') && !target.getAttribute('target')) {
-            e.preventDefault();
-            e.stopPropagation();
-            window.YkinasLogin.open();
-          }
-        }, true);
-
-        window._ykinasInitialized = false;
-
         function initShadowDOM() {
-          if (window._ykinasInitialized) return;
-          if (!document.body) return; // body가 아직 로드되지 않았다면 대기
-          window._ykinasInitialized = true;
-
-          const urlParams = new URLSearchParams(currentSearch);
-          const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
+          if (isInitialized) return;
+          isInitialized = true;
 
           const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
           const skinPrefix = skinMatch ? skinMatch[0] : '';
@@ -153,7 +128,7 @@ export default async function handler(req, res) {
           host.style.cssText = 'position: relative; z-index: 2147483647;'; 
           document.body.appendChild(host);
 
-          const shadowRoot = host.attachShadow({ mode: 'closed' });
+          shadowRoot = host.attachShadow({ mode: 'closed' });
 
           shadowRoot.innerHTML = \`
             <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -259,6 +234,7 @@ export default async function handler(req, res) {
                     </div>
 
                     <div class="mt-12 text-center border-t border-gray-100 pt-8">
+                      <!-- 드로어 내 비회원 주문조회 버튼 (여기도 매핑된 URL로 동작) -->
                       <button type="button" id="btn_go_guest" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">
                         비회원으로 주문하셨나요?
                       </button>
@@ -269,7 +245,9 @@ export default async function handler(req, res) {
             </div>
           \`;
 
-          const backdrop = shadowRoot.querySelector('#login-backdrop');
+          drawer = shadowRoot.querySelector('#global-login-drawer');
+          backdrop = shadowRoot.querySelector('#login-backdrop');
+          panel = shadowRoot.querySelector('#login-panel');
 
           if (skinPrefix) {
             const allLinks = shadowRoot.querySelectorAll('a');
@@ -340,6 +318,7 @@ export default async function handler(req, res) {
              }
           });
 
+          // 드로어 내부의 비회원 버튼 또한 동일한 지정 파라미터로 매핑
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
             window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
           });
