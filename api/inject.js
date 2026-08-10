@@ -45,32 +45,22 @@ export default async function handler(req, res) {
         const currentSearch = window.location.search;
         const isLoginPage = currentPath.includes('/member/login.html');
 
-        // ★ [핵심 픽스: 로그인 페이지 완벽 격리 & 파라미터 리셋]
         if (isLoginPage) {
-            // 1. 커스텀 드로어를 아예 생성하지 않아 네이티브 로그인 폼 충돌/새로고침 에러를 원천 차단합니다.
-            // 2. 고객님이 구축하신 HTML의 '비회원 주문' 버튼 이벤트만 정밀하게 낚아챕니다.
             document.addEventListener('click', function(e) {
                 const target = e.target.closest('button, a');
                 if (!target) return;
                 
                 const onClickAttr = target.getAttribute('onclick') || '';
                 
-                // switchMode('guest')가 포함된 버튼을 클릭했을 때
                 if (onClickAttr.includes("switchMode('guest')")) {
                     e.preventDefault();
                     e.stopPropagation();
-                    
-                    // 기존에 덕지덕지 붙어있던 ?returnUrl=... 파라미터를 모두 버리고, 
-                    // 무조건 카페24 비회원 주문조회 뷰로 새롭게 매핑하여 하드 리프레시합니다.
                     window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
                 }
             }, true);
-
-            // ★ 여기서 스크립트를 즉시 종료합니다. (아래 드로어 코드는 로그인 페이지에서 절대 실행되지 않음)
             return; 
         }
 
-        // --- 이하 일반 페이지(상세, 메인 등) 전용 커스텀 로그인 드로어 로직 ---
         const urlParams = new URLSearchParams(currentSearch);
         const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
 
@@ -103,6 +93,16 @@ export default async function handler(req, res) {
             }
           }
         };
+
+        // ★ [핵심 픽스: 로그인 페이지 직행 방지 및 드로어 인터셉트 로직]
+        document.addEventListener('click', function(e) {
+          const loginLink = e.target.closest('a[href*="/member/login.html"]');
+          if (loginLink) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.YkinasLogin.open();
+          }
+        }, true);
 
         function initShadowDOM() {
           if (isInitialized) return;
@@ -234,7 +234,6 @@ export default async function handler(req, res) {
                     </div>
 
                     <div class="mt-12 text-center border-t border-gray-100 pt-8">
-                      <!-- 드로어 내 비회원 주문조회 버튼 (여기도 매핑된 URL로 동작) -->
                       <button type="button" id="btn_go_guest" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">
                         비회원으로 주문하셨나요?
                       </button>
@@ -318,7 +317,6 @@ export default async function handler(req, res) {
              }
           });
 
-          // 드로어 내부의 비회원 버튼 또한 동일한 지정 파라미터로 매핑
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
             window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
           });
