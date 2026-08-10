@@ -8,19 +8,17 @@ const supabase = createClient(
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
+
+  // ★ 로딩 속도 최적화: Vercel 캐싱 (에러 없이 즉각 로드)
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
 
   const clientReferer = req.headers['referer'] || '';
-  const clientMallId = req.query.mall_id || '';
+  let clientMallId = req.query.mall_id || '';
 
-  const generateFallback = (errMsg) => `
-    console.error('[YKINAS Core] Server Validation Failed:', '${errMsg}');
-    window.YkinasLogin = { open: function() { window.location.href = '/member/login.html'; } };
-  `;
-
-  if (!clientMallId) return res.status(200).send(generateFallback('Invalid Mall ID'));
+  // ★ [핵심 복원] 8월 9일 소스의 완벽했던 방어 로직 (카페24 치환 변수 에러 원천 차단)
+  if (clientMallId === '{$mall_id}' || !clientMallId) {
+    clientMallId = 'ecudemo389879';
+  }
 
   try {
     const { data: license, error } = await supabase
@@ -30,64 +28,49 @@ export default async function handler(req, res) {
       .eq('is_active', true)
       .single();
 
-    if (error || !license) {
-      return res.status(200).send(generateFallback(`License not found for: ${clientMallId}`));
-    }
+    if (error || !license) return res.status(200).send(`console.warn('[YKINAS Core] Unauthorized.');`);
 
+    const allowedDomains = license.skin_allowed_domains.map(d => d.domain);
+    const isDomainMatch = allowedDomains.some(domain => clientReferer.includes(domain)) || clientReferer === '';
+
+    if (!isDomainMatch) return res.status(200).send(`console.warn('[YKINAS Core] Domain error.');`);
+
+    // ★ [핵심 복원] 8월 9일 소스의 직관적이고 빠릿한 드로어 로직 그대로 복원
     const injectedScript = `
       (function() {
         'use strict';
         
-        console.log('%c[YKINAS Core]', 'background:#2563EB;color:#fff;padding:4px 8px;border-radius:4px;font-weight:bold;', '1. Server Connection Success! Mall_ID:', '${clientMallId}');
+        if (window.self !== window.top) return; 
 
-        if (window.self !== window.top) {
-            console.log('[YKINAS Core] Iframe environment detected. Aborting.');
-            return;
-        }
         if (window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        let isDrawerReady = false;
-        let isOpenQueued = false;
+        let shadowRoot = null;
+        let drawer = null;
+        let backdrop = null;
+        let panel = null;
+        let isInitialized = false;
 
-        // ★ 글로벌 객체 바인딩
         window.YkinasLogin = {
           open: function() {
-            console.log('%c[YKINAS Core]', 'background:#059669;color:#fff;padding:2px 6px;border-radius:3px;', '2. open() triggered by HTML click.');
-            if (isDrawerReady) {
-              this._executeOpen();
-            } else {
-              console.log('[YKINAS Core] DOM not ready, queuing open event...');
-              isOpenQueued = true;
-              initShadowDOM();
-            }
-          },
-          close: function() {
-            const shadow = document.getElementById('ykinas-global-drawer-root')?.shadowRoot;
-            if (!shadow) return;
-            shadow.querySelector('#login-backdrop')?.classList.remove('is-open');
-            shadow.querySelector('#login-panel')?.classList.remove('is-open');
-            setTimeout(() => {
-              const drawer = shadow.querySelector('#global-login-drawer');
-              if(drawer) drawer.style.display = 'none';
-              document.body.style.overflow = '';
-            }, 400);
-          },
-          _executeOpen: function() {
-            console.log('%c[YKINAS Core]', 'background:#D97706;color:#fff;padding:2px 6px;border-radius:3px;', '3. Executing Drawer Animation.');
-            const shadow = document.getElementById('ykinas-global-drawer-root')?.shadowRoot;
-            if (!shadow) return console.error('[YKINAS Core] Shadow Root missing.');
-            const drawer = shadow.querySelector('#global-login-drawer');
-            const backdrop = shadow.querySelector('#login-backdrop');
-            const panel = shadow.querySelector('#login-panel');
-            
-            if (drawer && backdrop && panel) {
+            if (!isInitialized) initShadowDOM();
+            if (drawer) {
               drawer.style.display = 'flex';
               requestAnimationFrame(() => {
                 backdrop.classList.add('is-open');
                 panel.classList.add('is-open');
               });
               document.body.style.overflow = 'hidden';
+            }
+          },
+          close: function() {
+            if (drawer) {
+              backdrop.classList.remove('is-open');
+              panel.classList.remove('is-open');
+              setTimeout(() => {
+                drawer.style.display = 'none';
+                document.body.style.overflow = '';
+              }, 400); 
             }
           }
         };
@@ -97,11 +80,13 @@ export default async function handler(req, res) {
         const isLoginPage = currentPath.includes('/member/login.html');
 
         if (isLoginPage) {
-            console.log('[YKINAS Core] Native Login Page detected.');
             document.addEventListener('click', function(e) {
                 const target = e.target.closest('button, a');
-                if (target && (target.getAttribute('onclick') || '').includes("switchMode('guest')")) {
-                    e.preventDefault(); e.stopPropagation();
+                if (!target) return;
+                const onClickAttr = target.getAttribute('onclick') || '';
+                if (onClickAttr.includes("switchMode('guest')")) {
+                    e.preventDefault();
+                    e.stopPropagation();
                     window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
                 }
             }, true);
@@ -111,12 +96,9 @@ export default async function handler(req, res) {
         const urlParams = new URLSearchParams(currentSearch);
         const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
 
-        window._ykinasInitialized = false;
-
         function initShadowDOM() {
-          if (window._ykinasInitialized || !document.body) return;
-          window._ykinasInitialized = true;
-          console.log('[YKINAS Core] Mounting Shadow DOM...');
+          if (isInitialized) return;
+          isInitialized = true;
 
           const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
           const skinPrefix = skinMatch ? skinMatch[0] : '';
@@ -138,10 +120,11 @@ export default async function handler(req, res) {
           host.style.cssText = 'position: relative; z-index: 2147483647;'; 
           document.body.appendChild(host);
 
-          const shadowRoot = host.attachShadow({ mode: 'closed' });
+          shadowRoot = host.attachShadow({ mode: 'closed' });
 
           shadowRoot.innerHTML = \`
             <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+            
             <style>
               :host { all: initial; font-family: 'Noto Sans KR', sans-serif; }
               * { font-family: 'Noto Sans KR', sans-serif; box-sizing: border-box; }
@@ -166,6 +149,7 @@ export default async function handler(req, res) {
               .bg-btn-primary { background-color: #111111; color: #ffffff; }
               .bg-btn-primary:hover { background-color: #333333; }
             </style>
+
             <div id="global-login-drawer">
               <div id="login-backdrop"></div>
               <div id="login-panel" class="custom-scrollbar-02">
@@ -191,30 +175,113 @@ export default async function handler(req, res) {
                       <button type="button" id="btn_submit_login" class="w-full py-4 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded shadow-md mt-6">로그인</button>
                     </div>
                     <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500"><a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-3 bg-gray-300"></span><a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-3 bg-gray-300"></span><a href="/member/agreement.html" class="font-bold text-black border-b border-black pb-0.5">회원가입</a></div>
-                    <div class="mt-12 text-center border-t border-gray-100 pt-8"><button type="button" id="btn_go_guest" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">비회원으로 주문하셨나요?</button></div>
+                    <div class="mt-12 text-center border-t border-gray-100 pt-8">
+                      <p class="text-xs text-gray-400 font-light mb-4">비회원으로 주문하셨나요?</p>
+                      <button type="button" id="btn_go_guest" class="inline-flex items-center justify-center w-full bg-white border border-black text-black py-4 text-sm font-medium tracking-widest hover:bg-black hover:text-white transition-colors duration-300 cursor-pointer">비회원 주문 조회하기</button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           \`;
 
+          drawer = shadowRoot.querySelector('#global-login-drawer');
+          backdrop = shadowRoot.querySelector('#login-backdrop');
+          panel = shadowRoot.querySelector('#login-panel');
+
           if (skinPrefix) {
-            shadowRoot.querySelectorAll('a').forEach(link => {
+            const allLinks = shadowRoot.querySelectorAll('a');
+            allLinks.forEach(link => {
               const href = link.getAttribute('href');
-              if (href && href.startsWith('/')) link.setAttribute('href', skinPrefix + href);
+              if (href && href.startsWith('/')) {
+                link.setAttribute('href', skinPrefix + href);
+              }
             });
           }
 
-          shadowRoot.querySelector('#btn_close_drawer').addEventListener('click', () => window.YkinasLogin.close());
-          shadowRoot.querySelector('#login-backdrop').addEventListener('click', () => window.YkinasLogin.close());
+          shadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
+          backdrop.addEventListener('click', window.YkinasLogin.close);
+
           shadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
             const pw = shadowRoot.querySelector('#s_pw');
             pw.type = pw.type === 'password' ? 'text' : 'password';
           });
-          
-          isDrawerReady = true;
-          console.log('[YKINAS Core] Drawer Initialization Complete.');
-          if (isOpenQueued) window.YkinasLogin._executeOpen();
+
+          shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
+             const idVal = shadowRoot.querySelector('#s_id').value.trim();
+             const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
+             if (!idVal || !pwVal) { 
+               alert("아이디와 비밀번호를 모두 입력해주세요."); 
+               return; 
+             }
+             
+             const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
+             if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
+               originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
+               originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
+               (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
+             } else {
+               try {
+                 const iframe = document.getElementById('ykinas_proxy_iframe');
+                 const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                 const ifId = iframeDoc.querySelector('input[name="member_id"]');
+                 const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
+                 const ifBtn = iframeDoc.getElementById('origin_btn_login');
+
+                 if (ifId && ifPw && ifBtn) {
+                   ifId.value = idVal;
+                   ifPw.value = pwVal;
+                   
+                   const form = ifId.closest('form');
+                   if (form) {
+                     form.target = "_parent"; 
+                     let retInput = form.querySelector('input[name="returnUrl"]');
+                     if (!retInput) {
+                       retInput = iframeDoc.createElement('input');
+                       retInput.type = 'hidden';
+                       retInput.name = 'returnUrl';
+                       form.appendChild(retInput);
+                     }
+                     retInput.value = window.location.pathname + window.location.search;
+                   }
+                   ifBtn.click();
+                 } else {
+                   throw new Error("Iframe form not found");
+                 }
+               } catch (e) {
+                 window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+               }
+             }
+          });
+
+          shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
+            const targetUrl = skinPrefix + '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
+            window.location.href = targetUrl;
+          });
+
+          function handleSnsLogin(provider) {
+            const currUrl = window.location.pathname + window.location.search;
+            if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
+              window.MemberAction.snsLogin(provider, currUrl);
+            } else {
+              try {
+                const iframe = document.getElementById('ykinas_proxy_iframe');
+                if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
+                  iframe.contentWindow.MemberAction.snsLogin(provider, currUrl);
+                } else {
+                  throw new Error("Iframe MemberAction not ready");
+                }
+              } catch (e) {
+                const pName = provider === 'kakao' ? 'Kakao' : (provider === 'naver' ? 'Naver' : 'Google');
+                window.open('/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodeURIComponent(currUrl), 'snsLoginPopup', 'width=500,height=500');
+              }
+            }
+            window.YkinasLogin.close();
+          }
+
+          shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => handleSnsLogin('kakao'));
+          shadowRoot.querySelector('#btn_sns_naver').addEventListener('click', () => handleSnsLogin('naver'));
+          shadowRoot.querySelector('#btn_sns_google').addEventListener('click', () => handleSnsLogin('google'));
         }
 
         if (document.readyState === 'loading') {
@@ -227,6 +294,6 @@ export default async function handler(req, res) {
 
     return res.status(200).send(injectedScript);
   } catch (err) {
-    return res.status(200).send(generateFallback('Server Execution Error'));
+    return res.status(500).send(`console.error('[YKINAS Core] Initialization error.');`);
   }
 }
