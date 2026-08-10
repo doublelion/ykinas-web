@@ -41,6 +41,53 @@ export default async function handler(req, res) {
         if (window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
+        // ★ [핵심 픽스 1] 비동기 로딩 및 레이스 컨디션 방어: 전역 객체 즉시 선언
+        window.YkinasLogin = window.YkinasLogin || {
+          open: function() {
+            if (document.readyState === 'loading') {
+              document.addEventListener('DOMContentLoaded', () => this._triggerOpen());
+            } else {
+              this._triggerOpen();
+            }
+          },
+          _triggerOpen: function() {
+            if (!window._ykinasInitialized) initShadowDOM();
+            
+            const host = document.getElementById('ykinas-global-drawer-root');
+            if (!host || !host.shadowRoot) return;
+            
+            const drawer = host.shadowRoot.querySelector('#global-login-drawer');
+            const backdrop = host.shadowRoot.querySelector('#login-backdrop');
+            const panel = host.shadowRoot.querySelector('#login-panel');
+            
+            if (drawer && backdrop && panel) {
+              drawer.style.display = 'flex';
+              requestAnimationFrame(() => {
+                backdrop.classList.add('is-open');
+                panel.classList.add('is-open');
+              });
+              document.body.style.overflow = 'hidden';
+            }
+          },
+          close: function() {
+            const host = document.getElementById('ykinas-global-drawer-root');
+            if (!host || !host.shadowRoot) return;
+            
+            const drawer = host.shadowRoot.querySelector('#global-login-drawer');
+            const backdrop = host.shadowRoot.querySelector('#login-backdrop');
+            const panel = host.shadowRoot.querySelector('#login-panel');
+            
+            if (drawer && backdrop && panel) {
+              backdrop.classList.remove('is-open');
+              panel.classList.remove('is-open');
+              setTimeout(() => {
+                drawer.style.display = 'none';
+                document.body.style.overflow = '';
+              }, 400); 
+            }
+          }
+        };
+
         const currentPath = window.location.pathname;
         const currentSearch = window.location.search;
         const isLoginPage = currentPath.includes('/member/login.html');
@@ -61,52 +108,30 @@ export default async function handler(req, res) {
             return; 
         }
 
-        const urlParams = new URLSearchParams(currentSearch);
-        const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
-
-        let shadowRoot = null;
-        let drawer = null;
-        let backdrop = null;
-        let panel = null;
-        let isInitialized = false;
-
-        window.YkinasLogin = {
-          open: function() {
-            if (!isInitialized) initShadowDOM();
-            if (drawer) {
-              drawer.style.display = 'flex';
-              requestAnimationFrame(() => {
-                backdrop.classList.add('is-open');
-                panel.classList.add('is-open');
-              });
-              document.body.style.overflow = 'hidden';
-            }
-          },
-          close: function() {
-            if (drawer) {
-              backdrop.classList.remove('is-open');
-              panel.classList.remove('is-open');
-              setTimeout(() => {
-                drawer.style.display = 'none';
-                document.body.style.overflow = '';
-              }, 400); 
-            }
-          }
-        };
-
-        // ★ [핵심 픽스: 로그인 페이지 직행 방지 및 드로어 인터셉트 로직]
+        // ★ [핵심 픽스 2] 강력한 캡처링 단계 이벤트 인터셉트 
+        // <a> 태그를 통한 순수 로그인 페이지 이동만 정밀하게 낚아챕니다.
         document.addEventListener('click', function(e) {
-          const loginLink = e.target.closest('a[href*="/member/login.html"]');
-          if (loginLink) {
+          const target = e.target.closest('a');
+          if (!target) return;
+          
+          const href = target.getAttribute('href') || '';
+          
+          if (href.includes('/member/login.html') && !href.includes('noMemberOrder') && !target.getAttribute('target')) {
             e.preventDefault();
             e.stopPropagation();
             window.YkinasLogin.open();
           }
         }, true);
 
+        window._ykinasInitialized = false;
+
         function initShadowDOM() {
-          if (isInitialized) return;
-          isInitialized = true;
+          if (window._ykinasInitialized) return;
+          if (!document.body) return; // body가 아직 로드되지 않았다면 대기
+          window._ykinasInitialized = true;
+
+          const urlParams = new URLSearchParams(currentSearch);
+          const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
 
           const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
           const skinPrefix = skinMatch ? skinMatch[0] : '';
@@ -128,7 +153,7 @@ export default async function handler(req, res) {
           host.style.cssText = 'position: relative; z-index: 2147483647;'; 
           document.body.appendChild(host);
 
-          shadowRoot = host.attachShadow({ mode: 'closed' });
+          const shadowRoot = host.attachShadow({ mode: 'closed' });
 
           shadowRoot.innerHTML = \`
             <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
@@ -244,9 +269,7 @@ export default async function handler(req, res) {
             </div>
           \`;
 
-          drawer = shadowRoot.querySelector('#global-login-drawer');
-          backdrop = shadowRoot.querySelector('#login-backdrop');
-          panel = shadowRoot.querySelector('#login-panel');
+          const backdrop = shadowRoot.querySelector('#login-backdrop');
 
           if (skinPrefix) {
             const allLinks = shadowRoot.querySelectorAll('a');
