@@ -9,8 +9,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
 
-  // ★ [핵심 픽스 1] 극강의 퍼포먼스: Vercel Edge Network 캐싱 (DB 부하 제로, 즉시 로드)
-  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
+  // ★ [핵심 픽스 1] 개발 및 트러블슈팅을 위해 강력한 캐시 방지(No-Cache) 적용
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
 
   const clientReferer = req.headers['referer'] || '';
   const clientMallId = req.query.mall_id || '';
@@ -30,15 +32,16 @@ export default async function handler(req, res) {
       .eq('is_active', true)
       .single();
 
-    // 🚨 여기서 걸리고 있습니다. Supabase 데이터베이스에 mall_id 값이 정확히 활성화되어 있는지 확인하세요.
-    if (error || !license) return res.status(200).send(generateFallback('Unauthorized or Inactive License'));
+    // ★ [핵심 픽스 2] DB 조회 실패 시, 넘어온 mall_id 값을 콘솔에 직관적으로 표출
+    if (error || !license) {
+      return res.status(200).send(generateFallback(`Unauthorized or Inactive License. (Requested ID: "${clientMallId}")`));
+    }
 
     const allowedDomains = license.skin_allowed_domains.map(d => d.domain);
     const isDomainMatch = allowedDomains.some(domain => clientReferer.includes(domain)) || clientReferer === '';
 
     if (!isDomainMatch) return res.status(200).send(generateFallback('Domain mismatch.'));
 
-    // ★ [핵심 픽스 2] 완벽한 인라인 이벤트(onclick) 호환 및 비동기 큐잉
     const injectedScript = `
       (function() {
         'use strict';
@@ -46,7 +49,6 @@ export default async function handler(req, res) {
         if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        // 스크립트 파싱 즉시 프록시 객체 생성 (기존 마크업 onclick 방어)
         let isDrawerReady = false;
         let isOpenQueued = false;
 
