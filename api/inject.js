@@ -8,23 +8,19 @@ const supabase = createClient(
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+
+  // ★ [핵심 픽스 1] 극강의 퍼포먼스: Vercel Edge Network 캐싱 (DB 부하 제로, 즉시 로드)
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
 
   const clientReferer = req.headers['referer'] || '';
   const clientMallId = req.query.mall_id || '';
 
-  // ★ [핵심 픽스 1] 검증 실패(Reject) 시 브라우저 멈춤을 방지하고 폴백 리다이렉트를 강제하는 생성기
   const generateFallback = (errMsg) => `
-    console.error('[YKINAS Core] Validation Failed:', '${errMsg}');
-    // 기존 HTML의 더미 객체를 리다이렉트 전용 객체로 덮어써서 데드락을 원천 차단합니다.
-    window.YkinasLogin = { 
-      open: function() { window.location.href = '/member/login.html'; } 
-    };
+    console.error('[YKINAS Core] Validation Failed: ${errMsg}');
+    window.YkinasLogin = { open: function() { window.location.href = '/member/login.html'; } };
   `;
 
-  if (!clientMallId) {
-    return res.status(200).send(generateFallback('Invalid Mall ID'));
-  }
+  if (!clientMallId) return res.status(200).send(generateFallback('Invalid Mall ID'));
 
   try {
     const { data: license, error } = await supabase
@@ -34,26 +30,63 @@ export default async function handler(req, res) {
       .eq('is_active', true)
       .single();
 
-    if (error || !license) {
-      return res.status(200).send(generateFallback('Unauthorized or Inactive License'));
-    }
+    // 🚨 여기서 걸리고 있습니다. Supabase 데이터베이스에 mall_id 값이 정확히 활성화되어 있는지 확인하세요.
+    if (error || !license) return res.status(200).send(generateFallback('Unauthorized or Inactive License'));
 
     const allowedDomains = license.skin_allowed_domains.map(d => d.domain);
     const isDomainMatch = allowedDomains.some(domain => clientReferer.includes(domain)) || clientReferer === '';
 
-    if (!isDomainMatch) {
-      return res.status(200).send(generateFallback(`Domain mismatch. Referer: ${clientReferer}`));
-    }
+    if (!isDomainMatch) return res.status(200).send(generateFallback('Domain mismatch.'));
 
-    // ★ [핵심 픽스 2] 검증 성공 시 완벽한 드로어 렌더링 스크립트 반환
+    // ★ [핵심 픽스 2] 완벽한 인라인 이벤트(onclick) 호환 및 비동기 큐잉
     const injectedScript = `
       (function() {
         'use strict';
         
-        console.log('%c[YKINAS Core]', 'background:#111;color:#bada55;padding:2px 6px;border-radius:3px;', 'Script successfully verified & loaded.');
-
         if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
+
+        // 스크립트 파싱 즉시 프록시 객체 생성 (기존 마크업 onclick 방어)
+        let isDrawerReady = false;
+        let isOpenQueued = false;
+
+        window.YkinasLogin = {
+          open: function() {
+            if (isDrawerReady) {
+              this._executeOpen();
+            } else {
+              isOpenQueued = true;
+              initShadowDOM();
+            }
+          },
+          close: function() {
+            const shadow = document.getElementById('ykinas-global-drawer-root')?.shadowRoot;
+            if (!shadow) return;
+            shadow.querySelector('#login-backdrop')?.classList.remove('is-open');
+            shadow.querySelector('#login-panel')?.classList.remove('is-open');
+            setTimeout(() => {
+              const drawer = shadow.querySelector('#global-login-drawer');
+              if(drawer) drawer.style.display = 'none';
+              document.body.style.overflow = '';
+            }, 400);
+          },
+          _executeOpen: function() {
+            const shadow = document.getElementById('ykinas-global-drawer-root')?.shadowRoot;
+            if (!shadow) return;
+            const drawer = shadow.querySelector('#global-login-drawer');
+            const backdrop = shadow.querySelector('#login-backdrop');
+            const panel = shadow.querySelector('#login-panel');
+            
+            if (drawer && backdrop && panel) {
+              drawer.style.display = 'flex';
+              requestAnimationFrame(() => {
+                backdrop.classList.add('is-open');
+                panel.classList.add('is-open');
+              });
+              document.body.style.overflow = 'hidden';
+            }
+          }
+        };
 
         const currentPath = window.location.pathname;
         const currentSearch = window.location.search;
@@ -73,51 +106,6 @@ export default async function handler(req, res) {
 
         const urlParams = new URLSearchParams(currentSearch);
         const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
-
-        window.YkinasLogin = {
-          open: function() {
-            if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', () => this._triggerOpen());
-            } else {
-              this._triggerOpen();
-            }
-          },
-          _triggerOpen: function() {
-            if (!window._ykinasInitialized) initShadowDOM();
-            const host = document.getElementById('ykinas-global-drawer-root');
-            if (!host || !host.shadowRoot) return;
-            
-            const drawer = host.shadowRoot.querySelector('#global-login-drawer');
-            const backdrop = host.shadowRoot.querySelector('#login-backdrop');
-            const panel = host.shadowRoot.querySelector('#login-panel');
-            
-            if (drawer && backdrop && panel) {
-              drawer.style.display = 'flex';
-              requestAnimationFrame(() => {
-                backdrop.classList.add('is-open');
-                panel.classList.add('is-open');
-              });
-              document.body.style.overflow = 'hidden';
-            }
-          },
-          close: function() {
-            const host = document.getElementById('ykinas-global-drawer-root');
-            if (!host || !host.shadowRoot) return;
-            
-            const drawer = host.shadowRoot.querySelector('#global-login-drawer');
-            const backdrop = host.shadowRoot.querySelector('#login-backdrop');
-            const panel = host.shadowRoot.querySelector('#login-panel');
-            
-            if (drawer && backdrop && panel) {
-              backdrop.classList.remove('is-open');
-              panel.classList.remove('is-open');
-              setTimeout(() => {
-                drawer.style.display = 'none';
-                document.body.style.overflow = '';
-              }, 400); 
-            }
-          }
-        };
 
         window._ykinasInitialized = false;
 
@@ -205,8 +193,6 @@ export default async function handler(req, res) {
             </div>
           \`;
 
-          const backdrop = shadowRoot.querySelector('#login-backdrop');
-
           if (skinPrefix) {
             shadowRoot.querySelectorAll('a').forEach(link => {
               const href = link.getAttribute('href');
@@ -215,7 +201,7 @@ export default async function handler(req, res) {
           }
 
           shadowRoot.querySelector('#btn_close_drawer').addEventListener('click', () => window.YkinasLogin.close());
-          backdrop.addEventListener('click', () => window.YkinasLogin.close());
+          shadowRoot.querySelector('#login-backdrop').addEventListener('click', () => window.YkinasLogin.close());
 
           shadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
             const pw = shadowRoot.querySelector('#s_pw');
@@ -281,6 +267,9 @@ export default async function handler(req, res) {
           shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => handleSnsLogin('kakao'));
           shadowRoot.querySelector('#btn_sns_naver').addEventListener('click', () => handleSnsLogin('naver'));
           shadowRoot.querySelector('#btn_sns_google').addEventListener('click', () => handleSnsLogin('google'));
+          
+          isDrawerReady = true;
+          if (isOpenQueued) window.YkinasLogin._executeOpen();
         }
 
         if (document.readyState === 'loading') {
