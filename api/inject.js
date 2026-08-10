@@ -8,11 +8,12 @@ const supabase = createClient(
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
 
   const clientReferer = req.headers['referer'] || '';
   let clientMallId = req.query.mall_id || '';
 
+  // ★ [안정화 로직 유지] 카페24 템플릿 치환 실패 시 가장 확실한 폴백
   if (clientMallId === '{$mall_id}' || !clientMallId) {
     clientMallId = 'ecudemo389879';
   }
@@ -36,7 +37,6 @@ export default async function handler(req, res) {
       (function() {
         'use strict';
         
-        // ★ [핵심 방어 코드] 현재 창이 아이프레임 내부라면 무한루프 방지를 위해 즉시 종료!
         if (window.self !== window.top) return; 
 
         if (window.__YKINAS_SKIN_LOADED__) return;
@@ -72,12 +72,32 @@ export default async function handler(req, res) {
           }
         };
 
+        const currentPath = window.location.pathname;
+        const currentSearch = window.location.search;
+        const isLoginPage = currentPath.includes('/member/login.html');
+
+        if (isLoginPage) {
+            document.addEventListener('click', function(e) {
+                const target = e.target.closest('button, a');
+                if (!target) return;
+                const onClickAttr = target.getAttribute('onclick') || '';
+                if (onClickAttr.includes("switchMode('guest')")) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
+                }
+            }, true);
+            return; 
+        }
+
+        const urlParams = new URLSearchParams(currentSearch);
+        const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
+
         function initShadowDOM() {
           if (isInitialized) return;
           isInitialized = true;
 
-          // 프록시 아이프레임 생성 (메인 화면에서 단 한 번만 실행됨)
-          const skinMatch = window.location.pathname.match(/^\\/skin-[^\\/]+/);
+          const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
           const skinPrefix = skinMatch ? skinMatch[0] : '';
           
           let proxyIframe = document.getElementById('ykinas_proxy_iframe');
@@ -105,31 +125,22 @@ export default async function handler(req, res) {
             <style>
               :host { all: initial; font-family: 'Noto Sans KR', sans-serif; }
               * { font-family: 'Noto Sans KR', sans-serif; box-sizing: border-box; }
-              
               #global-login-drawer { position: fixed; inset: 0; z-index: 999999; display: none; justify-content: flex-end; }
               #login-backdrop { position: absolute; inset: 0; background-color: rgba(0,0,0,0.4); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.4s ease; cursor: pointer; }
               #login-backdrop.is-open { opacity: 1; }
-              
               #login-panel { position: relative; width: 100%; max-width: 420px; height: 100%; background-color: #ffffff; box-shadow: -10px 0 40px rgba(0,0,0,0.1); transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; z-index: 10; }
               #login-panel.is-open { transform: translateX(0); }
-
               .drawer-content-wrapper { opacity: 0; transform: translateY(30px); transition: opacity 0.4s ease 0.3s, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.3s; }
               #login-panel.is-open .drawer-content-wrapper { opacity: 1; transform: translateY(0); }
-
               .custom-scrollbar-02 { overflow-y: auto; }
               .custom-scrollbar-02::-webkit-scrollbar { width: 4px; }
               .custom-scrollbar-02::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
-
               .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; }
               .minimal-input:focus { border-bottom-color: #111 !important; }
-              
               .floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
               .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
-
               .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
               @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-              .mode-hidden { display: none !important; }
-
               .bg-kakao { background-color: #FEE500; color: #191919; }
               .bg-naver-icon { background-color: #03C75A; color: #ffffff; }
               .bg-btn-primary { background-color: #111111; color: #ffffff; }
@@ -283,7 +294,6 @@ export default async function handler(req, res) {
              }
           });
 
-          // ★ [핵심 픽스] 깊은 경로에서 버그가 발생하지 않도록 절대 경로(skinPrefix)로 라우팅 고정
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
             const targetUrl = skinPrefix + '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
             window.location.href = targetUrl;
