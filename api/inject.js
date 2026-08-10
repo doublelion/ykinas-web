@@ -11,11 +11,15 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
 
   const clientReferer = req.headers['referer'] || '';
-  const clientMallId = (req.query.mall_id && req.query.mall_id !== '{$mall_id}')
-    ? req.query.mall_id
+  
+  // 1. 하드코딩 제거 및 동적 mall_id 매핑 로직 완벽 적용
+  const clientMallId = (req.query.mall_id && req.query.mall_id !== '{$mall_id}') 
+    ? req.query.mall_id 
     : null;
 
-  if (!clientMallId) return res.status(200).send(`console.warn('[YKINAS Core] Invalid mall_id.');`);
+  if (!clientMallId) {
+    return res.status(200).send(`console.warn('[YKINAS Core] Invalid mall_id.');`);
+  }
 
   try {
     const { data: license, error } = await supabase
@@ -25,31 +29,35 @@ export default async function handler(req, res) {
       .eq('is_active', true)
       .single();
 
-    if (error || !license) return res.status(200).send(`console.warn('[YKINAS Core] Unauthorized.');`);
+    if (error || !license) {
+      return res.status(200).send(`console.warn('[YKINAS Core] Unauthorized.');`);
+    }
 
     const allowedDomains = license.skin_allowed_domains.map(d => d.domain);
-    const isDomainMatch = !clientReferer || allowedDomains.some(domain => clientReferer.includes(domain));
+    const isDomainMatch = allowedDomains.some(domain => clientReferer.includes(domain)) || !clientReferer;
 
-    if (!isDomainMatch) return res.status(200).send(`console.warn('[YKINAS Core] Domain error.');`);
+    if (!isDomainMatch) {
+      return res.status(200).send(`console.warn('[YKINAS Core] Domain error.');`);
+    }
 
     const injectedScript = `
       (function() {
         'use strict';
         
-        if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return; 
+        if (window.self !== window.top) return; 
+
+        if (window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        let shadowRoot = null, drawer = null, backdrop = null, panel = null, isInitialized = false;
+        let shadowRoot = null;
+        let drawer = null;
+        let backdrop = null;
+        let panel = null;
+        let isInitialized = false;
 
         window.YkinasLogin = {
-          open: function(returnUrl) {
+          open: function() {
             if (!isInitialized) initShadowDOM();
-            
-            if (returnUrl) {
-              const proxy = document.getElementById('ykinas_proxy_iframe');
-              if (proxy) proxy.src = (window.location.pathname.match(/^\\/skin-[^\\/]+/) || [''])[0] + '/member/login.html?returnUrl=' + encodeURIComponent(returnUrl);
-            }
-
             if (drawer) {
               drawer.style.display = 'flex';
               requestAnimationFrame(() => {
@@ -75,17 +83,14 @@ export default async function handler(req, res) {
           if (isInitialized) return;
           isInitialized = true;
 
-          const skinPrefix = (window.location.pathname.match(/^\\/skin-[^\\/]+/) || [''])[0];
-          const isLoginPage = window.location.pathname.includes('/member/login.html');
+          const skinMatch = window.location.pathname.match(/^\\/skin-[^\\/]+/);
+          const skinPrefix = skinMatch ? skinMatch[0] : '';
           
           let proxyIframe = document.getElementById('ykinas_proxy_iframe');
           if (!proxyIframe) {
             proxyIframe = document.createElement('iframe');
             proxyIframe.id = 'ykinas_proxy_iframe';
-            
-            // [핵심 Fix] 부모의 파라미터를 상속하여 카페24 내부 스크립트의 강제 스위칭(비회원조회) 억제
-            const searchParams = window.location.search;
-            proxyIframe.src = skinPrefix + '/member/login.html' + (searchParams ? searchParams : '');
+            proxyIframe.src = skinPrefix + '/member/login.html';
             proxyIframe.style.cssText = 'position:absolute; width:1px; height:1px; left:-9999px; opacity:0; pointer-events:none;';
             document.body.appendChild(proxyIframe);
           }
@@ -252,9 +257,11 @@ export default async function handler(req, res) {
              }
           });
 
-          // [핵심 Fix] 비회원 주문조회는 오직 명시적 클릭 시에만 동작하도록 완벽히 격리
+          // 2. 비회원 주문조회 시 다른 파라미터 간섭 억제 및 강제 Replace 라우팅 보장
           shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
             const guestTrackingUrl = skinPrefix + '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
+            
+            // 로그인 페이지 내부(위시리스트 등에서 리다이렉트 된 상태)인 경우 브라우저 히스토리 조작 후 새로고침 (파라미터 덮어쓰기)
             if (window.location.pathname.includes('/member/login.html')) {
               window.location.replace(guestTrackingUrl);
             } else {
@@ -283,11 +290,6 @@ export default async function handler(req, res) {
           shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => handleSnsLogin('kakao'));
           shadowRoot.querySelector('#btn_sns_naver').addEventListener('click', () => handleSnsLogin('naver'));
           shadowRoot.querySelector('#btn_sns_google').addEventListener('click', () => handleSnsLogin('google'));
-
-          // [핵심 Fix] 로그인 페이지 접근 시 깜빡임 없이 즉시 Drawer 전개하여 뷰 유지
-          if (isLoginPage && !window.location.search.includes('noMemberOrder')) {
-             setTimeout(() => window.YkinasLogin.open(), 50);
-          }
         }
 
         if (document.readyState === 'loading') {
