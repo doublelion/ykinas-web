@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   const clientReferer = req.headers['referer'] || '';
   let clientMallId = req.query.mall_id || '';
 
-  // ★ [안정화 로직 유지] 카페24 템플릿 치환 실패 시 가장 확실한 폴백
+  // [방어 로직] 템플릿 치환 실패 방어
   if (clientMallId === '{$mall_id}' || !clientMallId) {
     clientMallId = 'ecudemo389879';
   }
@@ -37,10 +37,36 @@ export default async function handler(req, res) {
       (function() {
         'use strict';
         
-        if (window.self !== window.top) return; 
-
-        if (window.__YKINAS_SKIN_LOADED__) return;
+        if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
+
+        // ★ [로직 완벽 분리] 로그인 페이지에서는 드로어 엔진 작동을 완전 중단합니다.
+        // 고객님의 login.html 네이티브 스크립트가 온전히 제어권을 갖도록 하여 충돌을 원천 차단합니다.
+        if (window.location.pathname.includes('/member/login.html')) return;
+
+        // ★ [스마트 UX 라우터] 비회원이 '마이페이지' 등을 클릭 시, 
+        // 에러나 이탈 없이 그 자리에서 즉시 드로어를 우아하게 오픈합니다.
+        document.addEventListener('click', function(e) {
+          const target = e.target.closest('a');
+          if (!target) return;
+          
+          const href = target.getAttribute('href') || '';
+          
+          // 로그인이 필요한 주요 링크 (주문조회는 비회원 조회가 필요하므로 제외)
+          const requireLoginPaths = ['/myshop/index.html', '/myshop/wish_list.html', '/member/modify.html'];
+          const isRequireLogin = requireLoginPaths.some(path => href.includes(path));
+          
+          // 카페24 DOM 기준으로 비회원 상태 감지
+          const isLoggedOut = document.querySelector('.xans-layout-statelogoff') !== null || !document.querySelector('.xans-layout-statelogon');
+          
+          if (isRequireLogin && isLoggedOut) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (window.YkinasLogin && typeof window.YkinasLogin.open === 'function') {
+              window.YkinasLogin.open();
+            }
+          }
+        }, true);
 
         let shadowRoot = null;
         let drawer = null;
@@ -74,24 +100,7 @@ export default async function handler(req, res) {
 
         const currentPath = window.location.pathname;
         const currentSearch = window.location.search;
-        const isLoginPage = currentPath.includes('/member/login.html');
-
-        if (isLoginPage) {
-            document.addEventListener('click', function(e) {
-                const target = e.target.closest('button, a');
-                if (!target) return;
-                const onClickAttr = target.getAttribute('onclick') || '';
-                if (onClickAttr.includes("switchMode('guest')")) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    window.location.href = '/member/login.html?noMemberOrder&returnUrl=%2Fmyshop%2Forder%2Flist.html';
-                }
-            }, true);
-            return; 
-        }
-
-        const urlParams = new URLSearchParams(currentSearch);
-        const targetReturnUrl = urlParams.get('returnUrl') || (currentPath + currentSearch);
+        const targetReturnUrl = new URLSearchParams(currentSearch).get('returnUrl') || (currentPath + currentSearch);
 
         function initShadowDOM() {
           if (isInitialized) return;
