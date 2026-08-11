@@ -14,8 +14,7 @@ import BannerItAdmin from './pages/admin/BannerItAdmin'; // 배너잇 어드민 
 // 무거운 페이지는 lazy 로딩으로 성능 최적화
 const Audit = lazy(() => import('./pages/Audit'));
 const Contact = lazy(() => import('./pages/Contact'));
-const BannerItAdmin = lazy(() => import('./pages/admin/BannerItAdmin')); // 추가된 어드민 페이지
-
+const BannerItAdmin = lazy(() => import('./pages/admin/BannerItAdmin')); // 배너잇 어드민 페이지
 
 // 1. 와이키나스 공통 레이아웃 (Header, Footer 노출)
 const PublicLayout = () => (
