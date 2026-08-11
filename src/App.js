@@ -9,7 +9,6 @@ import TemplateList from './pages/TemplateList';
 // import TemplateDetail 삭제 (사용하지 않음)
 import AristideV1 from './components/templates/AristideV1';
 import './App.scss';
-import BannerItAdmin from './pages/admin/BannerItAdmin'; // 배너잇 어드민 페이지
 
 // 무거운 페이지는 lazy 로딩으로 성능 최적화
 const Audit = lazy(() => import('./pages/Audit'));

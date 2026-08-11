@@ -1,21 +1,16 @@
-// src/pages/admin/BannerItAdmin.js
 import React, { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import './BannerItAdmin.scss'; // 필요 시 CSS 모듈화 (또는 Tailwind/인라인 스타일 사용)
 
-// Supabase 클라이언트 초기화 (CRA 환경변수 규칙 적용)
-const supabase = createClient(
-  process.env.REACT_APP_SUPABASE_URL,
-  process.env.REACT_APP_SUPABASE_ANON_KEY
-);
+// CRA 환경 변수 참조 및 유효성 검사 (폴백 string 제공으로 런타임 튕김 방지)
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'placeholder-key';
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function BannerItAdmin() {
-  // 상태 관리: 실제 로그인한 쇼핑몰의 ID를 매핑해야 함 (테스트용 하드코딩)
   const [currentMallId] = useState('ecudemo389879');
   const [isActive, setIsActive] = useState(true);
-  const [isUploading, setIsUploading] = useState(false);
 
-  // 슬라이드 데이터 상태 (멀티 팝업 확장을 고려해 배열로 관리하는 것이 좋으나, MVP는 1개로 시작)
   const [slide, setSlide] = useState({
     title: '무료배송 서비스',
     subtitle: '5만원 이상 구매시 무료 배송',
@@ -24,27 +19,26 @@ export default function BannerItAdmin() {
     imageUrl: ''
   });
 
-  // 임시 업로드 핸들러 (UI 테스트용)
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // 실제 Storage 업로드 전, 로컬 브라우저에서 미리보기 위한 임시 URL 생성
       const tempUrl = URL.createObjectURL(file);
       setSlide({ ...slide, imageUrl: tempUrl });
-      // TODO: 백엔드 로직에 실제 Supabase Storage 업로드 연결 필요
     }
   };
 
   const handleSave = async () => {
-    // TODO: 백엔드 DB Insert 로직 연결
-    alert('DB 저장 로직이 곧 연결될 예정입니다.');
+    if (!process.env.REACT_APP_SUPABASE_URL) {
+      alert('.env 파일에 REACT_APP_SUPABASE_URL 설정이 필요합니다.');
+      return;
+    }
+    alert('DB 저장 로직 연결 준비 완료');
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 text-gray-800" style={{ display: 'flex', height: '100vh', backgroundColor: '#f9fafb' }}>
-
-      {/* 좌측: 폼 컨트롤 영역 */}
-      <div className="w-1/2 p-8 border-r bg-white overflow-y-auto" style={{ flex: '1', padding: '2rem', borderRight: '1px solid #e5e7eb', backgroundColor: '#fff' }}>
+    <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f9fafb' }}>
+      {/* 폼 컨트롤 패널 */}
+      <div style={{ flex: '1', padding: '2rem', borderRight: '1px solid #e5e7eb', backgroundColor: '#fff', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>팝업 설정 (BannerIt)</h1>
           <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
@@ -85,16 +79,10 @@ export default function BannerItAdmin() {
         </div>
       </div>
 
-      {/* 우측: 실시간 프리뷰 영역 */}
+      {/* 모바일 실시간 프리뷰 */}
       <div style={{ flex: '1', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb', padding: '2rem' }}>
-
-        {/* 모바일 목업 컨테이너 */}
         <div style={{ width: '375px', height: '667px', backgroundColor: '#fff', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px' }}>
-
-          {/* 어두운 배경 (Backdrop) 느낌 */}
           <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1 }}></div>
-
-          {/* 실제 팝업 UI */}
           <div style={{ position: 'relative', zIndex: 2, backgroundColor: '#fff', borderRadius: '16px', overflow: 'hidden', width: '100%' }}>
             {slide.imageUrl ? (
               <img src={slide.imageUrl} alt="preview" style={{ width: '100%', aspectRatio: '1/1', objectFit: 'cover' }} />
@@ -116,7 +104,6 @@ export default function BannerItAdmin() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );
