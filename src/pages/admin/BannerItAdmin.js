@@ -6,7 +6,10 @@ const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'placeholder-
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function BannerItAdmin() {
-  const [currentMallId] = useState('ecudemo389879');
+  //const [currentMallId] = useState('ecudemo389879');
+
+  const [currentMallId] = useState('ecudemo388727');
+
   const [isActive, setIsActive] = useState(true);
   const [imageFile, setImageFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -96,9 +99,11 @@ export default function BannerItAdmin() {
       {/* 폼 컨트롤 패널 */}
       <div style={{ flex: '1', padding: '2rem', borderRight: '1px solid #e5e7eb', backgroundColor: '#fff', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>팝업 설정 (BannerIt)</h1>
+          {/* 타이틀에 컬러 강제 지정 */}
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111' }}>팝업 설정 (BannerIt)</h1>
           <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-            <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>팝업 활성화</span>
+            {/* 토글 텍스트에 컬러 강제 지정 */}
+            <span style={{ marginRight: '0.5rem', fontSize: '0.875rem', color: '#111' }}>팝업 활성화</span>
             <input
               type="checkbox"
               checked={isActive}
