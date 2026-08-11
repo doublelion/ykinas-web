@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// CRA 환경 변수 참조 및 유효성 검사 (폴백 string 제공으로 런타임 튕김 방지)
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'placeholder-key';
-
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function BannerItAdmin() {
   const [currentMallId] = useState('ecudemo389879');
   const [isActive, setIsActive] = useState(true);
+  const [imageFile, setImageFile] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [slide, setSlide] = useState({
     title: '무료배송 서비스',
@@ -19,20 +19,76 @@ export default function BannerItAdmin() {
     imageUrl: ''
   });
 
+  // 이미지 파일 선택 시 로컬 임시 프리뷰 URL 생성
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const tempUrl = URL.createObjectURL(file);
-      setSlide({ ...slide, imageUrl: tempUrl });
+      setImageFile(file);
+      setSlide((prev) => ({ ...prev, imageUrl: URL.createObjectURL(file) }));
     }
   };
 
+  // Supabase Storage 업로드 및 DB Upsert 트랜잭션
   const handleSave = async () => {
     if (!process.env.REACT_APP_SUPABASE_URL) {
       alert('.env 파일에 REACT_APP_SUPABASE_URL 설정이 필요합니다.');
       return;
     }
-    alert('DB 저장 로직 연결 준비 완료');
+
+    try {
+      setIsSaving(true);
+      let finalImageUrl = slide.imageUrl;
+
+      // 1. 이미지 파일이 새로 첨부된 경우 Supabase Storage 버킷 업로드
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${currentMallId}_${Date.now()}.${fileExt}`;
+        const filePath = `banners/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('bannerit_images')
+          .upload(filePath, imageFile, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabase.storage
+          .from('bannerit_images')
+          .getPublicUrl(filePath);
+
+        finalImageUrl = publicUrlData.publicUrl;
+      }
+
+      // 2. bannerit_campaigns 테이블 Upsert (mall_id 기준)
+      const { data: campaignData, error: campaignError } = await supabase
+        .from('bannerit_campaigns')
+        .upsert({ mall_id: currentMallId, is_active: isActive }, { onConflict: 'mall_id' })
+        .select()
+        .single();
+
+      if (campaignError) throw campaignError;
+
+      // 3. bannerit_items 테이블 Upsert (campaign_id 기준)
+      const { error: itemError } = await supabase
+        .from('bannerit_items')
+        .upsert({
+          campaign_id: campaignData.id,
+          image_url: finalImageUrl,
+          title: slide.title,
+          subtitle: slide.subtitle,
+          cta_text: slide.cta_text,
+          cta_link: slide.cta_link,
+          sort_order: 0
+        });
+
+      if (itemError) throw itemError;
+
+      alert('배너잇 팝업 설정이 성공적으로 저장 및 라이브 반영되었습니다!');
+    } catch (error) {
+      console.error('Save Error:', error);
+      alert(`저장 중 오류가 발생했습니다: ${error.message || error}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -59,16 +115,20 @@ export default function BannerItAdmin() {
 
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>메인 타이틀</label>
-          <input type="text" value={slide.title} onChange={e => setSlide({ ...slide, title: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '4px' }} />
+          <input type="text" value={slide.title} onChange={(e) => setSlide({ ...slide, title: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '4px' }} />
         </div>
 
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600' }}>서브 타이틀</label>
-          <input type="text" value={slide.subtitle} onChange={e => setSlide({ ...slide, subtitle: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '4px' }} />
+          <input type="text" value={slide.subtitle} onChange={(e) => setSlide({ ...slide, subtitle: e.target.value })} style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '4px' }} />
         </div>
 
-        <button onClick={handleSave} style={{ width: '100%', padding: '1rem', backgroundColor: '#111', color: '#fff', fontWeight: 'bold', borderRadius: '8px', cursor: 'pointer', border: 'none' }}>
-          저장 및 라이브 반영
+        <button
+          onClick={handleSave}
+          disabled={isSaving}
+          style={{ width: '100%', padding: '1rem', backgroundColor: isSaving ? '#6b7280' : '#111', color: '#fff', fontWeight: 'bold', borderRadius: '8px', cursor: 'pointer', border: 'none' }}
+        >
+          {isSaving ? '저장 및 배포 중...' : '저장 및 라이브 반영'}
         </button>
 
         <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
@@ -79,7 +139,7 @@ export default function BannerItAdmin() {
         </div>
       </div>
 
-      {/* 모바일 실시간 프리뷰 */}
+      {/* 모바일 프리뷰 */}
       <div style={{ flex: '1', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb', padding: '2rem' }}>
         <div style={{ width: '375px', height: '667px', backgroundColor: '#fff', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px' }}>
           <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1 }}></div>
