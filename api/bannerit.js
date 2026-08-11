@@ -14,11 +14,11 @@ export default async function handler(req, res) {
   let clientMallId = req.query.mall_id || 'default_mall';
 
   try {
-    // 1. Supabase에서 해당 몰의 활성화된 캠페인과 배너 아이템 조회
+    // 1. Supabase에서 해당 몰의 활성화된 캠페인과 배너 아이템 조회 (position 컬럼 제거됨)
     const { data: campaign, error } = await supabase
       .from('bannerit_campaigns')
       .select(`
-        id, position,
+        id,
         bannerit_items ( image_url, title, subtitle, cta_text, cta_link, sort_order )
       `)
       .eq('mall_id', clientMallId)
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
       .order('sort_order', { referencedTable: 'bannerit_items', ascending: true })
       .single();
 
-    if (error || !campaign || campaign.bannerit_items.length === 0) {
+    if (error || !campaign || !campaign.bannerit_items || campaign.bannerit_items.length === 0) {
       return res.status(200).send(`console.log('[BannerIt] No active banners.');`);
     }
 
@@ -39,7 +39,6 @@ export default async function handler(req, res) {
         if (window.__BANNERIT_LOADED__) return;
         window.__BANNERIT_LOADED__ = true;
 
-        // 쿠키 확인 (오늘 하루 열지 않기)
         if (document.cookie.indexOf('bannerit_hide_${campaign.id}=true') > -1) return;
 
         const host = document.createElement('div');
@@ -49,7 +48,6 @@ export default async function handler(req, res) {
 
         const shadow = host.attachShadow({ mode: 'closed' });
         
-        // 팝업 아이템 HTML 생성
         const slidesHTML = \`${items.map(item => `
           <div class="snap-slide">
             <a href="${item.cta_link || '#none'}" class="slide-link">
@@ -73,7 +71,6 @@ export default async function handler(req, res) {
             .popup-container { background: #fff; width: 100%; max-width: 400px; border-radius: 16px; overflow: hidden; transform: translateY(20px); opacity: 0; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
             .backdrop.show .popup-container { transform: translateY(0); opacity: 1; }
             
-            /* CSS Scroll Snap을 활용한 초경량 스와이퍼 */
             .slider-wrapper { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
             .slider-wrapper::-webkit-scrollbar { display: none; }
             .snap-slide { flex: 0 0 100%; scroll-snap-align: start; position: relative; }
@@ -107,7 +104,6 @@ export default async function handler(req, res) {
 
         const backdrop = shadow.getElementById('backdrop');
         
-        // 애니메이션 트리거
         requestAnimationFrame(() => {
           backdrop.classList.add('show');
         });
