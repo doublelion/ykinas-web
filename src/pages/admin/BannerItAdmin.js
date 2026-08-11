@@ -1,18 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://placeholder.supabase.co';
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'placeholder-key';
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function BannerItAdmin() {
-  //const [currentMallId] = useState('ecudemo389879');
-
   const [currentMallId] = useState('ecudemo388727');
-
   const [isActive, setIsActive] = useState(true);
   const [imageFile, setImageFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [existingItemId, setExistingItemId] = useState(null);
 
   const [slide, setSlide] = useState({
     title: '무료배송 서비스',
@@ -22,7 +20,38 @@ export default function BannerItAdmin() {
     imageUrl: ''
   });
 
-  // 이미지 파일 선택 시 로컬 임시 프리뷰 URL 생성
+  // 1. 초기 진입 시 기존 DB에 저장된 배너 데이터 로드
+  useEffect(() => {
+    async function loadExistingBanner() {
+      try {
+        const { data: campaign } = await supabase
+          .from('bannerit_campaigns')
+          .select('id, is_active, bannerit_items(id, image_url, title, subtitle, cta_text, cta_link)')
+          .eq('mall_id', currentMallId)
+          .maybeSingle();
+
+        if (campaign) {
+          setIsActive(campaign.is_active);
+          const item = campaign.bannerit_items?.[0];
+          if (item) {
+            setExistingItemId(item.id);
+            setSlide({
+              title: item.title || '',
+              subtitle: item.subtitle || '',
+              cta_text: item.cta_text || '',
+              cta_link: item.cta_link || '#none',
+              imageUrl: item.image_url || ''
+            });
+          }
+        }
+      } catch (err) {
+        console.error('기존 데이터 로드 실패:', err);
+      }
+    }
+    loadExistingBanner();
+  }, [currentMallId]);
+
+  // 2. 이미지 파일 선택 핸들러
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -31,18 +60,13 @@ export default function BannerItAdmin() {
     }
   };
 
-  // Supabase Storage 업로드 및 DB Upsert 트랜잭션
+  // 3. 저장 및 라이브 반영
   const handleSave = async () => {
-    if (!process.env.REACT_APP_SUPABASE_URL) {
-      alert('.env 파일에 REACT_APP_SUPABASE_URL 설정이 필요합니다.');
-      return;
-    }
-
     try {
       setIsSaving(true);
       let finalImageUrl = slide.imageUrl;
 
-      // 1. 이미지 신규 파일 첨부 시 스토리지 업로드
+      // 이미지 파일이 새롭게 선택된 경우 스토리지 업로드
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `${currentMallId}_${Date.now()}.${fileExt}`;
@@ -61,7 +85,7 @@ export default function BannerItAdmin() {
         finalImageUrl = publicUrlData.publicUrl;
       }
 
-      // 2. bannerit_campaigns Upsert (mall_id 기준)
+      // 캠페인 Upsert (mall_id 기준)
       const { data: campaignData, error: campaignError } = await supabase
         .from('bannerit_campaigns')
         .upsert({ mall_id: currentMallId, is_active: isActive }, { onConflict: 'mall_id' })
@@ -70,23 +94,10 @@ export default function BannerItAdmin() {
 
       if (campaignError) throw campaignError;
 
-      // 3. 기존 등록된 아이템이 있는지 먼저 확인 (무한 EMPTY Row 생성 방지)
-      const { data: existingItem } = await supabase
-        .from('bannerit_items')
-        .select('id, image_url')
-        .eq('campaign_id', campaignData.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      // 기존 이미지가 있고 새로 올리지 않았다면 기존 URL 유지
-      if (!imageFile && existingItem?.image_url) {
-        finalImageUrl = existingItem.image_url;
-      }
-
+      // 아이템 Upsert 페이로드 구성을 위한 기존 데이터 체크
       const itemPayload = {
         campaign_id: campaignData.id,
-        image_url: finalImageUrl || 'https://via.placeholder.com/400x400?text=No+Image',
+        image_url: finalImageUrl, // 절대 빈 값이 들어가지 않도록 지정
         title: slide.title,
         subtitle: slide.subtitle,
         cta_text: slide.cta_text,
@@ -94,17 +105,25 @@ export default function BannerItAdmin() {
         sort_order: 0
       };
 
-      // 기존 ID가 존재하면 UPDATE, 없으면 INSERT
-      if (existingItem?.id) {
-        itemPayload.id = existingItem.id;
+      // 기존 아이템 PK가 있다면 UPDATE, 없으면 INSERT
+      if (existingItemId) {
+        itemPayload.id = existingItemId;
       }
 
-      const { error: itemError } = await supabase
+      const { data: savedItem, error: itemError } = await supabase
         .from('bannerit_items')
-        .upsert(itemPayload);
+        .upsert(itemPayload)
+        .select()
+        .single();
 
       if (itemError) throw itemError;
 
+      if (savedItem) {
+        setExistingItemId(savedItem.id);
+        setSlide((prev) => ({ ...prev, imageUrl: savedItem.image_url }));
+      }
+
+      setImageFile(null); // 파일 인풋 초기화
       alert('배너잇 팝업 설정이 성공적으로 저장 및 라이브 반영되었습니다!');
     } catch (error) {
       console.error('Save Error:', error);
@@ -119,10 +138,8 @@ export default function BannerItAdmin() {
       {/* 폼 컨트롤 패널 */}
       <div style={{ flex: '1', padding: '2rem', borderRight: '1px solid #e5e7eb', backgroundColor: '#fff', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          {/* 타이틀에 컬러 강제 지정 */}
           <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111' }}>팝업 설정 (BannerIt)</h1>
           <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-            {/* 토글 텍스트에 컬러 강제 지정 */}
             <span style={{ marginRight: '0.5rem', fontSize: '0.875rem', color: '#111' }}>팝업 활성화</span>
             <input
               type="checkbox"
@@ -155,13 +172,6 @@ export default function BannerItAdmin() {
         >
           {isSaving ? '저장 및 배포 중...' : '저장 및 라이브 반영'}
         </button>
-
-        <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
-          <p style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>카페24 스킨 삽입용 스크립트</p>
-          <code style={{ fontSize: '0.875rem', color: '#10b981', wordBreak: 'break-all' }}>
-            {`<script src="https://ykinas.com/api/bannerit?mall_id=${currentMallId}"></script>`}
-          </code>
-        </div>
       </div>
 
       {/* 모바일 프리뷰 */}
