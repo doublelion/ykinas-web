@@ -48,14 +48,18 @@ export default function BannerItAdmin() {
         const fileName = `${currentMallId}_${Date.now()}.${fileExt}`;
         const filePath = `banners/${fileName}`;
 
+        // ❌ 수정 전: .from('bannerit_images')
+        // ✅ 수정 후: .from('bannerit_assets') 로 변경합니다.
         const { error: uploadError } = await supabase.storage
-          .from('bannerit_images')
+          .from('bannerit_assets')
           .upload(filePath, imageFile, { upsert: true });
 
         if (uploadError) throw uploadError;
 
+        // ❌ 수정 전: .from('bannerit_images')
+        // ✅ 수정 후: .from('bannerit_assets') 로 변경합니다.
         const { data: publicUrlData } = supabase.storage
-          .from('bannerit_images')
+          .from('bannerit_assets')
           .getPublicUrl(filePath);
 
         finalImageUrl = publicUrlData.publicUrl;
