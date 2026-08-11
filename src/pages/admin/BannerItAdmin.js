@@ -42,20 +42,18 @@ export default function BannerItAdmin() {
       setIsSaving(true);
       let finalImageUrl = slide.imageUrl;
 
-      // 1. 이미지 파일이 새로 첨부된 경우 Supabase Storage 버킷 업로드
+      // 1. 이미지 신규 파일 첨부 시 스토리지 업로드
       if (imageFile) {
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `${currentMallId}_${Date.now()}.${fileExt}`;
         const filePath = `banners/${fileName}`;
 
-        // ✅ 첫 번째 수정: 업로드 목적지를 bannerit_assets로 변경
         const { error: uploadError } = await supabase.storage
           .from('bannerit_assets')
           .upload(filePath, imageFile, { upsert: true });
 
         if (uploadError) throw uploadError;
 
-        // ✅ 두 번째 수정: 퍼블릭 URL을 가져오는 목적지도 bannerit_assets로 변경
         const { data: publicUrlData } = supabase.storage
           .from('bannerit_assets')
           .getPublicUrl(filePath);
@@ -63,7 +61,7 @@ export default function BannerItAdmin() {
         finalImageUrl = publicUrlData.publicUrl;
       }
 
-      // 2. bannerit_campaigns 테이블 Upsert (mall_id 기준)
+      // 2. bannerit_campaigns Upsert (mall_id 기준)
       const { data: campaignData, error: campaignError } = await supabase
         .from('bannerit_campaigns')
         .upsert({ mall_id: currentMallId, is_active: isActive }, { onConflict: 'mall_id' })
@@ -72,18 +70,38 @@ export default function BannerItAdmin() {
 
       if (campaignError) throw campaignError;
 
-      // 3. bannerit_items 테이블 Upsert (campaign_id 기준)
+      // 3. 기존 등록된 아이템이 있는지 먼저 확인 (무한 EMPTY Row 생성 방지)
+      const { data: existingItem } = await supabase
+        .from('bannerit_items')
+        .select('id, image_url')
+        .eq('campaign_id', campaignData.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      // 기존 이미지가 있고 새로 올리지 않았다면 기존 URL 유지
+      if (!imageFile && existingItem?.image_url) {
+        finalImageUrl = existingItem.image_url;
+      }
+
+      const itemPayload = {
+        campaign_id: campaignData.id,
+        image_url: finalImageUrl || 'https://via.placeholder.com/400x400?text=No+Image',
+        title: slide.title,
+        subtitle: slide.subtitle,
+        cta_text: slide.cta_text,
+        cta_link: slide.cta_link,
+        sort_order: 0
+      };
+
+      // 기존 ID가 존재하면 UPDATE, 없으면 INSERT
+      if (existingItem?.id) {
+        itemPayload.id = existingItem.id;
+      }
+
       const { error: itemError } = await supabase
         .from('bannerit_items')
-        .upsert({
-          campaign_id: campaignData.id,
-          image_url: finalImageUrl,
-          title: slide.title,
-          subtitle: slide.subtitle,
-          cta_text: slide.cta_text,
-          cta_link: slide.cta_link,
-          sort_order: 0
-        });
+        .upsert(itemPayload);
 
       if (itemError) throw itemError;
 
