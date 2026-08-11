@@ -6,7 +6,6 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import Portfolio from './pages/Portfolio';
 import TemplateList from './pages/TemplateList';
-// import TemplateDetail 삭제 (사용하지 않음)
 import AristideV1 from './components/templates/AristideV1';
 import './App.scss';
 
@@ -26,8 +25,7 @@ const PublicLayout = () => (
   </div>
 );
 
-
-// 1. 컴포넌트 정의
+// 2. 컴포넌트 정의
 const TemplateRenderer = () => {
   const { id } = useParams();
   const currentId = id || 'tpl-01';
@@ -59,28 +57,25 @@ const TemplateRenderer = () => {
 function App() {
   return (
     <Router>
-      <div className="ykinas-app">
-        <Header />
-        <main className="main-content">
-          <Suspense fallback={<div className="loading-spinner">Loading...</div>}>
-            <Routes>
-              {/* 퍼블릭 페이지 라우트 그룹 (Header, Footer 포함) */}
-              <Route element={<PublicLayout />}>
-                <Route path="/" element={<Home />} />
-                <Route path="/portfolio" element={<Portfolio />} />
-                <Route path="/audit" element={<Audit />} />
-                <Route path="/contact" element={<Contact />} />
-                <Route path="/templates" element={<TemplateList />} />
-                <Route path="/templates/:id" element={<TemplateRenderer />} />
-              </Route>
+      {/* 글로벌 래퍼(Header, Footer) 제거 및 라우터 코어만 유지 */}
+      <Suspense fallback={<div className="loading-spinner">Loading...</div>}>
+        <Routes>
 
-              {/* 배너잇 어드민 전용 라우트 (Header, Footer 없음) */}
-              <Route path="/admin/bannerit" element={<BannerItAdmin />} />
-            </Routes>
-          </Suspense>
-        </main>
-        <Footer />
-      </div>
+          {/* 퍼블릭 페이지 라우트 그룹 (Header, Footer 포함) */}
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/portfolio" element={<Portfolio />} />
+            <Route path="/audit" element={<Audit />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/templates" element={<TemplateList />} />
+            <Route path="/templates/:id" element={<TemplateRenderer />} />
+          </Route>
+
+          {/* 배너잇 어드민 전용 라우트 (Header, Footer 없음) */}
+          <Route path="/admin/bannerit" element={<BannerItAdmin />} />
+
+        </Routes>
+      </Suspense>
     </Router>
   );
 }
