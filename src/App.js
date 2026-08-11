@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, useParams } from 'react-router-dom'; // useParams 합치기
+import { BrowserRouter as Router, Routes, Route, useParams, Outlet } from 'react-router-dom';
 import { TEMPLATES } from './data/template';
 import Home from './pages/Home';
 import Header from './components/Header';
