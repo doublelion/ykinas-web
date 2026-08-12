@@ -31,6 +31,16 @@ export default async function handler(req, res) {
     const items = campaign.bannerit_items;
     const totalItems = items.length;
 
+    // ★ PC용 좌우 화살표 버튼 HTML (2개 이상일 때만 주입)
+    const navButtonsHTML = totalItems > 1 ? `
+      <button type="button" class="nav-btn prev-btn" id="btn-prev">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <button type="button" class="nav-btn next-btn" id="btn-next">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    ` : '';
+
     const injectedScript = `
       (function() {
         'use strict';
@@ -75,20 +85,18 @@ export default async function handler(req, res) {
               :host { all: initial; font-family: 'Pretendard', -apple-system, sans-serif; }
               * { box-sizing: border-box; }
               
-              /* 백드롭 설정 */
               .backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); opacity: 0; transition: opacity 0.4s ease; pointer-events: auto; }
               .backdrop.show { opacity: 1; }
               
-              /* ★ 바텀 시트 (Bottom-sheet) 모달 스타일 */
               .popup-container { 
                 position: fixed; 
-                bottom: -100%; /* 아래에 숨겨둠 */
+                bottom: -100%; 
                 left: 50%; 
                 transform: translateX(-50%); 
                 width: 100%; 
                 max-width: 420px; 
                 background: #fff; 
-                border-radius: 24px 24px 0 0; /* 상단만 둥글게 */
+                border-radius: 24px 24px 0 0; 
                 overflow: hidden; 
                 transition: bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1); 
                 box-shadow: 0 -10px 40px rgba(0,0,0,0.2); 
@@ -96,7 +104,7 @@ export default async function handler(req, res) {
               }
               .backdrop.show + .popup-container { bottom: 0; }
               
-              /* 페이징 라벨링 (1 | 3) */
+              /* 인디케이터 (1 | 3) */
               .page-indicator {
                 position: absolute;
                 top: 16px;
@@ -111,7 +119,35 @@ export default async function handler(req, res) {
                 pointer-events: none;
               }
 
-              /* 스와이퍼 영역 (PC 마우스 그랩 허용) */
+              /* ★ PC용 화살표 버튼 스타일 */
+              .nav-btn {
+                position: absolute;
+                top: 35%; /* 이미지 영역 중앙쯤 위치 */
+                transform: translateY(-50%);
+                background: rgba(255, 255, 255, 0.9);
+                border: none;
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                cursor: pointer;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10;
+                color: #333;
+                pointer-events: auto;
+                transition: opacity 0.2s;
+              }
+              .prev-btn { left: 16px; }
+              .next-btn { right: 16px; }
+              .nav-btn svg { width: 18px; height: 18px; }
+              
+              /* 모바일 환경에서는 화살표 숨김 처리 (스와이프 유도) */
+              @media (max-width: 768px) {
+                .nav-btn { display: none !important; }
+              }
+
               .slider-wrapper { 
                 display: flex; 
                 overflow-x: auto; 
@@ -127,13 +163,11 @@ export default async function handler(req, res) {
               .slide-link { display: block; text-decoration: none; color: inherit; }
               .snap-slide img { width: 100%; aspect-ratio: 4/4; object-fit: cover; display: block; pointer-events: none; }
               
-              /* 텍스트 영역 */
               .text-content { padding: 24px 20px 30px; text-align: center; background: #fff; }
               .text-content h2 { margin: 0 0 8px; font-size: 1.35rem; font-weight: 800; color: #111; letter-spacing: -0.02em; }
               .text-content p { margin: 0 0 16px; font-size: 0.95rem; color: #666; line-height: 1.4; }
               .cta-btn { display: inline-block; padding: 14px 28px; background: #111; color: #fff; border-radius: 8px; font-weight: 600; font-size: 0.95rem; }
               
-              /* 하단 버튼 */
               .bottom-controls { display: flex; border-top: 1px solid #eee; background: #fafafa; }
               .bottom-controls button { flex: 1; padding: 18px 0; border: none; background: transparent; font-size: 0.9rem; font-weight: 500; color: #555; cursor: pointer; pointer-events: auto; }
               .bottom-controls button:first-child { border-right: 1px solid #eee; }
@@ -142,6 +176,7 @@ export default async function handler(req, res) {
             <div class="backdrop" id="backdrop"></div>
             <div class="popup-container" id="popup">
               ${totalItems > 1 ? `<div class="page-indicator" id="indicator">1 | ${totalItems}</div>` : ''}
+              ${navButtonsHTML}
               <div class="slider-wrapper" id="slider">
                 \${slidesHTML}
               </div>
@@ -156,6 +191,8 @@ export default async function handler(req, res) {
           const popup = shadow.getElementById('popup');
           const slider = shadow.getElementById('slider');
           const indicator = shadow.getElementById('indicator');
+          const btnPrev = shadow.getElementById('btn-prev');
+          const btnNext = shadow.getElementById('btn-next');
           
           requestAnimationFrame(() => {
             backdrop.classList.add('show');
@@ -176,17 +213,47 @@ export default async function handler(req, res) {
 
           shadow.getElementById('btn-close').addEventListener('click', closePopup);
           shadow.getElementById('btn-hide-today').addEventListener('click', hideToday);
-          backdrop.addEventListener('click', closePopup); // 바탕화면 클릭 시 닫기
+          backdrop.addEventListener('click', closePopup); 
 
-          // ★ 다중 슬라이드: 페이지 인디케이터 갱신
-          if (totalItems > 1) {
-            slider.addEventListener('scroll', () => {
+          // ★ 다중 슬라이드: 인디케이터 및 버튼 상태 동기화
+          if (${totalItems} > 1) {
+            const updateUI = () => {
+              // 정확한 스크롤 인덱스 계산을 위해 소수점 반올림 처리
               const index = Math.round(slider.scrollLeft / slider.clientWidth);
-              indicator.textContent = (index + 1) + ' | ${totalItems}';
-            });
+              
+              if (indicator) {
+                indicator.textContent = (index + 1) + ' | ' + ${totalItems};
+              }
+
+              // 양끝 도달 시 화살표 버튼 투명도 및 커서 처리
+              if (btnPrev) {
+                btnPrev.style.opacity = index === 0 ? '0.3' : '1';
+                btnPrev.style.cursor = index === 0 ? 'not-allowed' : 'pointer';
+              }
+              if (btnNext) {
+                btnNext.style.opacity = index === ${totalItems - 1} ? '0.3' : '1';
+                btnNext.style.cursor = index === ${totalItems - 1} ? 'not-allowed' : 'pointer';
+              }
+            };
+
+            // 스크롤 이벤트에 UI 업데이트 바인딩
+            slider.addEventListener('scroll', updateUI);
+            updateUI(); // 초기화
+
+            // PC 클릭 네비게이션
+            if (btnPrev) {
+              btnPrev.addEventListener('click', () => {
+                slider.scrollBy({ left: -slider.clientWidth, behavior: 'smooth' });
+              });
+            }
+            if (btnNext) {
+              btnNext.addEventListener('click', () => {
+                slider.scrollBy({ left: slider.clientWidth, behavior: 'smooth' });
+              });
+            }
           }
 
-          // ★ PC 환경 마우스 드래그(스와이프) 지원 로직
+          // PC 환경 마우스 드래그(스와이프) 지원
           let isDown = false;
           let startX;
           let scrollLeft;
@@ -199,33 +266,24 @@ export default async function handler(req, res) {
             scrollLeft = slider.scrollLeft;
           });
 
-          slider.addEventListener('mouseleave', () => {
-            isDown = false;
-          });
-
-          slider.addEventListener('mouseup', () => {
-            isDown = false;
-          });
+          slider.addEventListener('mouseleave', () => { isDown = false; });
+          slider.addEventListener('mouseup', () => { isDown = false; });
 
           slider.addEventListener('mousemove', (e) => {
             if (!isDown) return;
             e.preventDefault();
             dragged = true;
             const x = e.pageX - slider.offsetLeft;
-            const walk = (x - startX) * 1.5; // 스크롤 속도 배율
+            const walk = (x - startX) * 1.5; 
             slider.scrollLeft = scrollLeft - walk;
           });
 
-          // 드래그 중일 때는 a 태그 링크 이동 방지
           const links = shadow.querySelectorAll('.slide-link');
           links.forEach(link => {
             link.addEventListener('click', (e) => {
-              if (dragged) {
-                e.preventDefault();
-              }
+              if (dragged) e.preventDefault();
             });
           });
-
         }
 
         if (document.readyState === 'loading') {
