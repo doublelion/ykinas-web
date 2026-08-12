@@ -167,7 +167,7 @@ export default async function handler(req, res) {
               .snap-slide img { width: 100%; aspect-ratio: 4/4; object-fit: cover; display: block; pointer-events: none; }
               
               .text-content { padding: 24px 20px 30px; text-align: center; background: #fff; }
-              .text-content h2 { margin: 0 0 8px; font-size: 1.35rem; font-weight: 800; color: #111; letter-spacing: -0.02em; }
+              .text-content h2 { margin: 0 0 8px; font-size: 1.35rem; font-weight: 600; color: #111; letter-spacing: -0.02em; }
               .text-content p { margin: 0 0 16px; font-size: 0.95rem; color: #666; line-height: 1.4; }
               .cta-btn { display: inline-block; padding: 14px 28px; background: #111; color: #fff; border-radius: 8px; font-weight: 600; font-size: 0.95rem; }
               

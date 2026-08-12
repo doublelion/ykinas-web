@@ -193,12 +193,12 @@ export default function BannerItAdmin() {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f3f4f6' }}>
         <div style={{ background: '#fff', padding: '3rem', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', width: '400px', textAlign: 'center' }}>
-          <h1 style={{ margin: '0 0 0.5rem', fontSize: '1.5rem', fontWeight: 'bold' }}>BannerIt 관리자</h1>
+          <h1 style={{ margin: '0 0 0.5rem', fontSize: '1.5rem', fontWeight: 'bold', color: '#111' }}>BannerIt 관리자</h1>
           <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '1.2rem' }}>팝업을 설정할 쇼핑몰 아이디를 입력하세요.</p>
 
           <input
             type="text"
-            placeholder="예: ecudemo388727"
+            placeholder="카페24 쇼핑몰 ID를 입력하세요 (예: myshop123)"
             value={loginInput}
             onChange={(e) => setLoginInput(e.target.value)}
             onKeyDown={(e) => {
@@ -241,7 +241,7 @@ export default function BannerItAdmin() {
         {slides.map((s, idx) => (
           <div key={idx} style={{ marginBottom: '2rem', padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, fontWeight: 'bold' }}>슬라이드 {idx + 1}</h3>
+              <h3 style={{ margin: 0, fontWeight: 'bold', color: '#111' }}>슬라이드 {idx + 1}</h3>
               {slides.length > 1 && (
                 <button onClick={() => removeSlide(idx)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>삭제</button>
               )}
