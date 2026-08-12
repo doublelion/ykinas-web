@@ -67,6 +67,26 @@ export default function BannerItAdmin() {
   useEffect(() => {
     if (!currentMallId) return;
 
+    // 1. 브라우저 탭 타이틀 변경
+    document.title = `BannerIt 관리자 | ${currentMallId || 'YKINAS'}`;
+
+    // 파비콘(Favicon) 요소 찾기 및 교체
+    let link = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      // 기존 파비콘이 없으면 새로 생성하여 head에 삽입
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    // 파비콘 파일명
+    link.href = '/bannerit_favicon.ico';
+
+    // (선택 사항) 컴포넌트 언마운트 시 원래 타이틀/파비콘으로 원복하는 클린업 함수
+    return () => {
+      document.title = 'YKINAS | Premium Commerce Solutions';
+      if (link) link.href = '/favicon.ico'; // 기존 회사 홈페이지 파비콘 경로
+    };
+
     async function loadExistingBanner() {
       try {
         const { data: campaign } = await supabase
