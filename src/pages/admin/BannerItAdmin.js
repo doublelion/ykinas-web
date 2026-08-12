@@ -6,15 +6,17 @@ const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function BannerItAdmin() {
-  const [currentMallId] = useState('ecudemo388727');
+  // ★ 향후 SaaS 확장을 위해 URL 파라미터나 로컬스토리지에서 mall_id를 동적으로 받도록 세팅 (현재는 폴백으로 테스트몰 유지)
+  const urlParams = new URLSearchParams(window.location.search);
+  const [currentMallId] = useState(urlParams.get('mall_id') || 'ecudemo388727');
+
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // ★ 다중 등록을 위한 상태 (배열로 관리)
   const [slides, setSlides] = useState([]);
-  const [deletedItemIds, setDeletedItemIds] = useState([]); // 삭제할 기존 DB 아이템 추적
+  const [deletedItemIds, setDeletedItemIds] = useState([]);
+  const [deletedImagePaths, setDeletedImagePaths] = useState([]); // ★ 스토리지에서 삭제할 이미지 경로 추적
 
-  // 프리뷰 뷰포트용 상태
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
 
   // 1. 기존 데이터 Fetching
@@ -30,7 +32,6 @@ export default function BannerItAdmin() {
         if (campaign) {
           setIsActive(campaign.is_active);
           if (campaign.bannerit_items && campaign.bannerit_items.length > 0) {
-            // sort_order 기준으로 정렬하여 로드
             const sortedItems = campaign.bannerit_items.sort((a, b) => a.sort_order - b.sort_order);
             const loadedSlides = sortedItems.map(item => ({
               id: item.id,
@@ -39,11 +40,12 @@ export default function BannerItAdmin() {
               cta_text: item.cta_text || '',
               cta_link: item.cta_link || '',
               imageUrl: item.image_url || '',
-              file: null // 신규 첨부 파일 객체용
+              originalImageUrl: item.image_url || '', // ★ 스토리지 교체를 위해 원본 주소 기억
+              file: null
             }));
             setSlides(loadedSlides);
           } else {
-            addEmptySlide(); // 없으면 빈 슬라이드 1개 생성
+            addEmptySlide();
           }
         } else {
           addEmptySlide();
@@ -55,35 +57,35 @@ export default function BannerItAdmin() {
     loadExistingBanner();
   }, [currentMallId]);
 
-  // 빈 슬라이드 추가 함수
   const addEmptySlide = () => {
     if (slides.length >= 3) return alert('슬라이드는 최대 3개까지만 등록할 수 있습니다.');
-    setSlides([...slides, { id: null, title: '', subtitle: '', cta_text: '', cta_link: '', imageUrl: '', file: null }]);
+    setSlides([...slides, { id: null, title: '', subtitle: '', cta_text: '', cta_link: '', imageUrl: '', originalImageUrl: '', file: null }]);
   };
 
-  // 슬라이드 삭제 핸들러
   const removeSlide = (index) => {
     const target = slides[index];
     if (target.id) {
-      setDeletedItemIds([...deletedItemIds, target.id]); // DB에 존재하는 아이템이면 삭제 목록에 추가
+      setDeletedItemIds([...deletedItemIds, target.id]);
+      // ★ 슬라이드 삭제 시 해당 슬라이드의 이미지도 스토리지 삭제 목록에 추가
+      if (target.originalImageUrl) {
+        const oldPath = target.originalImageUrl.split('/bannerit_assets/')[1];
+        if (oldPath) setDeletedImagePaths(prev => [...prev, decodeURIComponent(oldPath)]);
+      }
     }
     const newSlides = slides.filter((_, i) => i !== index);
     setSlides(newSlides);
     if (currentPreviewIndex >= newSlides.length) setCurrentPreviewIndex(Math.max(0, newSlides.length - 1));
   };
 
-  // 슬라이드 내용 업데이트 핸들러
   const updateSlide = (index, field, value) => {
     const newSlides = [...slides];
     newSlides[index][field] = value;
     setSlides(newSlides);
   };
 
-  // ★ 1MB 용량 제한이 포함된 이미지 첨부 핸들러
   const handleImageChange = (index, e) => {
     const file = e.target.files[0];
     if (file) {
-      // 용량 제한 1MB (1024 * 1024 bytes)
       if (file.size > 1 * 1024 * 1024) {
         alert('이미지 용량은 1MB를 초과할 수 없습니다. 압축 후 다시 시도해주세요.');
         e.target.value = '';
@@ -96,14 +98,13 @@ export default function BannerItAdmin() {
     }
   };
 
-  // 2. 다중 데이터 저장 및 트랜잭션
+  // 2. 가비지 컬렉션(GC) 로직이 포함된 최종 저장 트랜잭션
   const handleSave = async () => {
     if (slides.length === 0) return alert('최소 1개의 슬라이드를 등록해주세요.');
 
     try {
       setIsSaving(true);
 
-      // 캠페인 Upsert
       const { data: campaignData, error: campaignError } = await supabase
         .from('bannerit_campaigns')
         .upsert({ mall_id: currentMallId, is_active: isActive }, { onConflict: 'mall_id' })
@@ -111,29 +112,41 @@ export default function BannerItAdmin() {
         .single();
       if (campaignError) throw campaignError;
 
-      // 삭제된 아이템 DB 정리
+      // [1] DB 아이템 삭제 처리
       if (deletedItemIds.length > 0) {
         await supabase.from('bannerit_items').delete().in('id', deletedItemIds);
         setDeletedItemIds([]);
       }
 
-      // 슬라이드 배열 순회하며 스토리지 업로드 및 DB Upsert
+      // [2] 스토리지 가비지 컬렉션 (삭제된 슬라이드의 이미지 지우기)
+      if (deletedImagePaths.length > 0) {
+        await supabase.storage.from('bannerit_assets').remove(deletedImagePaths);
+        setDeletedImagePaths([]);
+      }
+
       for (let i = 0; i < slides.length; i++) {
         let currentSlide = slides[i];
         let finalImageUrl = currentSlide.imageUrl;
 
-        // 신규 파일이 있는 경우에만 Storage 업로드
+        // 신규 파일이 업로드 된 경우
         if (currentSlide.file) {
+          // ★ 기존에 등록된 이미지가 있었다면 스토리지에서 완벽히 삭제 (이미지 교체 시나리오)
+          if (currentSlide.originalImageUrl) {
+            const oldPath = currentSlide.originalImageUrl.split('/bannerit_assets/')[1];
+            if (oldPath) {
+              await supabase.storage.from('bannerit_assets').remove([decodeURIComponent(oldPath)]);
+            }
+          }
+
           const fileExt = currentSlide.file.name.split('.').pop();
-          const fileName = `${currentMallId}_slide${i}_${Date.now()}.${fileExt}`;
-          const filePath = `banners/${fileName}`;
+          const fileName = `banners/${currentMallId}_slide${i}_${Date.now()}.${fileExt}`;
 
           const { error: uploadError } = await supabase.storage
             .from('bannerit_assets')
-            .upload(filePath, currentSlide.file, { upsert: true });
+            .upload(fileName, currentSlide.file, { upsert: true });
 
           if (uploadError) throw uploadError;
-          const { data: publicUrlData } = supabase.storage.from('bannerit_assets').getPublicUrl(filePath);
+          const { data: publicUrlData } = supabase.storage.from('bannerit_assets').getPublicUrl(fileName);
           finalImageUrl = publicUrlData.publicUrl;
         }
 
@@ -144,7 +157,7 @@ export default function BannerItAdmin() {
           subtitle: currentSlide.subtitle,
           cta_text: currentSlide.cta_text,
           cta_link: currentSlide.cta_link,
-          sort_order: i // ★ 배열의 인덱스를 순서 값으로 부여
+          sort_order: i
         };
 
         if (currentSlide.id) itemPayload.id = currentSlide.id;
@@ -153,7 +166,7 @@ export default function BannerItAdmin() {
       }
 
       alert('다중 슬라이드 팝업 설정이 성공적으로 저장 및 라이브 반영되었습니다!');
-      window.location.reload(); // 최신 상태 동기화를 위해 리로드
+      window.location.reload();
     } catch (error) {
       console.error('Save Error:', error);
       alert(`저장 중 오류가 발생했습니다: ${error.message}`);
@@ -166,7 +179,7 @@ export default function BannerItAdmin() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f9fafb' }}>
-      {/* 좌측: 다중 폼 컨트롤 패널 */}
+      {/* 폼 컨트롤 및 프리뷰 UI 렌더링 코드 (이전 단계와 100% 동일하므로 생략 없이 기존 코드 유지) */}
       <div style={{ flex: '1', padding: '2rem', borderRight: '1px solid #e5e7eb', backgroundColor: '#fff', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111' }}>팝업 다중 설정 (BannerIt)</h1>
@@ -218,13 +231,11 @@ export default function BannerItAdmin() {
         </button>
       </div>
 
-      {/* 우측: 모바일 프리뷰 */}
       <div style={{ flex: '1', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb', padding: '2rem' }}>
         <div style={{ width: '375px', height: '667px', backgroundColor: '#fff', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px' }}>
           <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1 }}></div>
           <div style={{ position: 'relative', zIndex: 2, backgroundColor: '#fff', borderRadius: '16px', overflow: 'hidden', width: '100%' }}>
 
-            {/* 페이지 인디케이터 (Labeling) */}
             {slides.length > 0 && (
               <div style={{ position: 'absolute', top: '16px', right: '16px', backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', zIndex: 10 }}>
                 {currentPreviewIndex + 1} | {slides.length}
@@ -244,7 +255,6 @@ export default function BannerItAdmin() {
               )}
             </div>
 
-            {/* 프리뷰 내비게이션 화살표 */}
             {slides.length > 1 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 20px 16px' }}>
                 <button disabled={currentPreviewIndex === 0} onClick={() => setCurrentPreviewIndex(prev => prev - 1)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: currentPreviewIndex === 0 ? 'not-allowed' : 'pointer', opacity: currentPreviewIndex === 0 ? 0.3 : 1 }}>◀</button>
