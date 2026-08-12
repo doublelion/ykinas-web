@@ -67,26 +67,17 @@ export default function BannerItAdmin() {
   useEffect(() => {
     if (!currentMallId) return;
 
-    // 1. 브라우저 탭 타이틀 변경
+    // 1. 브라우저 탭 타이틀 및 파비콘 동적 주입
     document.title = `BannerIt 관리자 | ${currentMallId || 'YKINAS'}`;
-
-    // 파비콘(Favicon) 요소 찾기 및 교체
     let link = document.querySelector("link[rel~='icon']");
     if (!link) {
-      // 기존 파비콘이 없으면 새로 생성하여 head에 삽입
       link = document.createElement('link');
       link.rel = 'icon';
       document.head.appendChild(link);
     }
-    // 파비콘 파일명
     link.href = '/bannerit_favicon.ico';
 
-    // (선택 사항) 컴포넌트 언마운트 시 원래 타이틀/파비콘으로 원복하는 클린업 함수
-    return () => {
-      document.title = 'YKINAS | Premium Commerce Solutions';
-      if (link) link.href = '/favicon.ico'; // 기존 회사 홈페이지 파비콘 경로
-    };
-
+    // 2. 비동기 데이터 로드 함수 정의
     async function loadExistingBanner() {
       try {
         const { data: campaign } = await supabase
@@ -115,7 +106,15 @@ export default function BannerItAdmin() {
         console.error('데이터 로드 실패:', err);
       }
     }
+
+    // 3. 데이터 로드 함수 실행
     loadExistingBanner();
+
+    // ★ 4. 클린업(Cleanup) 함수는 반드시 useEffect의 맨 마지막에 위치해야 합니다!
+    return () => {
+      document.title = 'YKINAS | Premium Commerce Solutions';
+      if (link) link.href = '/favicon.ico';
+    };
   }, [currentMallId]);
 
   const addEmptySlide = () => {
