@@ -194,7 +194,7 @@ export default function BannerItAdmin() {
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f3f4f6' }}>
         <div style={{ background: '#fff', padding: '3rem', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', width: '400px', textAlign: 'center' }}>
           <h1 style={{ margin: '0 0 0.5rem', fontSize: '1.5rem', fontWeight: 'bold' }}>BannerIt 관리자</h1>
-          <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '0.9rem' }}>팝업을 설정할 쇼핑몰 아이디를 입력하세요.</p>
+          <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '1.2rem' }}>팝업을 설정할 쇼핑몰 아이디를 입력하세요.</p>
 
           <input
             type="text"
@@ -209,7 +209,7 @@ export default function BannerItAdmin() {
 
           {/* ★ 에러 메시지 렌더링 영역 */}
           {loginError && (
-            <p style={{ color: '#ef4444', fontSize: '0.85rem', margin: '0 0 1rem', textAlign: 'left' }}>{loginError}</p>
+            <p style={{ color: '#ef4444', fontSize: '1.0rem', margin: '0 0 1rem', textAlign: 'left' }}>{loginError}</p>
           )}
 
           <button

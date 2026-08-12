@@ -44,7 +44,7 @@ export default async function handler(req, res) {
       .eq('mall_id', clientMallId)
       .single();
 
-    // ★ [핵심 수리] has_login_module 이 FALSE 이거나 is_active 가 FALSE 면 드로어 삭제 스크립트 분사
+    // has_login_module 이 FALSE 이거나 is_active 가 FALSE 면 드로어 삭제 스크립트 분사
     if (error || !license || !license.is_active || !license.has_login_module) {
       return sendDisabledScript('Unauthorized or module has_login_module is FALSE.');
     }
