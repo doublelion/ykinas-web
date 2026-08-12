@@ -64,11 +64,14 @@ export default function BannerItAdmin() {
     }
   };
 
+  // ★ 문법 오류 완벽 교정된 useEffect
   useEffect(() => {
     if (!currentMallId) return;
 
-    // 1. 브라우저 탭 타이틀 및 파비콘 동적 주입
+    // 1. 브라우저 탭 타이틀 변경
     document.title = `BannerIt 관리자 | ${currentMallId || 'YKINAS'}`;
+
+    // 2. 파비콘(Favicon) 요소 찾기 및 교체
     let link = document.querySelector("link[rel~='icon']");
     if (!link) {
       link = document.createElement('link');
@@ -77,7 +80,7 @@ export default function BannerItAdmin() {
     }
     link.href = '/bannerit_favicon.ico';
 
-    // 2. 비동기 데이터 로드 함수 정의
+    // 3. 데이터 로드 비동기 함수 정의
     async function loadExistingBanner() {
       try {
         const { data: campaign } = await supabase
@@ -107,10 +110,10 @@ export default function BannerItAdmin() {
       }
     }
 
-    // 3. 데이터 로드 함수 실행
+    // 4. 데이터 로드 실행
     loadExistingBanner();
 
-    // ★ 4. 클린업(Cleanup) 함수는 반드시 useEffect의 맨 마지막에 위치해야 합니다!
+    // ★ 5. 클린업 함수는 반드시 useEffect 스코프의 맨 마지막에 위치!
     return () => {
       document.title = 'YKINAS | Premium Commerce Solutions';
       if (link) link.href = '/favicon.ico';
