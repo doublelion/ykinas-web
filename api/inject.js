@@ -11,22 +11,26 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
 
   const clientReferer = req.headers['referer'] || '';
-  let clientMallId = req.query.mall_id || '';
+  // 수정된 안전한 라우팅 방식 (하드코딩 제거)
+  let clientMallId = req.query.mall_id;
 
-  // [방어 로직] 템플릿 치환 실패 방어
-  if (clientMallId === '{$mall_id}' || !clientMallId) {
-    clientMallId = 'ecudemo389879';
+  // 몰 아이디가 아예 안 넘어왔을 때만 에러 반환 및 조기 종료
+  if (!clientMallId || clientMallId === '{$mall_id}') {
+    return res.status(400).send(`console.error('[YKINAS Core] Mall ID is required.');`);
   }
 
   try {
     const { data: license, error } = await supabase
       .from('skin_licenses')
-      .select('id, is_active, skin_allowed_domains ( domain )')
+      .select('id, is_active, has_login_module, skin_allowed_domains ( domain )')
       .eq('mall_id', clientMallId)
       .eq('is_active', true)
       .single();
 
-    if (error || !license) return res.status(200).send(`console.warn('[YKINAS Core] Unauthorized.');`);
+    // ★ 권한 검증: 라이선스가 없거나, 로그인 모듈 권한(has_login_module)이 FALSE면 차단
+    if (error || !license || !license.has_login_module) {
+      return res.status(403).send(`console.warn('[YKINAS Core] Unauthorized for Login Module.');`);
+    }
 
     const allowedDomains = license.skin_allowed_domains.map(d => d.domain);
     const isDomainMatch = allowedDomains.some(domain => clientReferer.includes(domain)) || clientReferer === '';
