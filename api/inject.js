@@ -8,35 +8,56 @@ const supabase = createClient(
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
+  // ★ 캐시 타임을 0으로 설정하여 DB 권한 변경(TRUE/FALSE)이 실시간으로 쇼핑몰에 반영되도록 설정
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=0, must-revalidate');
 
   const clientReferer = req.headers['referer'] || '';
-  // 수정된 안전한 라우팅 방식 (하드코딩 제거)
   let clientMallId = req.query.mall_id;
 
-  // 몰 아이디가 아예 안 넘어왔을 때만 에러 반환 및 조기 종료
+  // 파기/무효화 전용 스크립트 반환 함수 (클라이언트 잔재 제거)
+  const sendDisabledScript = (reason) => {
+    return res.status(200).send(`
+      (function() {
+        console.warn('[YKINAS Login Drawer] Disabled: ${reason}');
+        if (window.YkinasLogin) {
+          window.YkinasLogin.open = function() {};
+          window.YkinasLogin.close = function() {};
+        }
+        const existingHost = document.getElementById('ykinas-global-drawer-root');
+        if (existingHost) existingHost.remove();
+        const existingIframe = document.getElementById('ykinas_proxy_iframe');
+        if (existingIframe) existingIframe.remove();
+      })();
+    `);
+  };
+
+  // 1. 몰 아이디 미전달 시 무효화 스크립트 반환
   if (!clientMallId || clientMallId === '{$mall_id}') {
-    return res.status(400).send(`console.error('[YKINAS Core] Mall ID is required.');`);
+    return sendDisabledScript('Mall ID is missing or invalid placeholder.');
   }
 
   try {
+    // 2. DB에서 라이선스 및 로그인 모듈 활성화 여부 조회
     const { data: license, error } = await supabase
       .from('skin_licenses')
       .select('id, is_active, has_login_module, skin_allowed_domains ( domain )')
       .eq('mall_id', clientMallId)
-      .eq('is_active', true)
       .single();
 
-    // ★ 권한 검증: 라이선스가 없거나, 로그인 모듈 권한(has_login_module)이 FALSE면 차단
-    if (error || !license || !license.has_login_module) {
-      return res.status(403).send(`console.warn('[YKINAS Core] Unauthorized for Login Module.');`);
+    // ★ [핵심 수리] has_login_module 이 FALSE 이거나 is_active 가 FALSE 면 드로어 삭제 스크립트 분사
+    if (error || !license || !license.is_active || !license.has_login_module) {
+      return sendDisabledScript('Unauthorized or module has_login_module is FALSE.');
     }
 
-    const allowedDomains = license.skin_allowed_domains.map(d => d.domain);
-    const isDomainMatch = allowedDomains.some(domain => clientReferer.includes(domain)) || clientReferer === '';
+    // 3. 도메인 허용 검증
+    const allowedDomains = license.skin_allowed_domains ? license.skin_allowed_domains.map(d => d.domain) : [];
+    const isDomainMatch = allowedDomains.length === 0 || allowedDomains.some(domain => clientReferer.includes(domain)) || clientReferer === '';
 
-    if (!isDomainMatch) return res.status(200).send(`console.warn('[YKINAS Core] Domain error.');`);
+    if (!isDomainMatch) {
+      return sendDisabledScript('Domain mismatch.');
+    }
 
+    // 4. 검증 통과 시 정상 로그인 드로어 스크립트 실행
     const injectedScript = `
       (function() {
         'use strict';
@@ -44,23 +65,16 @@ export default async function handler(req, res) {
         if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        // ★ [로직 완벽 분리] 로그인 페이지에서는 드로어 엔진 작동을 완전 중단합니다.
-        // 고객님의 login.html 네이티브 스크립트가 온전히 제어권을 갖도록 하여 충돌을 원천 차단합니다.
         if (window.location.pathname.includes('/member/login.html')) return;
 
-        // ★ [스마트 UX 라우터] 비회원이 '마이페이지' 등을 클릭 시, 
-        // 에러나 이탈 없이 그 자리에서 즉시 드로어를 우아하게 오픈합니다.
         document.addEventListener('click', function(e) {
           const target = e.target.closest('a');
           if (!target) return;
           
           const href = target.getAttribute('href') || '';
-          
-          // 로그인이 필요한 주요 링크 (주문조회는 비회원 조회가 필요하므로 제외)
           const requireLoginPaths = ['/myshop/index.html', '/myshop/wish_list.html', '/member/modify.html'];
           const isRequireLogin = requireLoginPaths.some(path => href.includes(path));
           
-          // 카페24 DOM 기준으로 비회원 상태 감지
           const isLoggedOut = document.querySelector('.xans-layout-statelogoff') !== null || !document.querySelector('.xans-layout-statelogon');
           
           if (isRequireLogin && isLoggedOut) {
@@ -104,7 +118,6 @@ export default async function handler(req, res) {
 
         const currentPath = window.location.pathname;
         const currentSearch = window.location.search;
-        const targetReturnUrl = new URLSearchParams(currentSearch).get('returnUrl') || (currentPath + currentSearch);
 
         function initShadowDOM() {
           if (isInitialized) return;
@@ -348,6 +361,6 @@ export default async function handler(req, res) {
 
     return res.status(200).send(injectedScript);
   } catch (err) {
-    return res.status(500).send(`console.error('[YKINAS Core] Initialization error.');`);
+    return sendDisabledScript('Initialization error.');
   }
 }
