@@ -9,10 +9,10 @@ import TemplateList from './pages/TemplateList';
 import AristideV1 from './components/templates/AristideV1';
 import './App.scss';
 
-// 무거운 페이지는 lazy 로딩으로 성능 최적화
+// ★ 무거운 페이지 및 어드민 컴포넌트 Lazy 로딩 (중복 import 제거 완료)
 const Audit = lazy(() => import('./pages/Audit'));
 const Contact = lazy(() => import('./pages/Contact'));
-const BannerItAdmin = lazy(() => import('./pages/admin/BannerItAdmin')); // 배너잇 어드민 페이지
+const BannerItAdmin = lazy(() => import('./pages/admin/BannerItAdmin')); 
 
 // 1. 와이키나스 공통 레이아웃 (Header, Footer 노출)
 const PublicLayout = () => (
@@ -25,7 +25,7 @@ const PublicLayout = () => (
   </div>
 );
 
-// 2. 컴포넌트 정의
+// 2. 템플릿 렌더러 컴포넌트
 const TemplateRenderer = () => {
   const { id } = useParams();
   const currentId = id || 'tpl-01';
@@ -57,7 +57,6 @@ const TemplateRenderer = () => {
 function App() {
   return (
     <Router>
-      {/* 글로벌 래퍼(Header, Footer) 제거 및 라우터 코어만 유지 */}
       <Suspense fallback={<div className="loading-spinner">Loading...</div>}>
         <Routes>
 
@@ -71,7 +70,10 @@ function App() {
             <Route path="/templates/:id" element={<TemplateRenderer />} />
           </Route>
 
-          {/* 배너잇 어드민 전용 라우트 (Header, Footer 없음) */}
+          {/* ★ 배너잇 어드민 전용 라우트 (Header, Footer 없음) */}
+          {/* admin.ykinas.com/bannerit 서브도메인 접속 대응 */}
+          <Route path="/bannerit" element={<BannerItAdmin />} />
+          {/* 기존 내부 관리자 주소 하위 호환 유지 */}
           <Route path="/admin/bannerit" element={<BannerItAdmin />} />
 
         </Routes>
