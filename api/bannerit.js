@@ -31,7 +31,6 @@ export default async function handler(req, res) {
     const items = campaign.bannerit_items;
     const totalItems = items.length;
 
-    // ★ PC용 좌우 화살표 버튼 HTML (2개 이상일 때만 주입)
     const navButtonsHTML = totalItems > 1 ? `
       <button type="button" class="nav-btn prev-btn" id="btn-prev">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
@@ -46,6 +45,13 @@ export default async function handler(req, res) {
         'use strict';
         if (window.__BANNERIT_LOADED__) return;
         window.__BANNERIT_LOADED__ = true;
+
+        // ★ 메인 페이지 필터링 로직 추가 (Early Return)
+        // 카페24의 메인 페이지는 보통 '/' 또는 '/index.html' 입니다.
+        const currentPath = window.location.pathname;
+        if (currentPath !== '/' && currentPath !== '/index.html' && currentPath !== '') {
+          return; // 메인 페이지가 아니면 팝업을 그리지 않고 조기 종료
+        }
 
         if (document.cookie.indexOf('bannerit_hide_${campaign.id}=true') > -1) return;
 
@@ -104,7 +110,6 @@ export default async function handler(req, res) {
               }
               .backdrop.show + .popup-container { bottom: 0; }
               
-              /* 인디케이터 (1 | 3) */
               .page-indicator {
                 position: absolute;
                 top: 16px;
@@ -119,10 +124,9 @@ export default async function handler(req, res) {
                 pointer-events: none;
               }
 
-              /* ★ PC용 화살표 버튼 스타일 */
               .nav-btn {
                 position: absolute;
-                top: 35%; /* 이미지 영역 중앙쯤 위치 */
+                top: 35%;
                 transform: translateY(-50%);
                 background: rgba(255, 255, 255, 0.9);
                 border: none;
@@ -143,7 +147,6 @@ export default async function handler(req, res) {
               .next-btn { right: 16px; }
               .nav-btn svg { width: 18px; height: 18px; }
               
-              /* 모바일 환경에서는 화살표 숨김 처리 (스와이프 유도) */
               @media (max-width: 768px) {
                 .nav-btn { display: none !important; }
               }
@@ -215,17 +218,14 @@ export default async function handler(req, res) {
           shadow.getElementById('btn-hide-today').addEventListener('click', hideToday);
           backdrop.addEventListener('click', closePopup); 
 
-          // ★ 다중 슬라이드: 인디케이터 및 버튼 상태 동기화
           if (${totalItems} > 1) {
             const updateUI = () => {
-              // 정확한 스크롤 인덱스 계산을 위해 소수점 반올림 처리
               const index = Math.round(slider.scrollLeft / slider.clientWidth);
               
               if (indicator) {
                 indicator.textContent = (index + 1) + ' | ' + ${totalItems};
               }
 
-              // 양끝 도달 시 화살표 버튼 투명도 및 커서 처리
               if (btnPrev) {
                 btnPrev.style.opacity = index === 0 ? '0.3' : '1';
                 btnPrev.style.cursor = index === 0 ? 'not-allowed' : 'pointer';
@@ -236,11 +236,9 @@ export default async function handler(req, res) {
               }
             };
 
-            // 스크롤 이벤트에 UI 업데이트 바인딩
             slider.addEventListener('scroll', updateUI);
-            updateUI(); // 초기화
+            updateUI(); 
 
-            // PC 클릭 네비게이션
             if (btnPrev) {
               btnPrev.addEventListener('click', () => {
                 slider.scrollBy({ left: -slider.clientWidth, behavior: 'smooth' });
@@ -253,7 +251,6 @@ export default async function handler(req, res) {
             }
           }
 
-          // PC 환경 마우스 드래그(스와이프) 지원
           let isDown = false;
           let startX;
           let scrollLeft;

@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// ★ 수정된 부분: 환경 변수가 없을 때 앱이 뻗지 않도록 Fallback(대체) 문자열 추가
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'placeholder-key';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
 
 export default function BannerItAdmin() {
   const urlParams = new URLSearchParams(window.location.search);
   const urlMallId = urlParams.get('mall_id');
 
-  // URL에 mall_id가 있으면 바로 렌더링, 없으면 null(로그인 화면 표출)
   const [currentMallId, setCurrentMallId] = useState(urlMallId || null);
-  const [loginInput, setLoginInput] = useState(''); // 로그인 입력 상태
+  const [loginInput, setLoginInput] = useState('');
 
-  // --- 기존 상태들 (동일) ---
+  // ★ 로그인 인증을 위한 상태 추가
+  const [loginError, setLoginError] = useState('');
+  const [isChecking, setIsChecking] = useState(false);
+
+  // --- 기존 상태들 ---
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [slides, setSlides] = useState([]);
@@ -23,9 +24,48 @@ export default function BannerItAdmin() {
   const [deletedImagePaths, setDeletedImagePaths] = useState([]);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
 
-  // 1. 기존 데이터 Fetching (currentMallId가 있을 때만 실행)
+  // ★ 쇼핑몰 아이디 검증 로직
+  const handleLogin = async () => {
+    const mallId = loginInput.trim();
+    if (!mallId) return;
+
+    // 환경 변수 누락 체크 방어 로직
+    if (supabaseUrl.includes('placeholder')) {
+      setLoginError('시스템 환경 변수가 세팅되지 않았습니다. Vercel 세팅 후 재배포가 필요합니다.');
+      return;
+    }
+
+    setIsChecking(true);
+    setLoginError('');
+
+    try {
+      // 마스터 테이블(skin_licenses)에서 해당 몰 아이디 조회
+      const { data, error } = await supabase
+        .from('skin_licenses')
+        .select('is_active, has_bannerit_module')
+        .eq('mall_id', mallId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        setLoginError('등록되지 않은 쇼핑몰 아이디입니다.');
+      } else if (!data.is_active || !data.has_bannerit_module) {
+        setLoginError('배너잇 서비스 이용 권한이 만료되었거나 없습니다.');
+      } else {
+        // 검증 통과 시 파라미터 붙여서 이동
+        window.location.href = `?mall_id=${mallId}`;
+      }
+    } catch (err) {
+      console.error(err);
+      setLoginError('인증 서버와 통신 중 오류가 발생했습니다.');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
   useEffect(() => {
-    if (!currentMallId) return; // 아이디가 없으면 멈춤
+    if (!currentMallId) return;
 
     async function loadExistingBanner() {
       try {
@@ -40,14 +80,9 @@ export default function BannerItAdmin() {
           if (campaign.bannerit_items && campaign.bannerit_items.length > 0) {
             const sortedItems = campaign.bannerit_items.sort((a, b) => a.sort_order - b.sort_order);
             const loadedSlides = sortedItems.map(item => ({
-              id: item.id,
-              title: item.title || '',
-              subtitle: item.subtitle || '',
-              cta_text: item.cta_text || '',
-              cta_link: item.cta_link || '',
-              imageUrl: item.image_url || '',
-              originalImageUrl: item.image_url || '',
-              file: null
+              id: item.id, title: item.title || '', subtitle: item.subtitle || '',
+              cta_text: item.cta_text || '', cta_link: item.cta_link || '',
+              imageUrl: item.image_url || '', originalImageUrl: item.image_url || '', file: null
             }));
             setSlides(loadedSlides);
           } else {
@@ -63,9 +98,8 @@ export default function BannerItAdmin() {
     loadExistingBanner();
   }, [currentMallId]);
 
-  // --- 기존 함수들 동일 (addEmptySlide, removeSlide, updateSlide, handleImageChange, handleSave) ---
   const addEmptySlide = () => {
-    if (slides.length >= 3) return alert('슬라이드는 최대 3개까지만 등록할 수 있습니다.');
+    if (slides.length >= 3) return alert('최대 3개까지만 등록할 수 있습니다.');
     setSlides([...slides, { id: null, title: '', subtitle: '', cta_text: '', cta_link: '', imageUrl: '', originalImageUrl: '', file: null }]);
   };
 
@@ -154,7 +188,7 @@ export default function BannerItAdmin() {
     }
   };
 
-  // ★ 렌더링 분기 1: 쇼핑몰 아이디(mall_id)가 없을 때 보이는 로그인 화면
+  // 렌더링 분기 1: 쇼핑몰 아이디 로그인 화면
   if (!currentMallId) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f3f4f6' }}>
@@ -168,31 +202,33 @@ export default function BannerItAdmin() {
             value={loginInput}
             onChange={(e) => setLoginInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && loginInput.trim()) {
-                window.location.href = `?mall_id=${loginInput.trim()}`;
-              }
+              if (e.key === 'Enter') handleLogin();
             }}
-            style={{ width: '100%', padding: '1rem', border: '1px solid #d1d5db', borderRadius: '8px', marginBottom: '1rem', boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '8px', marginBottom: '0.5rem', boxSizing: 'border-box' }}
           />
+
+          {/* ★ 에러 메시지 렌더링 영역 */}
+          {loginError && (
+            <p style={{ color: '#ef4444', fontSize: '0.85rem', margin: '0 0 1rem', textAlign: 'left' }}>{loginError}</p>
+          )}
+
           <button
-            onClick={() => {
-              if (loginInput.trim()) window.location.href = `?mall_id=${loginInput.trim()}`;
-            }}
-            style={{ width: '100%', padding: '1rem', backgroundColor: '#111', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+            onClick={handleLogin}
+            disabled={isChecking}
+            style={{ width: '100%', padding: '1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '1rem' }}
           >
-            접속하기
+            {isChecking ? '인증 중...' : '접속하기'}
           </button>
         </div>
       </div>
     );
   }
 
-  // ★ 렌더링 분기 2: 기존 어드민 화면
+  // 렌더링 분기 2: 기존 어드민 화면
   const previewSlide = slides[currentPreviewIndex] || {};
 
   return (
     <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f9fafb' }}>
-      {/* 폼 컨트롤 영역 (이전과 완전히 동일) */}
       <div style={{ flex: '1', padding: '2rem', borderRight: '1px solid #e5e7eb', backgroundColor: '#fff', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111' }}>팝업 다중 설정 ({currentMallId})</h1>
@@ -244,7 +280,6 @@ export default function BannerItAdmin() {
         </button>
       </div>
 
-      {/* 모바일 프리뷰 영역 (이전과 동일) */}
       <div style={{ flex: '1', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb', padding: '2rem' }}>
         <div style={{ width: '375px', height: '667px', backgroundColor: '#fff', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px' }}>
           <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1 }}></div>
