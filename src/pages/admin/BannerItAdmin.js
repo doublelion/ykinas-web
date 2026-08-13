@@ -15,6 +15,9 @@ export default function BannerItAdmin() {
   const [loginError, setLoginError] = useState('');
   const [isChecking, setIsChecking] = useState(false);
 
+  // ★ 구독 플랜 상태 추가
+  const [licensePlan, setLicensePlan] = useState('');
+
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [slides, setSlides] = useState([]);
@@ -72,11 +75,23 @@ export default function BannerItAdmin() {
 
     async function loadExistingBanner() {
       try {
+        // ★ 캠페인 데이터 로드
         const { data: campaign } = await supabase
           .from('bannerit_campaigns')
           .select('id, is_active, bannerit_items(id, image_url, title, subtitle, cta_text, cta_link, sort_order)')
           .eq('mall_id', currentMallId)
           .maybeSingle();
+
+        // ★ 라이선스 플랜 데이터 로드
+        const { data: licenseData } = await supabase
+          .from('skin_licenses')
+          .select('plan_type')
+          .eq('mall_id', currentMallId)
+          .maybeSingle();
+
+        if (licenseData && licenseData.plan_type) {
+          setLicensePlan(licenseData.plan_type);
+        }
 
         if (campaign) {
           setIsActive(campaign.is_active);
@@ -197,17 +212,16 @@ export default function BannerItAdmin() {
     }
   };
 
-  // ★ 렌더링 분기 1: 쇼핑몰 아이디 로그인 화면 (로고 추가 완료)
   if (!currentMallId) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f3f4f6' }}>
         <div style={{ background: '#fff', padding: '3rem', borderRadius: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '420px', textAlign: 'center' }}>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
             <img src="/bannerit_logo.jpg" alt="BannerIt Logo" style={{ width: '64px', height: '64px', borderRadius: '16px', marginBottom: '1rem', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }} />
             <h1 style={{ margin: '0', fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>BANNERIT 관리자</h1>
           </div>
-          
+
           <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '0.95rem' }}>팝업을 설정할 쇼핑몰 아이디를 입력하세요.</p>
 
           <input
@@ -237,20 +251,23 @@ export default function BannerItAdmin() {
     );
   }
 
-  // 렌더링 분기 2: 기존 어드민 화면 (로고 추가 완료)
   const previewSlide = slides[currentPreviewIndex] || {};
 
   return (
     <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f9fafb' }}>
-      
-      {/* 설정 폼 영역 */}
+
       <div style={{ flex: '1', padding: '2.5rem', borderRight: '1px solid #e5e7eb', backgroundColor: '#fff', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-          
+
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <img src="/bannerit_logo.jpg" alt="Logo" style={{ width: '36px', height: '36px', borderRadius: '10px', marginRight: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }} />
-            <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>
-              팝업 다중 설정 <span style={{fontSize:'1.1rem', color:'#6b7280', fontWeight:'500', marginLeft:'4px'}}>({currentMallId})</span>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center' }}>
+              팝업 다중 설정
+              <span style={{ fontSize: '1.1rem', color: '#6b7280', fontWeight: '500', marginLeft: '8px', marginRight: '12px' }}>({currentMallId})</span>
+              {/* ★ LIFETIME 라이선스 뱃지 UI 렌더링 */}
+              {licensePlan === 'LIFETIME' && (
+                <span style={{ backgroundColor: '#fef3c7', color: '#d97706', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', letterSpacing: '0.02em', border: '1px solid #fde68a' }}>LIFETIME LICENSE</span>
+              )}
             </h1>
           </div>
 
@@ -302,10 +319,8 @@ export default function BannerItAdmin() {
         </button>
       </div>
 
-      {/* 프리뷰 영역 */}
       <div style={{ flex: '1', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb', padding: '2rem' }}>
-        
-        {/* ★ 프리뷰 상단 로고 타이틀 추가 */}
+
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', opacity: 0.85 }}>
           <img src="/bannerit_logo.jpg" alt="Preview Logo" style={{ width: '22px', height: '22px', borderRadius: '6px', marginRight: '10px' }} />
           <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#374151', letterSpacing: '0.05em' }}>BANNERIT LIVE PREVIEW</span>

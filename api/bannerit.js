@@ -6,9 +6,13 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
+  // 기존 코드 수정 (api/bannerit.js 최상단)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=86400');
+  
+  // ★ 강력한 서버 방어막: Vercel CDN이 1시간(3600초) 동안 응답을 쥐고 있고, 
+  // 그동안 1만 명이 접속해도 우리 Supabase DB는 단 1번만 찔립니다. (비용 최적화)
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
 
   let clientMallId = req.query.mall_id || 'default_mall';
 
