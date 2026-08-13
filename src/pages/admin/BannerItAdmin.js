@@ -12,11 +12,9 @@ export default function BannerItAdmin() {
   const [currentMallId, setCurrentMallId] = useState(urlMallId || null);
   const [loginInput, setLoginInput] = useState('');
 
-  // ★ 로그인 인증을 위한 상태 추가
   const [loginError, setLoginError] = useState('');
   const [isChecking, setIsChecking] = useState(false);
 
-  // --- 기존 상태들 ---
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [slides, setSlides] = useState([]);
@@ -24,12 +22,10 @@ export default function BannerItAdmin() {
   const [deletedImagePaths, setDeletedImagePaths] = useState([]);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
 
-  // ★ 쇼핑몰 아이디 검증 로직
   const handleLogin = async () => {
     const mallId = loginInput.trim();
     if (!mallId) return;
 
-    // 환경 변수 누락 체크 방어 로직
     if (supabaseUrl.includes('placeholder')) {
       setLoginError('시스템 환경 변수가 세팅되지 않았습니다. Vercel 세팅 후 재배포가 필요합니다.');
       return;
@@ -39,7 +35,6 @@ export default function BannerItAdmin() {
     setLoginError('');
 
     try {
-      // 마스터 테이블(skin_licenses)에서 해당 몰 아이디 조회
       const { data, error } = await supabase
         .from('skin_licenses')
         .select('is_active, has_bannerit_module')
@@ -53,7 +48,6 @@ export default function BannerItAdmin() {
       } else if (!data.is_active || !data.has_bannerit_module) {
         setLoginError('배너잇 서비스 이용 권한이 만료되었거나 없습니다.');
       } else {
-        // 검증 통과 시 파라미터 붙여서 이동
         window.location.href = `?mall_id=${mallId}`;
       }
     } catch (err) {
@@ -64,14 +58,10 @@ export default function BannerItAdmin() {
     }
   };
 
-  // ★ 문법 오류 완벽 교정된 useEffect
   useEffect(() => {
     if (!currentMallId) return;
 
-    // 1. 브라우저 탭 타이틀 변경
     document.title = `BannerIt 관리자 | ${currentMallId || 'YKINAS'}`;
-
-    // 2. 파비콘(Favicon) 요소 찾기 및 교체
     let link = document.querySelector("link[rel~='icon']");
     if (!link) {
       link = document.createElement('link');
@@ -80,7 +70,6 @@ export default function BannerItAdmin() {
     }
     link.href = '/bannerit_favicon.ico';
 
-    // 3. 데이터 로드 비동기 함수 정의
     async function loadExistingBanner() {
       try {
         const { data: campaign } = await supabase
@@ -110,10 +99,8 @@ export default function BannerItAdmin() {
       }
     }
 
-    // 4. 데이터 로드 실행
     loadExistingBanner();
 
-    // ★ 5. 클린업 함수는 반드시 useEffect 스코프의 맨 마지막에 위치!
     return () => {
       document.title = 'YKINAS | Premium Commerce Solutions';
       if (link) link.href = '/favicon.ico';
@@ -210,34 +197,38 @@ export default function BannerItAdmin() {
     }
   };
 
-  // 렌더링 분기 1: 쇼핑몰 아이디 로그인 화면
+  // ★ 렌더링 분기 1: 쇼핑몰 아이디 로그인 화면 (로고 추가 완료)
   if (!currentMallId) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f3f4f6' }}>
-        <div style={{ background: '#fff', padding: '3rem', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', width: '400px', textAlign: 'center' }}>
-          <h1 style={{ margin: '0 0 0.5rem', fontSize: '1.5rem', fontWeight: 'bold', color: '#111' }}>BannerIt 관리자</h1>
-          <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '1.2rem' }}>팝업을 설정할 쇼핑몰 아이디를 입력하세요.</p>
+        <div style={{ background: '#fff', padding: '3rem', borderRadius: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '420px', textAlign: 'center' }}>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <img src="/bannerit_logo.jpg" alt="BannerIt Logo" style={{ width: '64px', height: '64px', borderRadius: '16px', marginBottom: '1rem', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }} />
+            <h1 style={{ margin: '0', fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>BANNERIT 관리자</h1>
+          </div>
+          
+          <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '0.95rem' }}>팝업을 설정할 쇼핑몰 아이디를 입력하세요.</p>
 
           <input
             type="text"
-            placeholder="카페24 쇼핑몰 ID를 입력하세요 (예: myshop123)"
+            placeholder="카페24 쇼핑몰 ID (예: myshop123)"
             value={loginInput}
             onChange={(e) => setLoginInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') handleLogin();
             }}
-            style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '8px', marginBottom: '0.5rem', boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }}
           />
 
-          {/* ★ 에러 메시지 렌더링 영역 */}
           {loginError && (
-            <p style={{ color: '#ef4444', fontSize: '1.0rem', margin: '0 0 1rem', textAlign: 'left' }}>{loginError}</p>
+            <p style={{ color: '#ef4444', fontSize: '0.9rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px' }}>{loginError}</p>
           )}
 
           <button
             onClick={handleLogin}
             disabled={isChecking}
-            style={{ width: '100%', padding: '1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '1rem' }}
+            style={{ width: '100%', padding: '1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '1rem', transition: 'background-color 0.2s' }}
           >
             {isChecking ? '인증 중...' : '접속하기'}
           </button>
@@ -246,95 +237,113 @@ export default function BannerItAdmin() {
     );
   }
 
-  // 렌더링 분기 2: 기존 어드민 화면
+  // 렌더링 분기 2: 기존 어드민 화면 (로고 추가 완료)
   const previewSlide = slides[currentPreviewIndex] || {};
 
   return (
     <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f9fafb' }}>
-      <div style={{ flex: '1', padding: '2rem', borderRight: '1px solid #e5e7eb', backgroundColor: '#fff', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#111' }}>팝업 다중 설정 ({currentMallId})</h1>
+      
+      {/* 설정 폼 영역 */}
+      <div style={{ flex: '1', padding: '2.5rem', borderRight: '1px solid #e5e7eb', backgroundColor: '#fff', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <img src="/bannerit_logo.jpg" alt="Logo" style={{ width: '36px', height: '36px', borderRadius: '10px', marginRight: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }} />
+            <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>
+              팝업 다중 설정 <span style={{fontSize:'1.1rem', color:'#6b7280', fontWeight:'500', marginLeft:'4px'}}>({currentMallId})</span>
+            </h1>
+          </div>
+
           <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-            <span style={{ marginRight: '0.5rem', fontSize: '0.875rem', color: '#111' }}>팝업 활성화</span>
-            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} style={{ width: '1.25rem', height: '1.25rem' }} />
+            <span style={{ marginRight: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#111' }}>팝업 라이브 활성화</span>
+            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }} />
           </label>
         </div>
 
         {slides.map((s, idx) => (
-          <div key={idx} style={{ marginBottom: '2rem', padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-              <h3 style={{ margin: 0, fontWeight: 'bold', color: '#111' }}>슬라이드 {idx + 1}</h3>
+          <div key={idx} style={{ marginBottom: '2rem', padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+              <h3 style={{ margin: 0, fontWeight: '800', color: '#111' }}>슬라이드 {idx + 1}</h3>
               {slides.length > 1 && (
-                <button onClick={() => removeSlide(idx)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>삭제</button>
+                <button onClick={() => removeSlide(idx)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>삭제</button>
               )}
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#111' }}>팝업 이미지 (1MB 이하)</label>
-              <input type="file" accept="image/*" onChange={(e) => handleImageChange(idx, e)} style={{ display: 'block', width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '4px', backgroundColor: '#fff' }} />
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>팝업 이미지 (1MB 이하)</label>
+              <input type="file" accept="image/*" onChange={(e) => handleImageChange(idx, e)} style={{ display: 'block', width: '100%', padding: '0.6rem', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff' }} />
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#111' }}>메인 타이틀</label>
-              <input type="text" value={s.title} onChange={(e) => updateSlide(idx, 'title', e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '4px' }} />
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>메인 타이틀</label>
+              <input type="text" value={s.title} onChange={(e) => updateSlide(idx, 'title', e.target.value)} style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#111' }}>버튼 텍스트</label>
-              <input type="text" value={s.cta_text} onChange={(e) => updateSlide(idx, 'cta_text', e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '4px' }} />
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>버튼 텍스트</label>
+              <input type="text" value={s.cta_text} onChange={(e) => updateSlide(idx, 'cta_text', e.target.value)} style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#111' }}>버튼 링크 (URL)</label>
-              <input type="text" placeholder="https://..." value={s.cta_link} onChange={(e) => updateSlide(idx, 'cta_link', e.target.value)} style={{ width: '100%', padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: '4px' }} />
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>버튼 링크 (URL)</label>
+              <input type="text" placeholder="/product/list.html?..." value={s.cta_link} onChange={(e) => updateSlide(idx, 'cta_link', e.target.value)} style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
             </div>
           </div>
         ))}
 
         {slides.length < 3 && (
-          <button onClick={addEmptySlide} style={{ width: '100%', padding: '1rem', backgroundColor: '#f3f4f6', color: '#111', fontWeight: 'bold', borderRadius: '8px', cursor: 'pointer', border: '1px dashed #d1d5db', marginBottom: '2rem' }}>
+          <button onClick={addEmptySlide} style={{ width: '100%', padding: '1rem', backgroundColor: '#f3f4f6', color: '#374151', fontWeight: '700', borderRadius: '12px', cursor: 'pointer', border: '1px dashed #d1d5db', marginBottom: '2rem', transition: 'background-color 0.2s' }}>
             + 슬라이드 추가 ({slides.length}/3)
           </button>
         )}
 
-        <button onClick={handleSave} disabled={isSaving} style={{ width: '100%', padding: '1rem', backgroundColor: isSaving ? '#6b7280' : '#111', color: '#fff', fontWeight: 'bold', borderRadius: '8px', cursor: 'pointer', border: 'none' }}>
+        <button onClick={handleSave} disabled={isSaving} style={{ width: '100%', padding: '1.25rem', backgroundColor: isSaving ? '#6b7280' : '#111', color: '#fff', fontWeight: 'bold', fontSize: '1.05rem', borderRadius: '12px', cursor: isSaving ? 'not-allowed' : 'pointer', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.15)', transition: 'background-color 0.2s' }}>
           {isSaving ? '저장 및 배포 중...' : '저장 및 라이브 반영'}
         </button>
       </div>
 
-      <div style={{ flex: '1', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb', padding: '2rem' }}>
-        <div style={{ width: '375px', height: '667px', backgroundColor: '#fff', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px' }}>
+      {/* 프리뷰 영역 */}
+      <div style={{ flex: '1', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb', padding: '2rem' }}>
+        
+        {/* ★ 프리뷰 상단 로고 타이틀 추가 */}
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', opacity: 0.85 }}>
+          <img src="/bannerit_logo.jpg" alt="Preview Logo" style={{ width: '22px', height: '22px', borderRadius: '6px', marginRight: '10px' }} />
+          <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#374151', letterSpacing: '0.05em' }}>BANNERIT LIVE PREVIEW</span>
+        </div>
+
+        <div style={{ width: '375px', height: '667px', backgroundColor: '#fff', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px', border: '8px solid #f3f4f6' }}>
           <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1 }}></div>
-          <div style={{ position: 'relative', zIndex: 2, backgroundColor: '#fff', borderRadius: '16px', overflow: 'hidden', width: '100%' }}>
+          <div style={{ position: 'relative', zIndex: 2, backgroundColor: '#fff', borderRadius: '16px', overflow: 'hidden', width: '100%', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
             {slides.length > 0 && (
-              <div style={{ position: 'absolute', top: '16px', right: '16px', backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 'bold', zIndex: 10 }}>
+              <div style={{ position: 'absolute', top: '16px', right: '16px', backgroundColor: 'rgba(0,0,0,0.65)', color: '#fff', padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '700', zIndex: 10 }}>
                 {currentPreviewIndex + 1} | {slides.length}
               </div>
             )}
             {previewSlide.imageUrl ? (
               <img src={previewSlide.imageUrl} alt="preview" style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover' }} />
             ) : (
-              <div style={{ width: '100%', aspectRatio: '4/3', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>이미지 영역</div>
+              <div style={{ width: '100%', aspectRatio: '4/3', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '0.9rem' }}>이미지 영역</div>
             )}
-            <div style={{ padding: '24px 20px', textAlign: 'center' }}>
-              <h2 style={{ margin: '0 0 8px', fontSize: '1.25rem', fontWeight: 'bold', color: '#111' }}>{previewSlide.title || '타이틀을 입력하세요'}</h2>
+            <div style={{ padding: '28px 20px', textAlign: 'center' }}>
+              <h2 style={{ margin: '0 0 12px', fontSize: '1.3rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>{previewSlide.title || '타이틀을 입력하세요'}</h2>
               {previewSlide.cta_text && (
-                <div style={{ display: 'inline-block', marginTop: '10px', padding: '12px 24px', backgroundColor: '#111', color: '#fff', borderRadius: '8px', fontSize: '0.9rem', fontWeight: '600' }}>{previewSlide.cta_text}</div>
+                <div style={{ display: 'inline-block', marginTop: '4px', padding: '14px 28px', backgroundColor: '#111', color: '#fff', borderRadius: '8px', fontSize: '0.95rem', fontWeight: '700' }}>{previewSlide.cta_text}</div>
               )}
             </div>
             {slides.length > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 20px 16px' }}>
-                <button disabled={currentPreviewIndex === 0} onClick={() => setCurrentPreviewIndex(prev => prev - 1)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: currentPreviewIndex === 0 ? 'not-allowed' : 'pointer', opacity: currentPreviewIndex === 0 ? 0.3 : 1 }}>◀</button>
-                <button disabled={currentPreviewIndex === slides.length - 1} onClick={() => setCurrentPreviewIndex(prev => prev + 1)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: currentPreviewIndex === slides.length - 1 ? 'not-allowed' : 'pointer', opacity: currentPreviewIndex === slides.length - 1 ? 0.3 : 1 }}>▶</button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 20px 20px' }}>
+                <button disabled={currentPreviewIndex === 0} onClick={() => setCurrentPreviewIndex(prev => prev - 1)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: currentPreviewIndex === 0 ? 'not-allowed' : 'pointer', opacity: currentPreviewIndex === 0 ? 0.2 : 1 }}>◀</button>
+                <button disabled={currentPreviewIndex === slides.length - 1} onClick={() => setCurrentPreviewIndex(prev => prev + 1)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: currentPreviewIndex === slides.length - 1 ? 'not-allowed' : 'pointer', opacity: currentPreviewIndex === slides.length - 1 ? 0.2 : 1 }}>▶</button>
               </div>
             )}
-            <div style={{ display: 'flex', borderTop: '1px solid #eee', backgroundColor: '#fafafa' }}>
-              <div style={{ flex: 1, padding: '16px 0', textAlign: 'center', fontSize: '0.85rem', color: '#555', borderRight: '1px solid #eee' }}>오늘 하루 열지 않기</div>
-              <div style={{ flex: 1, padding: '16px 0', textAlign: 'center', fontSize: '0.85rem', color: '#555' }}>닫기</div>
+            <div style={{ display: 'flex', borderTop: '1px solid #f3f4f6', backgroundColor: '#fafafa' }}>
+              <div style={{ flex: 1, padding: '16px 0', textAlign: 'center', fontSize: '0.85rem', fontWeight: '500', color: '#6b7280', borderRight: '1px solid #f3f4f6', cursor: 'pointer' }}>오늘 하루 열지 않기</div>
+              <div style={{ flex: 1, padding: '16px 0', textAlign: 'center', fontSize: '0.85rem', fontWeight: '500', color: '#6b7280', cursor: 'pointer' }}>닫기</div>
             </div>
           </div>
         </div>
       </div>
+
     </div>
   );
 }
