@@ -203,7 +203,7 @@ export default function BannerItAdmin() {
         if (currentSlide.id) itemPayload.id = currentSlide.id;
         await supabase.from('bannerit_items').upsert(itemPayload);
       }
-      alert('저장되었습니다!');
+      alert('성공적으로 라이브에 저장되었습니다!\n\n※ 서버 CDN 최적화 정책으로 인해 라이브 쇼핑몰에는 약 1분 이내에 순차 적용됩니다.');
       window.location.reload();
     } catch (error) {
       alert(`오류: ${error.message}`);

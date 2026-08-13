@@ -129,18 +129,40 @@ export default async function handler(req, res) {
               }
               .backdrop.show + .popup-container { bottom: 0; }
               
+              /* 🎨 고도화된 인디케이터 스타일 */
               .page-indicator {
                 position: absolute;
                 top: 16px;
                 right: 16px;
-                background: rgba(0,0,0,0.6);
-                color: #fff;
-                padding: 4px 12px;
-                border-radius: 12px;
+                background: rgba(0, 0, 0, 0.45); /* 배경을 살짝 더 투명하고 고급스럽게 */
+                backdrop-filter: blur(4px); /* iOS 감성의 블러 효과 추가 */
+                -webkit-backdrop-filter: blur(4px);
+                padding: 5px 12px;
+                border-radius: 14px;
                 font-size: 0.75rem;
-                font-weight: 700;
                 z-index: 10;
                 pointer-events: none;
+                
+                /* 내부 요소 정렬 */
+                display: flex;
+                align-items: center;
+                gap: 4px; /* 숫자와 구분선 사이의 여백 */
+                letter-spacing: 0.3px;
+              }
+
+              /* 시각적 위계(Visual Hierarchy) 분리 */
+              .page-indicator .current {
+                font-weight: 700;
+                color: #ffffff;
+              }
+              .page-indicator .divider {
+                font-weight: 400;
+                color: rgba(255, 255, 255, 0.4); /* 사선은 눈에 덜 띄게 */
+                font-size: 0.65rem;
+              }
+              .page-indicator .total {
+                font-weight: 500;
+                color: rgba(255, 255, 255, 0.7); /* 전체 숫자는 중간 톤으로 */
               }
 
               .nav-btn {
@@ -197,7 +219,15 @@ export default async function handler(req, res) {
 
             <div class="backdrop" id="backdrop"></div>
             <div class="popup-container" id="popup">
-              ${totalItems > 1 ? `<div class="page-indicator" id="indicator">1 | ${totalItems}</div>` : ''}
+              <!-- 🎨 초기 렌더링 시 HTML 구조 변경 -->
+              ${totalItems > 1 ? `
+                <div class="page-indicator" id="indicator">
+                  <span class="current">1</span>
+                  <span class="divider">/</span>
+                  <span class="total">${totalItems}</span>
+                </div>
+              ` : ''}
+              
               ${navButtonsHTML}
               <div class="slider-wrapper" id="slider">
                 \${slidesHTML}
@@ -241,8 +271,13 @@ export default async function handler(req, res) {
             const updateUI = () => {
               const index = Math.round(slider.scrollLeft / slider.clientWidth);
               
+              // 🎨 텍스트 업데이트 로직을 innerHTML 기반으로 변경
               if (indicator) {
-                indicator.textContent = (index + 1) + ' | ' + ${totalItems};
+                indicator.innerHTML = \`
+                  <span class="current">\${index + 1}</span>
+                  <span class="divider">/</span>
+                  <span class="total">${totalItems}</span>
+                \`;
               }
 
               if (btnPrev) {
