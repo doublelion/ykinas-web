@@ -6,18 +6,34 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-  // 기존 코드 수정 (api/bannerit.js 최상단)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  
-  // ★ 강력한 서버 방어막: Vercel CDN이 1시간(3600초) 동안 응답을 쥐고 있고, 
-  // 그동안 1만 명이 접속해도 우리 Supabase DB는 단 1번만 찔립니다. (비용 최적화)
+
+  // ★ 강력한 서버 방어막: Vercel CDN이 1시간(3600초) 동안 응답을 캐싱 (비용 최적화)
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
 
-  let clientMallId = req.query.mall_id || 'default_mall';
+  let clientMallId = req.query.mall_id;
+
+  // 방어 로직: 몰 아이디 누락 또는 카페24 변수 미치환 시 즉시 종료
+  if (!clientMallId || clientMallId === '{$mall_id}') {
+    return res.status(200).send(`console.error('[BannerIt] Mall ID is required.');`);
+  }
 
   try {
-    const { data: campaign, error } = await supabase
+    // ★ [1단계] 마스터 라이선스(skin_licenses) 교차 검증 (권한 누수 차단)
+    const { data: license, error: licenseError } = await supabase
+      .from('skin_licenses')
+      .select('is_active, has_bannerit_module')
+      .eq('mall_id', clientMallId)
+      .maybeSingle();
+
+    // 라이선스가 없거나, 비활성화되었거나, 배너잇 권한이 없으면 팝업 분사 즉시 중단
+    if (licenseError || !license || !license.is_active || !license.has_bannerit_module) {
+      return res.status(200).send(`console.warn('[BannerIt] Unauthorized or License Expired.');`);
+    }
+
+    // ★ [2단계] 캠페인 및 슬라이드 데이터 조회
+    const { data: campaign, error: campaignError } = await supabase
       .from('bannerit_campaigns')
       .select(`
         id,
@@ -26,9 +42,9 @@ export default async function handler(req, res) {
       .eq('mall_id', clientMallId)
       .eq('is_active', true)
       .order('sort_order', { referencedTable: 'bannerit_items', ascending: true })
-      .single();
+      .maybeSingle(); // 에러 방지를 위해 single() 대신 maybeSingle() 사용
 
-    if (error || !campaign || !campaign.bannerit_items || campaign.bannerit_items.length === 0) {
+    if (campaignError || !campaign || !campaign.bannerit_items || campaign.bannerit_items.length === 0) {
       return res.status(200).send(`console.log('[BannerIt] No active banners.');`);
     }
 
@@ -51,10 +67,9 @@ export default async function handler(req, res) {
         window.__BANNERIT_LOADED__ = true;
 
         // ★ 메인 페이지 필터링 로직 추가 (Early Return)
-        // 카페24의 메인 페이지는 보통 '/' 또는 '/index.html' 입니다.
         const currentPath = window.location.pathname;
         if (currentPath !== '/' && currentPath !== '/index.html' && currentPath !== '') {
-          return; // 메인 페이지가 아니면 팝업을 그리지 않고 조기 종료
+          return; 
         }
 
         if (document.cookie.indexOf('bannerit_hide_${campaign.id}=true') > -1) return;
