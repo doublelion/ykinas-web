@@ -6,35 +6,35 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=0, must-revalidate');
-  res.setHeader('X-Cafe24-Api-Version', '2025-12-01');
-
-  const clientReferer = req.headers['referer'] || '';
-  const clientMallId = req.query.mall_id;
-
-  const sendDisabledScript = (reason) => {
-    return res.status(200).send(`
-      (function() {
-        console.warn('[YKINAS Login Drawer] Disabled: ${reason}');
-        if (window.YkinasLogin) {
-          window.YkinasLogin.open = function() {};
-          window.YkinasLogin.close = function() {};
-        }
-        const existingHost = document.getElementById('ykinas-global-drawer-root');
-        if (existingHost) existingHost.remove();
-        const existingIframe = document.getElementById('ykinas_proxy_iframe');
-        if (existingIframe) existingIframe.remove();
-      })();
-    `);
-  };
-
-  if (!clientMallId || clientMallId === '{$mall_id}') {
-    return sendDisabledScript('Mall ID is missing or invalid placeholder.');
-  }
-
   try {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=0, must-revalidate');
+    res.setHeader('X-Cafe24-Api-Version', '2025-12-01');
+
+    const clientReferer = req.headers['referer'] || '';
+    const clientMallId = req.query.mall_id;
+
+    const sendDisabledScript = (reason) => {
+      return res.status(200).send(`
+        (function() {
+          console.warn('[YKINAS Login Drawer] Disabled: ${reason}');
+          if (window.YkinasLogin) {
+            window.YkinasLogin.open = function() {};
+            window.YkinasLogin.close = function() {};
+          }
+          const existingHost = document.getElementById('ykinas-global-drawer-root');
+          if (existingHost) existingHost.remove();
+          const existingIframe = document.getElementById('ykinas_proxy_iframe');
+          if (existingIframe) existingIframe.remove();
+        })();
+      `);
+    };
+
+    if (!clientMallId || clientMallId === '{$mall_id}') {
+      return sendDisabledScript('Mall ID is missing or invalid placeholder.');
+    }
+
     const { data: license, error } = await supabase
       .from('skin_licenses')
       .select('id, is_active, has_login_module, skin_allowed_domains ( domain )')
@@ -332,7 +332,19 @@ export default async function handler(req, res) {
               const currUrl = window.location.pathname + window.location.search;
               const encodedUrl = encodeURIComponent(currUrl);
               
-              // [핵심 핫픽스] 카페24 내부 파라미터는 'google'이 아닌 'googleplus'를 요구함
+              const providerMap = {
+                kakao: 'Kakao', naver: 'Naver', google: 'Google',
+                facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp'
+              };
+              const pName = providerMap[provider];
+
+              // [핵심 핫픽스] 구글 OAuth는 Iframe 내부에서의 팝업 실행(COOP/COEP)을 차단하므로 
+              // 브라우저 Top-level 환경에서 즉시 리다이렉트를 수행하여 Origin Context를 유지합니다.
+              if (provider === 'google') {
+                window.location.href = '/Api/Member/Oauth2Client/Google/?returnUrl=' + encodedUrl;
+                return;
+              }
+              
               const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
               
               if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
@@ -350,17 +362,12 @@ export default async function handler(req, res) {
                 }
 
                 if (!iframeSuccess) {
-                  const providerMap = {
-                    kakao: 'Kakao', naver: 'Naver', google: 'Google',
-                    facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp'
-                  };
-                  const pName = providerMap[provider];
                   const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodedUrl;
-                  
                   const snsPopup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=500,scrollbars=yes');
                   
                   if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
-                    alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+                    // 팝업이 차단된 환경에서도 원활하게 로그인되도록 폴백 리다이렉트 적용
+                    window.location.href = popupUrl;
                   }
                 }
               }
@@ -368,7 +375,9 @@ export default async function handler(req, res) {
               console.error('[YKINAS SNS Login Error]:', error);
               alert('SNS 로그인 초기화 중 오류가 발생했습니다. 관리자에게 문의해주세요.');
             } finally {
-              window.YkinasLogin.close();
+              if (provider !== 'google') {
+                window.YkinasLogin.close();
+              }
             }
           }
 
@@ -419,6 +428,7 @@ export default async function handler(req, res) {
 
     return res.status(200).send(injectedScript);
   } catch (err) {
-    return sendDisabledScript('Initialization error.');
+    console.error(err);
+    return res.status(500).send('/* Initialization error */');
   }
 }
