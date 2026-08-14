@@ -8,8 +8,6 @@ const supabase = createClient(
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-
-  // ★ 강력한 서버 방어막: Vercel CDN이 1시간 동안 응답을 캐싱
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
 
   let clientMallId = req.query.mall_id;
@@ -19,7 +17,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // [1단계] 마스터 라이선스 교차 검증 (권한 누수 차단)
     const { data: license, error: licenseError } = await supabase
       .from('skin_licenses')
       .select('is_active, has_bannerit_module')
@@ -30,7 +27,6 @@ export default async function handler(req, res) {
       return res.status(200).send(`console.warn('[BannerIt] Unauthorized or License Expired.');`);
     }
 
-    // [2단계] 캠페인 및 슬라이드 데이터 조회
     const { data: campaign, error: campaignError } = await supabase
       .from('bannerit_campaigns')
       .select(`
@@ -111,18 +107,11 @@ export default async function handler(req, res) {
               .backdrop.show { opacity: 1; }
               
               .popup-container { 
-                position: fixed; 
-                bottom: -100%; 
-                left: 50%; 
-                transform: translateX(-50%); 
-                width: 100%; 
-                max-width: 420px; 
-                background: #fff; 
-                border-radius: 24px 24px 0 0; 
-                overflow: hidden; 
+                position: fixed; bottom: -100%; left: 50%; transform: translateX(-50%); 
+                width: 100%; max-width: 420px; background: #fff; 
+                border-radius: 24px 24px 0 0; overflow: hidden; 
                 transition: bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1); 
-                box-shadow: 0 -10px 40px rgba(0,0,0,0.2); 
-                pointer-events: auto; 
+                box-shadow: 0 -10px 40px rgba(0,0,0,0.2); pointer-events: auto; 
               }
               .backdrop.show + .popup-container { bottom: 0; }
               
@@ -146,8 +135,6 @@ export default async function handler(req, res) {
               .next-btn { right: 16px; }
               .nav-btn svg { width: 18px; height: 18px; }
               
-              @media (max-width: 768px) { .nav-btn { display: none !important; } }
-
               .slider-wrapper { 
                 display: flex; overflow-x: auto; scroll-snap-type: x mandatory; 
                 scrollbar-width: none; -webkit-overflow-scrolling: touch; cursor: grab;
@@ -159,9 +146,8 @@ export default async function handler(req, res) {
               .slide-link { display: block; text-decoration: none; color: inherit; }
               .snap-slide img { width: 100%; aspect-ratio: 4/4; object-fit: cover; display: block; pointer-events: none; }
               
+              /* 기본 데스크탑/태블릿용 텍스트 및 여백 세팅 */
               .text-content { padding: 24px 20px 30px; text-align: center; background: #fff; }
-              
-              /* 🛠️ [Fix 1] CSS 텍스트 말줄임표 처리 및 높이 방어 */
               .text-content h2 { 
                 margin: 0 0 8px; font-size: 1.35rem; font-weight: 600; color: #111; letter-spacing: -0.02em;
                 display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: keep-all; 
@@ -170,12 +156,50 @@ export default async function handler(req, res) {
                 margin: 0 0 16px; font-size: 0.95rem; color: #666; line-height: 1.4;
                 display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: keep-all; 
               }
-              
               .cta-btn { display: inline-block; padding: 14px 28px; background: #111; color: #fff; border-radius: 8px; font-weight: 600; font-size: 0.95rem; }
               
               .bottom-controls { display: flex; border-top: 1px solid #eee; background: #fafafa; }
               .bottom-controls button { flex: 1; padding: 18px 0; border: none; background: transparent; font-size: 0.9rem; font-weight: 500; color: #555; cursor: pointer; pointer-events: auto; }
               .bottom-controls button:first-child { border-right: 1px solid #eee; }
+
+              /* 📱 [Fix] 모바일 환경 UI 슬림화 최적화 */
+              @media (max-width: 768px) {
+                .nav-btn { display: none !important; }
+                
+                /* 1. 패딩을 줄여 전체 팝업 높이 다이어트 */
+                .text-content { padding: 18px 16px 22px; }
+                
+                /* 2. 타이틀은 1줄로 제한 및 폰트 사이즈 조정 */
+                .text-content h2 { 
+                  font-size: 1.15rem; 
+                  -webkit-line-clamp: 1; 
+                  margin-bottom: 6px;
+                }
+                
+                /* 3. 서브타이틀은 2줄로 엄격히 제한 */
+                .text-content p { 
+                  font-size: 0.85rem; 
+                  -webkit-line-clamp: 2; 
+                  margin-bottom: 12px;
+                }
+                
+                /* 4. 버튼 사이즈 조정으로 추가 공간 확보 */
+                .cta-btn { 
+                  padding: 12px 24px; 
+                  font-size: 0.85rem; 
+                }
+
+                /* 5. 이미지 비율 최적화 (선택 사항: 모바일에서 이미지가 너무 길게 떨어지는 것을 방지) */
+                .snap-slide img { 
+                  aspect-ratio: 5/4; 
+                }
+
+                /* 6. 하단 컨트롤 버튼 영역 다이어트 */
+                .bottom-controls button {
+                  padding: 14px 0;
+                  font-size: 0.85rem;
+                }
+              }
             </style>
 
             <div class="backdrop" id="backdrop"></div>
@@ -210,20 +234,18 @@ export default async function handler(req, res) {
             backdrop.classList.add('show');
           });
 
-          // 🛠️ [Fix 2] 오토플레이 로직 추가
           let autoplayTimer = null;
           const startAutoplay = () => {
             if (${totalItems} <= 1) return;
             stopAutoplay();
             autoplayTimer = setInterval(() => {
               const maxScrollLeft = slider.scrollWidth - slider.clientWidth;
-              // 마지막 슬라이드인 경우 처음으로 롤백, 아니면 다음으로 이동
               if (slider.scrollLeft >= maxScrollLeft - 5) {
                 slider.scrollTo({ left: 0, behavior: 'smooth' });
               } else {
                 slider.scrollBy({ left: slider.clientWidth, behavior: 'smooth' });
               }
-            }, 3000); // 3초 대기
+            }, 3000); 
           };
 
           const stopAutoplay = () => {
@@ -231,7 +253,7 @@ export default async function handler(req, res) {
           };
 
           const closePopup = () => {
-            stopAutoplay(); // 팝업 닫힐 때 타이머 정리
+            stopAutoplay(); 
             backdrop.classList.remove('show');
             popup.style.bottom = '-100%';
             setTimeout(() => host.remove(), 400);
@@ -284,13 +306,11 @@ export default async function handler(req, res) {
               });
             }
 
-            // 🛠️ [Fix 2-1] UX 방어: 팝업 영역에 마우스/터치 진입 시 오토플레이 일시정지
             popup.addEventListener('mouseenter', stopAutoplay);
             popup.addEventListener('mouseleave', startAutoplay);
             popup.addEventListener('touchstart', stopAutoplay, { passive: true });
             popup.addEventListener('touchend', startAutoplay, { passive: true });
             
-            // 초기 렌더링 시 오토플레이 시작
             startAutoplay();
           }
 
