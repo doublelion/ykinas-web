@@ -11,13 +11,9 @@ export default function BannerItAdmin() {
 
   const [currentMallId, setCurrentMallId] = useState(urlMallId || null);
   const [loginInput, setLoginInput] = useState('');
-
   const [loginError, setLoginError] = useState('');
   const [isChecking, setIsChecking] = useState(false);
-
-  // ★ 구독 플랜 상태 추가
   const [licensePlan, setLicensePlan] = useState('');
-
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [slides, setSlides] = useState([]);
@@ -75,14 +71,12 @@ export default function BannerItAdmin() {
 
     async function loadExistingBanner() {
       try {
-        // ★ 캠페인 데이터 로드
         const { data: campaign } = await supabase
           .from('bannerit_campaigns')
           .select('id, is_active, bannerit_items(id, image_url, title, subtitle, cta_text, cta_link, sort_order)')
           .eq('mall_id', currentMallId)
           .maybeSingle();
 
-        // ★ 라이선스 플랜 데이터 로드
         const { data: licenseData } = await supabase
           .from('skin_licenses')
           .select('plan_type')
@@ -98,7 +92,7 @@ export default function BannerItAdmin() {
           if (campaign.bannerit_items && campaign.bannerit_items.length > 0) {
             const sortedItems = campaign.bannerit_items.sort((a, b) => a.sort_order - b.sort_order);
             const loadedSlides = sortedItems.map(item => ({
-              id: item.id, title: item.title || '', subtitle: item.subtitle || '',
+              id: item.id, title: item.title || '', subtitle: item.subtitle || '', // 기존 데이터 바인딩 정상 작동 확인
               cta_text: item.cta_text || '', cta_link: item.cta_link || '',
               imageUrl: item.image_url || '', originalImageUrl: item.image_url || '', file: null
             }));
@@ -197,8 +191,13 @@ export default function BannerItAdmin() {
         }
 
         const itemPayload = {
-          campaign_id: campaignData.id, image_url: finalImageUrl, title: currentSlide.title,
-          subtitle: currentSlide.subtitle, cta_text: currentSlide.cta_text, cta_link: currentSlide.cta_link, sort_order: i
+          campaign_id: campaignData.id,
+          image_url: finalImageUrl,
+          title: currentSlide.title,
+          subtitle: currentSlide.subtitle, // 데이터 저장 페이로드 정상 연동 확인
+          cta_text: currentSlide.cta_text,
+          cta_link: currentSlide.cta_link,
+          sort_order: i
         };
         if (currentSlide.id) itemPayload.id = currentSlide.id;
         await supabase.from('bannerit_items').upsert(itemPayload);
@@ -216,34 +215,14 @@ export default function BannerItAdmin() {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f3f4f6' }}>
         <div style={{ background: '#fff', padding: '3rem', borderRadius: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '420px', textAlign: 'center' }}>
-
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
             <img src="/bannerit_logo.jpg" alt="BannerIt Logo" style={{ width: '64px', height: '64px', borderRadius: '16px', marginBottom: '1rem', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }} />
             <h1 style={{ margin: '0', fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>BANNERIT 관리자</h1>
           </div>
-
           <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '0.95rem' }}>팝업을 설정할 쇼핑몰 아이디를 입력하세요.</p>
-
-          <input
-            type="text"
-            placeholder="카페24 쇼핑몰 ID (예: myshop123)"
-            value={loginInput}
-            onChange={(e) => setLoginInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleLogin();
-            }}
-            style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }}
-          />
-
-          {loginError && (
-            <p style={{ color: '#ef4444', fontSize: '0.9rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px' }}>{loginError}</p>
-          )}
-
-          <button
-            onClick={handleLogin}
-            disabled={isChecking}
-            style={{ width: '100%', padding: '1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '1rem', transition: 'background-color 0.2s' }}
-          >
+          <input type="text" placeholder="카페24 쇼핑몰 ID (예: myshop123)" value={loginInput} onChange={(e) => setLoginInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }} style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }} />
+          {loginError && <p style={{ color: '#ef4444', fontSize: '0.9rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px' }}>{loginError}</p>}
+          <button onClick={handleLogin} disabled={isChecking} style={{ width: '100%', padding: '1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '1rem', transition: 'background-color 0.2s' }}>
             {isChecking ? '인증 중...' : '접속하기'}
           </button>
         </div>
@@ -258,19 +237,16 @@ export default function BannerItAdmin() {
 
       <div style={{ flex: '1', padding: '2.5rem', borderRight: '1px solid #e5e7eb', backgroundColor: '#fff', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <img src="/bannerit_logo.jpg" alt="Logo" style={{ width: '36px', height: '36px', borderRadius: '10px', marginRight: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }} />
             <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center' }}>
               팝업 다중 설정
               <span style={{ fontSize: '1.1rem', color: '#6b7280', fontWeight: '500', marginLeft: '8px', marginRight: '12px' }}>({currentMallId})</span>
-              {/* ★ LIFETIME 라이선스 뱃지 UI 렌더링 */}
               {licensePlan === 'LIFETIME' && (
                 <span style={{ backgroundColor: '#fef3c7', color: '#d97706', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: '800', letterSpacing: '0.02em', border: '1px solid #fde68a' }}>LIFETIME LICENSE</span>
               )}
             </h1>
           </div>
-
           <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
             <span style={{ marginRight: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#111' }}>팝업 라이브 활성화</span>
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }} />
@@ -293,12 +269,18 @@ export default function BannerItAdmin() {
 
             <div style={{ marginBottom: '1.25rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>메인 타이틀</label>
-              <input type="text" value={s.title} onChange={(e) => updateSlide(idx, 'title', e.target.value)} style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
+              <input type="text" value={s.title} onChange={(e) => updateSlide(idx, 'title', e.target.value)} placeholder="예: 배너잇으로 배너를 쉽고 빠르게 교체하세요." style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
+            </div>
+
+            {/* 🛠️ [Fix 1] 서브 설명글(subtitle) 입력 폼 추가 완료 */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>서브 설명글</label>
+              <input type="text" value={s.subtitle} onChange={(e) => updateSlide(idx, 'subtitle', e.target.value)} placeholder="예: 5만원 이상 구매시 무료 배송!" style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
             </div>
 
             <div style={{ marginBottom: '1.25rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>버튼 텍스트</label>
-              <input type="text" value={s.cta_text} onChange={(e) => updateSlide(idx, 'cta_text', e.target.value)} style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
+              <input type="text" value={s.cta_text} onChange={(e) => updateSlide(idx, 'cta_text', e.target.value)} placeholder="예: 바로가기" style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
             </div>
 
             <div>
@@ -320,7 +302,6 @@ export default function BannerItAdmin() {
       </div>
 
       <div style={{ flex: '1', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb', padding: '2rem' }}>
-
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', opacity: 0.85 }}>
           <img src="/bannerit_logo.jpg" alt="Preview Logo" style={{ width: '22px', height: '22px', borderRadius: '6px', marginRight: '10px' }} />
           <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#374151', letterSpacing: '0.05em' }}>BANNERIT LIVE PREVIEW</span>
@@ -339,10 +320,20 @@ export default function BannerItAdmin() {
             ) : (
               <div style={{ width: '100%', aspectRatio: '4/3', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '0.9rem' }}>이미지 영역</div>
             )}
-            <div style={{ padding: '28px 20px', textAlign: 'center' }}>
-              <h2 style={{ margin: '0 0 12px', fontSize: '1.3rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>{previewSlide.title || '타이틀을 입력하세요'}</h2>
+            <div style={{ padding: '24px 20px 28px', textAlign: 'center' }}>
+              <h2 style={{ margin: '0 0 8px', fontSize: '1.2rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'keep-all' }}>
+                {previewSlide.title || '타이틀을 입력하세요'}
+              </h2>
+              {/* 🛠️ [Fix 2] 라이브 프리뷰 화면에도 서브 설명글(subtitle) 렌더링 반영 */}
+              {previewSlide.subtitle && (
+                <p style={{ margin: '0 0 12px', fontSize: '0.85rem', color: '#666', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'keep-all' }}>
+                  {previewSlide.subtitle}
+                </p>
+              )}
               {previewSlide.cta_text && (
-                <div style={{ display: 'inline-block', marginTop: '4px', padding: '14px 28px', backgroundColor: '#111', color: '#fff', borderRadius: '8px', fontSize: '0.95rem', fontWeight: '700' }}>{previewSlide.cta_text}</div>
+                <div style={{ display: 'inline-block', marginTop: '4px', padding: '12px 24px', backgroundColor: '#111', color: '#fff', borderRadius: '8px', fontSize: '0.9rem', fontWeight: '700' }}>
+                  {previewSlide.cta_text}
+                </div>
               )}
             </div>
             {slides.length > 1 && (
