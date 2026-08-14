@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=0, must-revalidate');
-    res.setHeader('X-Cafe24-Api-Version', '2025-12-01');
+    res.setHeader('X-Cafe24-Api-Version', '2026-03-01');
 
     const clientReferer = req.headers['referer'] || '';
     const clientMallId = req.query.mall_id;
@@ -329,32 +329,33 @@ export default async function handler(req, res) {
 
           function handleSnsLogin(provider) {
             try {
-              const currUrl = window.location.pathname + window.location.search;
-              const encodedUrl = encodeURIComponent(currUrl);
+              const rawUrl = window.location.pathname + window.location.search;
               
-              const providerMap = {
-                kakao: 'Kakao', naver: 'Naver', google: 'Google',
-                facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp'
-              };
-              const pName = providerMap[provider];
-
-              // [핵심 핫픽스] 구글 OAuth는 Iframe 내부에서의 팝업 실행(COOP/COEP)을 차단하므로 
-              // 브라우저 Top-level 환경에서 즉시 리다이렉트를 수행하여 Origin Context를 유지합니다.
+              // 핫픽스 1: 한글 URL 이중 인코딩 방지
+              const safeReturnUrl = encodeURIComponent(decodeURIComponent(rawUrl));
+              
+              // [핵심 핫픽스] 구글 OAuth F5 먹통 방지 (Cache Buster & Replace)
               if (provider === 'google') {
-                window.location.href = '/Api/Member/Oauth2Client/Google/?returnUrl=' + encodedUrl;
+                const cacheBuster = Date.now();
+                window.location.replace('/Api/Member/Oauth2Client/Google/?returnUrl=' + safeReturnUrl + '&_t=' + cacheBuster);
                 return;
               }
               
-              const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
+              const providerMap = {
+                kakao: 'Kakao', naver: 'Naver', facebook: 'Facebook', 
+                line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp'
+              };
+              const pName = providerMap[provider];
               
+              // 구글을 제외한 나머지는 기존 로직 유지
               if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-                window.MemberAction.snsLogin(cafe24Provider, currUrl);
+                window.MemberAction.snsLogin(provider, rawUrl);
               } else {
                 let iframeSuccess = false;
                 try {
                   const iframe = document.getElementById('ykinas_proxy_iframe');
                   if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
-                    iframe.contentWindow.MemberAction.snsLogin(cafe24Provider, currUrl);
+                    iframe.contentWindow.MemberAction.snsLogin(provider, rawUrl);
                     iframeSuccess = true;
                   }
                 } catch (iframeErr) {
@@ -362,12 +363,11 @@ export default async function handler(req, res) {
                 }
 
                 if (!iframeSuccess) {
-                  const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodedUrl;
+                  const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
                   const snsPopup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=500,scrollbars=yes');
                   
                   if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
-                    // 팝업이 차단된 환경에서도 원활하게 로그인되도록 폴백 리다이렉트 적용
-                    window.location.href = popupUrl;
+                    window.location.replace(popupUrl);
                   }
                 }
               }
