@@ -171,7 +171,7 @@ export default async function handler(req, res) {
               .bg-btn-primary { background-color: #111111; color: #ffffff; }
               .bg-btn-primary:hover { background-color: #333333; }
               
-              /* 카페24 display 변수 연동 필수 CSS */
+              /* 카페24 display 변수 연동 필수 CSS (JS 주입 환경 대비) */
               .displaynone { display: none !important; }
             </style>
 
@@ -374,6 +374,38 @@ export default async function handler(req, res) {
             const btn = shadowRoot.querySelector('#btn_sns_' + provider);
             if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
           });
+
+          // [핵심 핫픽스] 외부 JS 주입 시 카페24 변수(치환코드)가 렌더링되지 않는 한계를 완벽히 극복하는 DOM 동기화 로직
+          function syncRealtimeSnsVisibility() {
+            const snsMap = {
+              kakao: '.btnKakao', naver: '.btnNaver', google: '.btnGoogle',
+              apple: '.btnApple', facebook: '.btnFacebook', line: '.btnLine', yahoojp: '.yahoojp'
+            };
+            
+            const syncDisplay = (sourceDoc) => {
+              if (!sourceDoc) return;
+              Object.entries(snsMap).forEach(([key, selector]) => {
+                const originEl = sourceDoc.querySelector(selector);
+                const shadowBtn = shadowRoot.querySelector('#btn_sns_' + key);
+                if (shadowBtn && originEl) {
+                  if (originEl.classList.contains('displaynone') || window.getComputedStyle(originEl).display === 'none') {
+                    shadowBtn.style.display = 'none';
+                  }
+                }
+              });
+            };
+
+            const localWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
+            if (localWrap) syncDisplay(localWrap);
+
+            const iframeNode = document.getElementById('ykinas_proxy_iframe');
+            if (iframeNode) {
+              iframeNode.addEventListener('load', () => {
+                try { syncDisplay(iframeNode.contentDocument || iframeNode.contentWindow.document); } catch (e) {}
+              });
+            }
+          }
+          syncRealtimeSnsVisibility();
         }
 
         if (document.readyState === 'loading') {
