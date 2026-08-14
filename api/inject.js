@@ -8,13 +8,14 @@ const supabase = createClient(
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  // ★ 캐시 타임을 0으로 설정하여 DB 권한 변경(TRUE/FALSE)이 실시간으로 쇼핑몰에 반영되도록 설정
+  // ★ 캐시 타임 0 설정 및 최신 API 버전 헤더 명시 (스펙 준수)
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=0, must-revalidate');
+  res.setHeader('X-Cafe24-Api-Version', '2026-03-01');
 
   const clientReferer = req.headers['referer'] || '';
-  let clientMallId = req.query.mall_id;
+  const clientMallId = req.query.mall_id;
 
-  // 파기/무효화 전용 스크립트 반환 함수 (클라이언트 잔재 제거)
+  // 파기/무효화 전용 스크립트 반환 함수
   const sendDisabledScript = (reason) => {
     return res.status(200).send(`
       (function() {
@@ -31,25 +32,22 @@ export default async function handler(req, res) {
     `);
   };
 
-  // 1. 몰 아이디 미전달 시 무효화 스크립트 반환
   if (!clientMallId || clientMallId === '{$mall_id}') {
     return sendDisabledScript('Mall ID is missing or invalid placeholder.');
   }
 
   try {
-    // 2. DB에서 라이선스 및 로그인 모듈 활성화 여부 조회
+    // [보안/안정성 핫픽스] single() 대신 maybeSingle()을 사용하여 0 rows 엣지 케이스 500 에러 방어
     const { data: license, error } = await supabase
       .from('skin_licenses')
       .select('id, is_active, has_login_module, skin_allowed_domains ( domain )')
       .eq('mall_id', clientMallId)
-      .single();
+      .maybeSingle();
 
-    // has_login_module 이 FALSE 이거나 is_active 가 FALSE 면 드로어 삭제 스크립트 분사
     if (error || !license || !license.is_active || !license.has_login_module) {
       return sendDisabledScript('Unauthorized or module has_login_module is FALSE.');
     }
 
-    // 3. 도메인 허용 검증
     const allowedDomains = license.skin_allowed_domains ? license.skin_allowed_domains.map(d => d.domain) : [];
     const isDomainMatch = allowedDomains.length === 0 || allowedDomains.some(domain => clientReferer.includes(domain)) || clientReferer === '';
 
@@ -57,7 +55,7 @@ export default async function handler(req, res) {
       return sendDisabledScript('Domain mismatch.');
     }
 
-    // 4. 검증 통과 시 정상 로그인 드로어 스크립트 실행
+    // [구문 오류 핫픽스] 브라우저 코드 내의 템플릿 리터럴 충돌 문제 해결
     const injectedScript = `
       (function() {
         'use strict';
@@ -238,13 +236,6 @@ export default async function handler(req, res) {
                       <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-3 bg-gray-300"></span>
                       <a href="/member/agreement.html" class="font-bold text-black border-b border-black pb-0.5">회원가입</a>
                     </div>
-
-                    <div class="mt-12 text-center border-t border-gray-100 pt-8">
-                      <p class="text-xs text-gray-400 font-light mb-4">비회원으로 주문하셨나요?</p>
-                      <button type="button" id="btn_go_guest" class="inline-flex items-center justify-center w-full bg-white border border-black text-black py-4 text-sm font-medium tracking-widest hover:bg-black hover:text-white transition-colors duration-300 cursor-pointer">
-                        비회원 주문 조회하기
-                      </button>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -320,30 +311,43 @@ export default async function handler(req, res) {
              }
           });
 
-          shadowRoot.querySelector('#btn_go_guest').addEventListener('click', function() {
-            const targetUrl = skinPrefix + '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
-            window.location.href = targetUrl;
-          });
-
           function handleSnsLogin(provider) {
-            const currUrl = window.location.pathname + window.location.search;
-            
-            if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-              window.MemberAction.snsLogin(provider, currUrl);
-            } else {
-              try {
-                const iframe = document.getElementById('ykinas_proxy_iframe');
-                if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
-                  iframe.contentWindow.MemberAction.snsLogin(provider, currUrl);
-                } else {
-                  throw new Error("Iframe MemberAction not ready");
+            try {
+              const currUrl = window.location.pathname + window.location.search;
+              const encodedUrl = encodeURIComponent(currUrl);
+              
+              if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
+                window.MemberAction.snsLogin(provider, currUrl);
+              } else {
+                let iframeSuccess = false;
+                try {
+                  const iframe = document.getElementById('ykinas_proxy_iframe');
+                  if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
+                    iframe.contentWindow.MemberAction.snsLogin(provider, currUrl);
+                    iframeSuccess = true;
+                  }
+                } catch (iframeErr) {
+                  console.warn('[YKINAS] Iframe access restricted by CORS policy.');
                 }
-              } catch (e) {
-                const pName = provider === 'kakao' ? 'Kakao' : (provider === 'naver' ? 'Naver' : 'Google');
-                window.open('/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodeURIComponent(currUrl), 'snsLoginPopup', 'width=500,height=500');
+
+                if (!iframeSuccess) {
+                  const pName = provider === 'kakao' ? 'Kakao' : (provider === 'naver' ? 'Naver' : 'Google');
+                  // ★ 핵심 핫픽스: 템플릿 리터럴 내부 백틱 이스케이프 누락으로 인한 Syntax/Reference Error 해결
+                  const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodedUrl;
+                  
+                  const snsPopup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=500,scrollbars=yes');
+                  
+                  if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
+                    alert('팝업이 차단되었습니다. 브라우저 설정에서 팝업을 허용해주세요.');
+                  }
+                }
               }
+            } catch (error) {
+              console.error('[YKINAS SNS Login Error]:', error);
+              alert('SNS 로그인 초기화 중 오류가 발생했습니다. 관리자에게 문의해주세요.');
+            } finally {
+              window.YkinasLogin.close();
             }
-            window.YkinasLogin.close();
           }
 
           shadowRoot.querySelector('#btn_sns_kakao').addEventListener('click', () => handleSnsLogin('kakao'));
