@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=0, must-revalidate');
-    res.setHeader('X-Cafe24-Api-Version', '2025-12-01');
+    res.setHeader('X-Cafe24-Api-Version', '2026-03-01'); // 최신 API 버전 적용
 
     const clientReferer = req.headers['referer'] || '';
     const clientMallId = req.query.mall_id;
@@ -329,55 +329,58 @@ export default async function handler(req, res) {
 
           function handleSnsLogin(provider) {
             try {
-              const currUrl = window.location.pathname + window.location.search;
-              const encodedUrl = encodeURIComponent(currUrl);
+              const rawUrl = window.location.pathname + window.location.search;
+              const safeReturnUrl = encodeURIComponent(decodeURIComponent(rawUrl));
               
               const providerMap = {
                 kakao: 'Kakao', naver: 'Naver', google: 'Google',
                 facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp'
               };
               const pName = providerMap[provider];
-
-              // [핵심 핫픽스] 구글 OAuth는 Iframe 내부에서의 팝업 실행(COOP/COEP)을 차단하므로 
-              // 브라우저 Top-level 환경에서 즉시 리다이렉트를 수행하여 Origin Context를 유지합니다.
-              if (provider === 'google') {
-                window.location.href = '/Api/Member/Oauth2Client/Google/?returnUrl=' + encodedUrl;
-                return;
-              }
-              
               const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
               
+              // [1] 최상단 원본 버튼이 존재하면 최우선으로 원본 클릭을 유도 (가장 안전한 순정 동작)
+              const originBtn = document.getElementById('origin_btn_' + provider);
+              if (originBtn) {
+                originBtn.click();
+                return; 
+              }
+
+              // [2] 최상단 스코프에 MemberAction 객체가 있다면 직접 호출
               if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-                window.MemberAction.snsLogin(cafe24Provider, currUrl);
+                window.MemberAction.snsLogin(cafe24Provider, rawUrl);
               } else {
                 let iframeSuccess = false;
-                try {
-                  const iframe = document.getElementById('ykinas_proxy_iframe');
-                  if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
-                    iframe.contentWindow.MemberAction.snsLogin(cafe24Provider, currUrl);
-                    iframeSuccess = true;
+                
+                // [3] 구글을 제외한 나머지만 프록시 iframe 팝업 시도 
+                // 구글은 Iframe 내부 팝업 시 COOP 정책에 의해 부모창 연동이 깨지므로 100% 제외
+                if (provider !== 'google') {
+                  try {
+                    const iframe = document.getElementById('ykinas_proxy_iframe');
+                    if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
+                      iframe.contentWindow.MemberAction.snsLogin(cafe24Provider, rawUrl);
+                      iframeSuccess = true;
+                    }
+                  } catch (iframeErr) {
+                    console.warn('[YKINAS] Iframe access restricted.');
                   }
-                } catch (iframeErr) {
-                  console.warn('[YKINAS] Iframe access restricted by CORS policy.');
                 }
 
+                // [4] 구글이거나 iframe 접근 실패 시 부모창 주소 이동 없이 최상단에서 직접 팝업
                 if (!iframeSuccess) {
-                  const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + encodedUrl;
-                  const snsPopup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=500,scrollbars=yes');
+                  const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
+                  const snsPopup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
                   
                   if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
-                    // 팝업이 차단된 환경에서도 원활하게 로그인되도록 폴백 리다이렉트 적용
-                    window.location.href = popupUrl;
+                    alert('팝업이 차단되었습니다. 브라우저 주소창 우측에서 팝업 차단을 해제해주세요.');
                   }
                 }
               }
             } catch (error) {
               console.error('[YKINAS SNS Login Error]:', error);
-              alert('SNS 로그인 초기화 중 오류가 발생했습니다. 관리자에게 문의해주세요.');
+              alert('SNS 로그인 초기화 중 오류가 발생했습니다.');
             } finally {
-              if (provider !== 'google') {
-                window.YkinasLogin.close();
-              }
+              window.YkinasLogin.close();
             }
           }
 
