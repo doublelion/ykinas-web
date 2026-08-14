@@ -171,7 +171,6 @@ export default async function handler(req, res) {
               .bg-btn-primary { background-color: #111111; color: #ffffff; }
               .bg-btn-primary:hover { background-color: #333333; }
               
-              /* 카페24 display 변수 연동 필수 CSS (JS 주입 환경 대비) */
               .displaynone { display: none !important; }
             </style>
 
@@ -333,14 +332,17 @@ export default async function handler(req, res) {
               const currUrl = window.location.pathname + window.location.search;
               const encodedUrl = encodeURIComponent(currUrl);
               
+              // [핵심 핫픽스] 카페24 내부 파라미터는 'google'이 아닌 'googleplus'를 요구함
+              const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
+              
               if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-                window.MemberAction.snsLogin(provider, currUrl);
+                window.MemberAction.snsLogin(cafe24Provider, currUrl);
               } else {
                 let iframeSuccess = false;
                 try {
                   const iframe = document.getElementById('ykinas_proxy_iframe');
                   if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
-                    iframe.contentWindow.MemberAction.snsLogin(provider, currUrl);
+                    iframe.contentWindow.MemberAction.snsLogin(cafe24Provider, currUrl);
                     iframeSuccess = true;
                   }
                 } catch (iframeErr) {
@@ -375,7 +377,6 @@ export default async function handler(req, res) {
             if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
           });
 
-          // [핵심 핫픽스] 외부 JS 주입 시 카페24 변수(치환코드)가 렌더링되지 않는 한계를 완벽히 극복하는 DOM 동기화 로직
           function syncRealtimeSnsVisibility() {
             const snsMap = {
               kakao: '.btnKakao', naver: '.btnNaver', google: '.btnGoogle',
