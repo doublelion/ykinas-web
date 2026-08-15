@@ -13,6 +13,7 @@
     }
   ],
   "rewrites": [
+    
     {
       "source": "/templates/tpl-01/:path*",
       "destination": "/templates/tpl-01/:path*"
@@ -20,6 +21,12 @@
     {
       "source": "/:path*",
       "destination": "/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/reset-demo",
+      "schedule": "0 15 * * *"
     }
   ]
 }
