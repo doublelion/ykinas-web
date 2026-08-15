@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import toast, { Toaster } from 'react-hot-toast'; 
+import toast, { Toaster } from 'react-hot-toast';
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'placeholder-key';
@@ -12,6 +12,7 @@ export default function BannerItAdmin() {
 
   const [currentMallId, setCurrentMallId] = useState(urlMallId || null);
   const [loginInput, setLoginInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const [licensePlan, setLicensePlan] = useState('');
@@ -22,8 +23,8 @@ export default function BannerItAdmin() {
   const [deletedImagePaths, setDeletedImagePaths] = useState([]);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
 
-  // 🛠️ [Fix 1] 로그인 로직 분리: 파라미터를 직접 받아 실행하도록 수정
-  const performLogin = async (targetMallId) => {
+  // 🛠️ [Fix 1] 로그인 로직 분리: RPC 함수(verify_admin_login)를 통한 보안 검증
+  const performLogin = async (targetMallId, targetPassword = '') => {
     if (!targetMallId) return;
 
     if (supabaseUrl.includes('placeholder')) {
@@ -35,18 +36,16 @@ export default function BannerItAdmin() {
     setLoginError('');
 
     try {
-      const { data, error } = await supabase
-        .from('skin_licenses')
-        .select('is_active, has_bannerit_module')
-        .eq('mall_id', targetMallId)
-        .maybeSingle();
+      // 직접 테이블을 쿼리하는 대신 백엔드 RPC에 위임하여 검증 (보안 강화)
+      const { data: isAuthorized, error } = await supabase.rpc('verify_admin_login', {
+        p_mall_id: targetMallId,
+        p_password: targetPassword
+      });
 
       if (error) throw error;
 
-      if (!data) {
-        setLoginError('등록되지 않은 쇼핑몰 아이디입니다.');
-      } else if (!data.is_active || !data.has_bannerit_module) {
-        setLoginError('배너잇 서비스 이용 권한이 만료되었거나 없습니다.');
+      if (!isAuthorized) {
+        setLoginError('아이디 또는 비밀번호가 일치하지 않거나 서비스 권한이 없습니다.');
       } else {
         window.location.href = `?mall_id=${targetMallId}`;
       }
@@ -58,10 +57,12 @@ export default function BannerItAdmin() {
     }
   };
 
-  const handleLogin = () => performLogin(loginInput.trim());
+  // 일반 로그인 핸들러: ID와 Password 모두 전달
+  const handleLogin = () => performLogin(loginInput.trim(), passwordInput.trim());
 
-  // ★ 데모 몰 접속 전용 핸들러
-  const handleDemoLogin = () => performLogin('ecudemo388727');
+  // ★ 데모 몰 접속 전용 핸들러: 비밀번호 없이 통과
+  const handleDemoLogin = () => performLogin('ecudemo388727', '');
+
 
   useEffect(() => {
     if (!currentMallId) return;
@@ -134,7 +135,7 @@ export default function BannerItAdmin() {
   // 🛠️ [Fix 2] 마지막 슬라이드 삭제 처리 로직 강화
   const removeSlide = (index) => {
     const target = slides[index];
-    
+
     if (target.id) {
       setDeletedItemIds([...deletedItemIds, target.id]);
       if (target.originalImageUrl) {
@@ -142,9 +143,9 @@ export default function BannerItAdmin() {
         if (oldPath) setDeletedImagePaths(prev => [...prev, decodeURIComponent(oldPath)]);
       }
     }
-    
+
     const newSlides = slides.filter((_, i) => i !== index);
-    
+
     if (newSlides.length === 0) {
       // 배열이 완전히 비워지면, 즉시 빈 껍데기 폼을 던져주어 UI 무너짐 방지
       setSlides([{ id: null, title: '', subtitle: '', cta_text: '', cta_link: '', imageUrl: '', originalImageUrl: '', file: null }]);
@@ -196,7 +197,7 @@ export default function BannerItAdmin() {
 
       // 현재 슬라이드가 완전히 비어있는 깡통 슬라이드 1개라면 저장을 스킵 (삭제만 반영됨)
       const isCompletelyEmpty = slides.length === 1 && !slides[0].imageUrl && !slides[0].title;
-      
+
       if (!isCompletelyEmpty) {
         for (let i = 0; i < slides.length; i++) {
           let currentSlide = slides[i];
@@ -250,7 +251,9 @@ export default function BannerItAdmin() {
     }
   };
 
-  // 로그인 화면 렌더링
+  // ==========================================
+  // 로그인 화면 렌더링 영역 (비밀번호 input 추가)
+  // ==========================================
   if (!currentMallId) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f3f4f6' }}>
@@ -259,20 +262,35 @@ export default function BannerItAdmin() {
             <img src="/bannerit_logo.jpg" alt="BannerIt Logo" style={{ width: '64px', height: '64px', borderRadius: '16px', marginBottom: '1rem', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }} />
             <h1 style={{ margin: '0', fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>BANNERIT 관리자</h1>
           </div>
-          <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '0.95rem' }}>팝업을 설정할 쇼핑몰 아이디를 입력하세요.</p>
-          
-          <input type="text" placeholder="카페24 쇼핑몰 ID (예: myshop123)" value={loginInput} onChange={(e) => setLoginInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }} style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }} />
-          
+          <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '0.95rem' }}>팝업을 설정할 쇼핑몰 정보를 입력하세요.</p>
+
+          <input
+            type="text"
+            placeholder="카페24 쇼핑몰 ID (예: myshop123)"
+            value={loginInput}
+            onChange={(e) => setLoginInput(e.target.value)}
+            style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }}
+          />
+
+          {/* 🔐 비밀번호 입력창 추가 */}
+          <input
+            type="password"
+            placeholder="관리자 비밀번호"
+            value={passwordInput}
+            onChange={(e) => setPasswordInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
+            style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }}
+          />
+
           {loginError && <p style={{ color: '#ef4444', fontSize: '0.9rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px' }}>{loginError}</p>}
-          
+
           <button onClick={handleLogin} disabled={isChecking} style={{ width: '100%', padding: '1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '0.5rem', transition: 'background-color 0.2s' }}>
             {isChecking ? '인증 중...' : '접속하기'}
           </button>
 
-          {/* 💡 도입 장벽을 확 낮춰주는 데모 퀵 로그인 버튼 추가 */}
           <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px dashed #e5e7eb' }}>
-            <button 
-              onClick={handleDemoLogin} 
+            <button
+              onClick={handleDemoLogin}
               disabled={isChecking}
               style={{ width: '100%', padding: '0.8rem', backgroundColor: '#EFF6FF', color: '#3B82F6', border: '1px solid #DBEAFE', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', cursor: isChecking ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
             >
