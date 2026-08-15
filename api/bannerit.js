@@ -6,9 +6,13 @@ const supabase = createClient(
 );
 
 export default async function handler(req, res) {
+  // CORS 및 Content-Type 설정
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400');
+
+  // 💡 [수정됨] Edge Cache 최적화: 1분(60초) 캐시 후 백그라운드 갱신(SWR) 5분 설정
+  // DB 히트는 방어하면서 관리자의 수정 사항은 최대 1분 내로 반영됩니다.
+  res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
 
   let clientMallId = req.query.mall_id;
 

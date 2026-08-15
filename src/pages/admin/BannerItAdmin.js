@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import toast, { Toaster } from 'react-hot-toast'; // 💡 Toast UI 적용
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'placeholder-key';
@@ -92,7 +93,7 @@ export default function BannerItAdmin() {
           if (campaign.bannerit_items && campaign.bannerit_items.length > 0) {
             const sortedItems = campaign.bannerit_items.sort((a, b) => a.sort_order - b.sort_order);
             const loadedSlides = sortedItems.map(item => ({
-              id: item.id, title: item.title || '', subtitle: item.subtitle || '', // 기존 데이터 바인딩 정상 작동 확인
+              id: item.id, title: item.title || '', subtitle: item.subtitle || '',
               cta_text: item.cta_text || '', cta_link: item.cta_link || '',
               imageUrl: item.image_url || '', originalImageUrl: item.image_url || '', file: null
             }));
@@ -105,6 +106,7 @@ export default function BannerItAdmin() {
         }
       } catch (err) {
         console.error('데이터 로드 실패:', err);
+        toast.error('기존 데이터를 불러오는 중 오류가 발생했습니다.');
       }
     }
 
@@ -117,7 +119,10 @@ export default function BannerItAdmin() {
   }, [currentMallId]);
 
   const addEmptySlide = () => {
-    if (slides.length >= 3) return alert('최대 3개까지만 등록할 수 있습니다.');
+    if (slides.length >= 3) {
+      toast.error('최대 3개까지만 등록할 수 있습니다.');
+      return;
+    }
     setSlides([...slides, { id: null, title: '', subtitle: '', cta_text: '', cta_link: '', imageUrl: '', originalImageUrl: '', file: null }]);
   };
 
@@ -145,7 +150,8 @@ export default function BannerItAdmin() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 1 * 1024 * 1024) {
-        alert('이미지 용량은 1MB를 초과할 수 없습니다.');
+        // 💡 UX 개선: alert 대신 toast 사용
+        toast.error('이미지 용량은 1MB를 초과할 수 없습니다.');
         e.target.value = ''; return;
       }
       const newSlides = [...slides];
@@ -156,7 +162,11 @@ export default function BannerItAdmin() {
   };
 
   const handleSave = async () => {
-    if (slides.length === 0) return alert('최소 1개의 슬라이드를 등록해주세요.');
+    if (slides.length === 0) {
+      toast.error('최소 1개의 슬라이드를 등록해주세요.');
+      return;
+    }
+
     try {
       setIsSaving(true);
       const { data: campaignData, error: campaignError } = await supabase
@@ -194,7 +204,7 @@ export default function BannerItAdmin() {
           campaign_id: campaignData.id,
           image_url: finalImageUrl,
           title: currentSlide.title,
-          subtitle: currentSlide.subtitle, // 데이터 저장 페이로드 정상 연동 확인
+          subtitle: currentSlide.subtitle,
           cta_text: currentSlide.cta_text,
           cta_link: currentSlide.cta_link,
           sort_order: i
@@ -202,15 +212,31 @@ export default function BannerItAdmin() {
         if (currentSlide.id) itemPayload.id = currentSlide.id;
         await supabase.from('bannerit_items').upsert(itemPayload);
       }
-      alert('성공적으로 라이브에 저장되었습니다!\n\n※ 서버 CDN 최적화 정책으로 인해 라이브 쇼핑몰에는 약 1분 이내에 순차 적용됩니다.');
-      window.location.reload();
+
+      // 💡 UX/백엔드 결합 방어: 성공 메시지와 함께 엣지 캐시 타임 안내
+      toast.success(
+        <div>
+          <b>성공적으로 라이브에 저장되었습니다! 🎉</b>
+          <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#6b7280' }}>
+            ※ 서버 CDN 최적화 정책으로 인해 실제 쇼핑몰에는 약 1분 이내에 반영됩니다.
+          </p>
+        </div>,
+        { duration: 4000 }
+      );
+
+      // 토스트 메시지를 사장님이 충분히 읽을 수 있도록 2초 대기 후 리로드
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+
     } catch (error) {
-      alert(`오류: ${error.message}`);
+      toast.error(`저장 중 오류가 발생했습니다: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
   };
 
+  // 로그인 컴포넌트 렌더링
   if (!currentMallId) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f3f4f6' }}>
@@ -234,6 +260,8 @@ export default function BannerItAdmin() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f9fafb' }}>
+      {/* 💡 최상단에 Toaster 렌더링 컨테이너 추가 */}
+      <Toaster position="top-center" reverseOrder={false} />
 
       <div style={{ flex: '1', padding: '2.5rem', borderRight: '1px solid #e5e7eb', backgroundColor: '#fff', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -272,7 +300,6 @@ export default function BannerItAdmin() {
               <input type="text" value={s.title} onChange={(e) => updateSlide(idx, 'title', e.target.value)} placeholder="예: 배너잇으로 배너를 쉽고 빠르게 교체하세요." style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
             </div>
 
-            {/* 🛠️ [Fix 1] 서브 설명글(subtitle) 입력 폼 추가 완료 */}
             <div style={{ marginBottom: '1.25rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>서브 설명글</label>
               <input type="text" value={s.subtitle} onChange={(e) => updateSlide(idx, 'subtitle', e.target.value)} placeholder="예: 5만원 이상 구매시 무료 배송!" style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
@@ -324,7 +351,6 @@ export default function BannerItAdmin() {
               <h2 style={{ margin: '0 0 8px', fontSize: '1.2rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'keep-all' }}>
                 {previewSlide.title || '타이틀을 입력하세요'}
               </h2>
-              {/* 🛠️ [Fix 2] 라이브 프리뷰 화면에도 서브 설명글(subtitle) 렌더링 반영 */}
               {previewSlide.subtitle && (
                 <p style={{ margin: '0 0 12px', fontSize: '0.85rem', color: '#666', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'keep-all' }}>
                   {previewSlide.subtitle}
@@ -349,7 +375,6 @@ export default function BannerItAdmin() {
           </div>
         </div>
       </div>
-
     </div>
   );
 }
