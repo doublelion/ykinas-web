@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import toast, { Toaster } from 'react-hot-toast'; // 💡 Toast UI 적용
+import toast, { Toaster } from 'react-hot-toast'; 
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'placeholder-key';
@@ -22,12 +22,12 @@ export default function BannerItAdmin() {
   const [deletedImagePaths, setDeletedImagePaths] = useState([]);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
 
-  const handleLogin = async () => {
-    const mallId = loginInput.trim();
-    if (!mallId) return;
+  // 🛠️ [Fix 1] 로그인 로직 분리: 파라미터를 직접 받아 실행하도록 수정
+  const performLogin = async (targetMallId) => {
+    if (!targetMallId) return;
 
     if (supabaseUrl.includes('placeholder')) {
-      setLoginError('시스템 환경 변수가 세팅되지 않았습니다. Vercel 세팅 후 재배포가 필요합니다.');
+      setLoginError('시스템 환경 변수가 세팅되지 않았습니다.');
       return;
     }
 
@@ -38,7 +38,7 @@ export default function BannerItAdmin() {
       const { data, error } = await supabase
         .from('skin_licenses')
         .select('is_active, has_bannerit_module')
-        .eq('mall_id', mallId)
+        .eq('mall_id', targetMallId)
         .maybeSingle();
 
       if (error) throw error;
@@ -48,7 +48,7 @@ export default function BannerItAdmin() {
       } else if (!data.is_active || !data.has_bannerit_module) {
         setLoginError('배너잇 서비스 이용 권한이 만료되었거나 없습니다.');
       } else {
-        window.location.href = `?mall_id=${mallId}`;
+        window.location.href = `?mall_id=${targetMallId}`;
       }
     } catch (err) {
       console.error(err);
@@ -57,6 +57,11 @@ export default function BannerItAdmin() {
       setIsChecking(false);
     }
   };
+
+  const handleLogin = () => performLogin(loginInput.trim());
+
+  // ★ 데모 몰 접속 전용 핸들러
+  const handleDemoLogin = () => performLogin('ecudemo388727');
 
   useEffect(() => {
     if (!currentMallId) return;
@@ -126,8 +131,10 @@ export default function BannerItAdmin() {
     setSlides([...slides, { id: null, title: '', subtitle: '', cta_text: '', cta_link: '', imageUrl: '', originalImageUrl: '', file: null }]);
   };
 
+  // 🛠️ [Fix 2] 마지막 슬라이드 삭제 처리 로직 강화
   const removeSlide = (index) => {
     const target = slides[index];
+    
     if (target.id) {
       setDeletedItemIds([...deletedItemIds, target.id]);
       if (target.originalImageUrl) {
@@ -135,9 +142,18 @@ export default function BannerItAdmin() {
         if (oldPath) setDeletedImagePaths(prev => [...prev, decodeURIComponent(oldPath)]);
       }
     }
+    
     const newSlides = slides.filter((_, i) => i !== index);
-    setSlides(newSlides);
-    if (currentPreviewIndex >= newSlides.length) setCurrentPreviewIndex(Math.max(0, newSlides.length - 1));
+    
+    if (newSlides.length === 0) {
+      // 배열이 완전히 비워지면, 즉시 빈 껍데기 폼을 던져주어 UI 무너짐 방지
+      setSlides([{ id: null, title: '', subtitle: '', cta_text: '', cta_link: '', imageUrl: '', originalImageUrl: '', file: null }]);
+      setCurrentPreviewIndex(0);
+      toast.success('모든 내용이 초기화 되었습니다. 저장을 누르면 완전히 삭제됩니다.');
+    } else {
+      setSlides(newSlides);
+      if (currentPreviewIndex >= newSlides.length) setCurrentPreviewIndex(Math.max(0, newSlides.length - 1));
+    }
   };
 
   const updateSlide = (index, field, value) => {
@@ -150,7 +166,6 @@ export default function BannerItAdmin() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 1 * 1024 * 1024) {
-        // 💡 UX 개선: alert 대신 toast 사용
         toast.error('이미지 용량은 1MB를 초과할 수 없습니다.');
         e.target.value = ''; return;
       }
@@ -162,11 +177,6 @@ export default function BannerItAdmin() {
   };
 
   const handleSave = async () => {
-    if (slides.length === 0) {
-      toast.error('최소 1개의 슬라이드를 등록해주세요.');
-      return;
-    }
-
     try {
       setIsSaving(true);
       const { data: campaignData, error: campaignError } = await supabase
@@ -174,6 +184,7 @@ export default function BannerItAdmin() {
         .upsert({ mall_id: currentMallId, is_active: isActive }, { onConflict: 'mall_id' }).select().single();
       if (campaignError) throw campaignError;
 
+      // 삭제 큐(Queue)에 쌓인 데이터 우선 삭제
       if (deletedItemIds.length > 0) {
         await supabase.from('bannerit_items').delete().in('id', deletedItemIds);
         setDeletedItemIds([]);
@@ -183,37 +194,41 @@ export default function BannerItAdmin() {
         setDeletedImagePaths([]);
       }
 
-      for (let i = 0; i < slides.length; i++) {
-        let currentSlide = slides[i];
-        let finalImageUrl = currentSlide.imageUrl;
+      // 현재 슬라이드가 완전히 비어있는 깡통 슬라이드 1개라면 저장을 스킵 (삭제만 반영됨)
+      const isCompletelyEmpty = slides.length === 1 && !slides[0].imageUrl && !slides[0].title;
+      
+      if (!isCompletelyEmpty) {
+        for (let i = 0; i < slides.length; i++) {
+          let currentSlide = slides[i];
+          let finalImageUrl = currentSlide.imageUrl;
 
-        if (currentSlide.file) {
-          if (currentSlide.originalImageUrl) {
-            const oldPath = currentSlide.originalImageUrl.split('/bannerit_assets/')[1];
-            if (oldPath) await supabase.storage.from('bannerit_assets').remove([decodeURIComponent(oldPath)]);
+          if (currentSlide.file) {
+            if (currentSlide.originalImageUrl) {
+              const oldPath = currentSlide.originalImageUrl.split('/bannerit_assets/')[1];
+              if (oldPath) await supabase.storage.from('bannerit_assets').remove([decodeURIComponent(oldPath)]);
+            }
+            const fileExt = currentSlide.file.name.split('.').pop();
+            const fileName = `banners/${currentMallId}_slide${i}_${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await supabase.storage.from('bannerit_assets').upload(fileName, currentSlide.file, { upsert: true });
+            if (uploadError) throw uploadError;
+            const { data: publicUrlData } = supabase.storage.from('bannerit_assets').getPublicUrl(fileName);
+            finalImageUrl = publicUrlData.publicUrl;
           }
-          const fileExt = currentSlide.file.name.split('.').pop();
-          const fileName = `banners/${currentMallId}_slide${i}_${Date.now()}.${fileExt}`;
-          const { error: uploadError } = await supabase.storage.from('bannerit_assets').upload(fileName, currentSlide.file, { upsert: true });
-          if (uploadError) throw uploadError;
-          const { data: publicUrlData } = supabase.storage.from('bannerit_assets').getPublicUrl(fileName);
-          finalImageUrl = publicUrlData.publicUrl;
-        }
 
-        const itemPayload = {
-          campaign_id: campaignData.id,
-          image_url: finalImageUrl,
-          title: currentSlide.title,
-          subtitle: currentSlide.subtitle,
-          cta_text: currentSlide.cta_text,
-          cta_link: currentSlide.cta_link,
-          sort_order: i
-        };
-        if (currentSlide.id) itemPayload.id = currentSlide.id;
-        await supabase.from('bannerit_items').upsert(itemPayload);
+          const itemPayload = {
+            campaign_id: campaignData.id,
+            image_url: finalImageUrl,
+            title: currentSlide.title,
+            subtitle: currentSlide.subtitle,
+            cta_text: currentSlide.cta_text,
+            cta_link: currentSlide.cta_link,
+            sort_order: i
+          };
+          if (currentSlide.id) itemPayload.id = currentSlide.id;
+          await supabase.from('bannerit_items').upsert(itemPayload);
+        }
       }
 
-      // 💡 UX/백엔드 결합 방어: 성공 메시지와 함께 엣지 캐시 타임 안내
       toast.success(
         <div>
           <b>성공적으로 라이브에 저장되었습니다! 🎉</b>
@@ -224,7 +239,6 @@ export default function BannerItAdmin() {
         { duration: 4000 }
       );
 
-      // 토스트 메시지를 사장님이 충분히 읽을 수 있도록 2초 대기 후 리로드
       setTimeout(() => {
         window.location.reload();
       }, 2000);
@@ -236,7 +250,7 @@ export default function BannerItAdmin() {
     }
   };
 
-  // 로그인 컴포넌트 렌더링
+  // 로그인 화면 렌더링
   if (!currentMallId) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f3f4f6' }}>
@@ -245,12 +259,26 @@ export default function BannerItAdmin() {
             <img src="/bannerit_logo.jpg" alt="BannerIt Logo" style={{ width: '64px', height: '64px', borderRadius: '16px', marginBottom: '1rem', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }} />
             <h1 style={{ margin: '0', fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>BANNERIT 관리자</h1>
           </div>
-          <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '0.95rem' }}>팝업을 설정할 쇼핑몰 아이디를 입력하세요.</p>
+          <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '0.95rem' }}>팝업을 설정할 쇼핑몰 아이디를 입력하세요.</p>
+          
           <input type="text" placeholder="카페24 쇼핑몰 ID (예: myshop123)" value={loginInput} onChange={(e) => setLoginInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }} style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }} />
+          
           {loginError && <p style={{ color: '#ef4444', fontSize: '0.9rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px' }}>{loginError}</p>}
-          <button onClick={handleLogin} disabled={isChecking} style={{ width: '100%', padding: '1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '1rem', transition: 'background-color 0.2s' }}>
+          
+          <button onClick={handleLogin} disabled={isChecking} style={{ width: '100%', padding: '1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '0.5rem', transition: 'background-color 0.2s' }}>
             {isChecking ? '인증 중...' : '접속하기'}
           </button>
+
+          {/* 💡 도입 장벽을 확 낮춰주는 데모 퀵 로그인 버튼 추가 */}
+          <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px dashed #e5e7eb' }}>
+            <button 
+              onClick={handleDemoLogin} 
+              disabled={isChecking}
+              style={{ width: '100%', padding: '0.8rem', backgroundColor: '#EFF6FF', color: '#3B82F6', border: '1px solid #DBEAFE', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', cursor: isChecking ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
+            >
+              👉 1초 만에 데모 계정으로 체험하기
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -260,7 +288,6 @@ export default function BannerItAdmin() {
 
   return (
     <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f9fafb' }}>
-      {/* 💡 최상단에 Toaster 렌더링 컨테이너 추가 */}
       <Toaster position="top-center" reverseOrder={false} />
 
       <div style={{ flex: '1', padding: '2.5rem', borderRight: '1px solid #e5e7eb', backgroundColor: '#fff', overflowY: 'auto' }}>
@@ -285,9 +312,8 @@ export default function BannerItAdmin() {
           <div key={idx} style={{ marginBottom: '2rem', padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
               <h3 style={{ margin: 0, fontWeight: '800', color: '#111' }}>슬라이드 {idx + 1}</h3>
-              {slides.length > 1 && (
-                <button onClick={() => removeSlide(idx)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>삭제</button>
-              )}
+              {/* 💡 조건(slides.length > 1) 제거. 무조건 노출 */}
+              <button onClick={() => removeSlide(idx)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>삭제</button>
             </div>
 
             <div style={{ marginBottom: '1.25rem' }}>
