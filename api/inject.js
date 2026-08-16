@@ -1,437 +1,439 @@
+import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import toast, { Toaster } from 'react-hot-toast';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'placeholder-key';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export default async function handler(req, res) {
-  try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=0, must-revalidate');
-    res.setHeader('X-Cafe24-Api-Version', '2026-03-01'); // 최신 API 버전 적용
+export default function BannerItAdmin() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlMallId = urlParams.get('mall_id');
 
-    const clientReferer = req.headers['referer'] || '';
-    const clientMallId = req.query.mall_id;
+  const [currentMallId, setCurrentMallId] = useState(urlMallId || null);
 
-    const sendDisabledScript = (reason) => {
-      return res.status(200).send(`
-        (function() {
-          console.warn('[YKINAS Login Drawer] Disabled: ${reason}');
-          if (window.YkinasLogin) {
-            window.YkinasLogin.open = function() {};
-            window.YkinasLogin.close = function() {};
+  // 로그인 및 온보딩 관련 상태
+  const [loginInput, setLoginInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [isChecking, setIsChecking] = useState(false);
+  const [isFirstSetup, setIsFirstSetup] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // 어드민 설정 관련 상태
+  const [licensePlan, setLicensePlan] = useState('');
+  const [isActive, setIsActive] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [slides, setSlides] = useState([]);
+  const [deletedItemIds, setDeletedItemIds] = useState([]);
+  const [deletedImagePaths, setDeletedImagePaths] = useState([]);
+  const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
+
+  // 🛠️ 로그인 및 온보딩 처리 (기존 로직 동일)
+  const performLogin = async (targetMallId, targetPassword = '') => {
+    if (!targetMallId) return;
+    if (supabaseUrl.includes('placeholder')) {
+      setLoginError('시스템 환경 변수가 세팅되지 않았습니다.');
+      return;
+    }
+    setIsChecking(true);
+    setLoginError('');
+
+    try {
+      const { data: status, error } = await supabase.rpc('verify_admin_login_v2', {
+        p_mall_id: targetMallId,
+        p_password: targetPassword
+      });
+      if (error) throw error;
+
+      if (status === 'NEED_SETUP') {
+        setIsFirstSetup(true);
+        toast('신규 등록된 쇼핑몰입니다. 최초 비밀번호를 설정해주세요.', { icon: '👋' });
+      } else if (status === 'SUCCESS') {
+        window.location.href = `?mall_id=${targetMallId}`;
+      } else {
+        setLoginError('아이디 또는 비밀번호가 일치하지 않거나 서비스 권한이 없습니다.');
+      }
+    } catch (err) {
+      console.error(err);
+      setLoginError('인증 서버와 통신 중 오류가 발생했습니다.');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  const handleLogin = () => performLogin(loginInput.trim(), passwordInput.trim());
+  const handleDemoLogin = () => performLogin('ecudemo388727', '');
+
+  const handleSetupPassword = async () => {
+    if (!newPassword || newPassword.length < 4) {
+      setLoginError('비밀번호를 4자리 이상 입력해주세요.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setLoginError('비밀번호 확인이 일치하지 않습니다.');
+      return;
+    }
+    setIsChecking(true);
+    try {
+      const { data: success, error } = await supabase.rpc('set_admin_password', {
+        p_mall_id: loginInput.trim(),
+        p_new_password: newPassword.trim(),
+        p_current_password: null
+      });
+      if (error || !success) throw new Error('비밀번호 등록 실패');
+      toast.success('비밀번호가 성공적으로 설정되었습니다! 🎉');
+      setTimeout(() => { window.location.href = `?mall_id=${loginInput.trim()}`; }, 1000);
+    } catch (err) {
+      setLoginError('비밀번호 설정 중 오류가 발생했습니다.');
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!currentMallId) return;
+    document.title = `BannerIt 관리자 | ${currentMallId || 'YKINAS'}`;
+    let link = document.querySelector("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    link.href = '/bannerit_favicon.ico';
+
+    async function loadExistingBanner() {
+      try {
+        const { data: campaign } = await supabase
+          .from('bannerit_campaigns')
+          .select('id, is_active, bannerit_items(id, image_url, title, subtitle, cta_text, cta_link, sort_order)')
+          .eq('mall_id', currentMallId)
+          .maybeSingle();
+
+        const { data: licenseData } = await supabase.from('skin_licenses').select('plan_type').eq('mall_id', currentMallId).maybeSingle();
+        if (licenseData && licenseData.plan_type) setLicensePlan(licenseData.plan_type);
+
+        if (campaign) {
+          setIsActive(campaign.is_active);
+          if (campaign.bannerit_items && campaign.bannerit_items.length > 0) {
+            const sortedItems = campaign.bannerit_items.sort((a, b) => a.sort_order - b.sort_order);
+            const loadedSlides = sortedItems.map(item => ({
+              id: item.id, title: item.title || '', subtitle: item.subtitle || '',
+              cta_text: item.cta_text || '', cta_link: item.cta_link || '',
+              imageUrl: item.image_url || '', originalImageUrl: item.image_url || '', file: null
+            }));
+            setSlides(loadedSlides);
+          } else { addEmptySlide(); }
+        } else { addEmptySlide(); }
+      } catch (err) {
+        console.error('데이터 로드 실패:', err);
+        toast.error('기존 데이터를 불러오는 중 오류가 발생했습니다.');
+      }
+    }
+    loadExistingBanner();
+  }, [currentMallId]);
+
+  const addEmptySlide = () => {
+    if (slides.length >= 3) { toast.error('최대 3개까지만 등록할 수 있습니다.'); return; }
+    setSlides([...slides, { id: null, title: '', subtitle: '', cta_text: '', cta_link: '', imageUrl: '', originalImageUrl: '', file: null }]);
+  };
+
+  const removeSlide = (index) => {
+    const target = slides[index];
+    if (target.id) {
+      setDeletedItemIds([...deletedItemIds, target.id]);
+      if (target.originalImageUrl) {
+        const oldPath = target.originalImageUrl.split('/bannerit_assets/')[1];
+        if (oldPath) setDeletedImagePaths(prev => [...prev, decodeURIComponent(oldPath)]);
+      }
+    }
+    const newSlides = slides.filter((_, i) => i !== index);
+    if (newSlides.length === 0) {
+      setSlides([{ id: null, title: '', subtitle: '', cta_text: '', cta_link: '', imageUrl: '', originalImageUrl: '', file: null }]);
+      setCurrentPreviewIndex(0);
+      toast.success('모든 내용이 초기화 되었습니다. 저장을 누르면 완전히 삭제됩니다.');
+    } else {
+      setSlides(newSlides);
+      if (currentPreviewIndex >= newSlides.length) setCurrentPreviewIndex(Math.max(0, newSlides.length - 1));
+    }
+  };
+
+  const updateSlide = (index, field, value) => {
+    const newSlides = [...slides];
+    newSlides[index][field] = value;
+    setSlides(newSlides);
+  };
+
+  const handleImageChange = (index, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 1 * 1024 * 1024) {
+        toast.error('이미지 용량은 1MB를 초과할 수 없습니다.');
+        e.target.value = ''; return;
+      }
+      const newSlides = [...slides];
+      newSlides[index].file = file;
+      newSlides[index].imageUrl = URL.createObjectURL(file);
+      setSlides(newSlides);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      const { data: campaignData, error: campaignError } = await supabase
+        .from('bannerit_campaigns')
+        .upsert({ mall_id: currentMallId, is_active: isActive }, { onConflict: 'mall_id' }).select().single();
+      if (campaignError) throw campaignError;
+
+      if (deletedItemIds.length > 0) {
+        await supabase.from('bannerit_items').delete().in('id', deletedItemIds);
+        setDeletedItemIds([]);
+      }
+      if (deletedImagePaths.length > 0) {
+        await supabase.storage.from('bannerit_assets').remove(deletedImagePaths);
+        setDeletedImagePaths([]);
+      }
+
+      const isCompletelyEmpty = slides.length === 1 && !slides[0].imageUrl && !slides[0].title;
+
+      if (!isCompletelyEmpty) {
+        for (let i = 0; i < slides.length; i++) {
+          let currentSlide = slides[i];
+          let finalImageUrl = currentSlide.imageUrl;
+
+          if (currentSlide.file) {
+            if (currentSlide.originalImageUrl) {
+              const oldPath = currentSlide.originalImageUrl.split('/bannerit_assets/')[1];
+              if (oldPath) await supabase.storage.from('bannerit_assets').remove([decodeURIComponent(oldPath)]);
+            }
+            const fileExt = currentSlide.file.name.split('.').pop();
+            const fileName = `banners/${currentMallId}_slide${i}_${Date.now()}.${fileExt}`;
+            const { error: uploadError } = await supabase.storage.from('bannerit_assets').upload(fileName, currentSlide.file, { upsert: true });
+            if (uploadError) throw uploadError;
+            const { data: publicUrlData } = supabase.storage.from('bannerit_assets').getPublicUrl(fileName);
+            finalImageUrl = publicUrlData.publicUrl;
           }
-          const existingHost = document.getElementById('ykinas-global-drawer-root');
-          if (existingHost) existingHost.remove();
-          const existingIframe = document.getElementById('ykinas_proxy_iframe');
-          if (existingIframe) existingIframe.remove();
-        })();
-      `);
-    };
 
-    if (!clientMallId || clientMallId === '{$mall_id}') {
-      return sendDisabledScript('Mall ID is missing or invalid placeholder.');
+          const itemPayload = {
+            campaign_id: campaignData.id,
+            image_url: finalImageUrl,
+            title: currentSlide.title,
+            subtitle: currentSlide.subtitle,
+            cta_text: currentSlide.cta_text,
+            cta_link: currentSlide.cta_link,
+            sort_order: i
+          };
+          if (currentSlide.id) itemPayload.id = currentSlide.id;
+          await supabase.from('bannerit_items').upsert(itemPayload);
+        }
+      }
+
+      toast.success(
+        <div>
+          <b>성공적으로 라이브에 저장되었습니다! 🎉</b>
+          <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#6b7280' }}>※ 약 1분 내외로 쇼핑몰에 반영됩니다.</p>
+        </div>, { duration: 4000 }
+      );
+      setTimeout(() => { window.location.reload(); }, 2000);
+    } catch (error) {
+      toast.error(`저장 중 오류가 발생했습니다: ${error.message}`);
+    } finally {
+      setIsSaving(false);
     }
+  };
 
-    const { data: license, error } = await supabase
-      .from('skin_licenses')
-      .select('id, is_active, has_login_module, skin_allowed_domains ( domain )')
-      .eq('mall_id', clientMallId)
-      .maybeSingle();
+  // ==========================================
+  // 로그인 및 온보딩 화면 렌더링
+  // ==========================================
+  if (!currentMallId) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f3f4f6' }}>
+        <Toaster position="top-center" reverseOrder={false} />
+        <div style={{ background: '#fff', padding: '3rem', borderRadius: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '420px', textAlign: 'center', maxWidth: '90%' }}>
+          {/* ... (기존 로그인 UI 유지) ... */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <img src="/bannerit_logo.jpg" alt="BannerIt Logo" style={{ width: '64px', height: '64px', borderRadius: '16px', marginBottom: '1rem', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }} />
+            <h1 style={{ margin: '0', fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>BANNER-IT 관리자</h1>
+          </div>
+          {!isFirstSetup ? (
+            <>
+              <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '0.95rem' }}>팝업을 설정할 쇼핑몰 정보를 입력하세요.</p>
+              <input type="text" placeholder="카페24 쇼핑몰 ID" value={loginInput} onChange={(e) => setLoginInput(e.target.value)} style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }} />
+              <input type="password" placeholder="관리자 비밀번호" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }} style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }} />
+              {loginError && <p style={{ color: '#ef4444', fontSize: '0.9rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px' }}>{loginError}</p>}
+              <button onClick={handleLogin} disabled={isChecking} style={{ width: '100%', padding: '1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '0.5rem' }}>{isChecking ? '인증 중...' : '접속하기'}</button>
+              <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px dashed #e5e7eb' }}>
+                <button onClick={handleDemoLogin} disabled={isChecking} style={{ width: '100%', padding: '0.8rem', backgroundColor: '#EFF6FF', color: '#3B82F6', border: '1px solid #DBEAFE', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', cursor: isChecking ? 'not-allowed' : 'pointer' }}>👉 1초 만에 데모 계정으로 체험하기</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p style={{ color: '#2563eb', fontWeight: '700', marginBottom: '0.5rem', fontSize: '1rem' }}>🎉 신규 쇼핑몰 환영합니다!</p>
+              <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '0.85rem', lineHeight: '1.4' }}>앞으로 안전하게 사용할<br /><b>[{loginInput}]</b> 몰의 비밀번호를 생성해주세요.</p>
+              <input type="password" placeholder="새 비밀번호 (4자리 이상)" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }} />
+              <input type="password" placeholder="비밀번호 확인" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleSetupPassword(); }} style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }} />
+              {loginError && <p style={{ color: '#ef4444', fontSize: '0.9rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px' }}>{loginError}</p>}
+              <button onClick={handleSetupPassword} disabled={isChecking} style={{ width: '100%', padding: '1rem', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '0.5rem' }}>{isChecking ? '설정 중...' : '비밀번호 등록 및 시작하기'}</button>
+              <button onClick={() => { setIsFirstSetup(false); setLoginError(''); }} style={{ background: 'none', border: 'none', color: '#9ca3af', marginTop: '1rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500' }}>← 다시 로그인하기</button>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
-    if (error || !license || !license.is_active || !license.has_login_module) {
-      return sendDisabledScript('Unauthorized or module has_login_module is FALSE.');
-    }
+  const previewSlide = slides[currentPreviewIndex] || {};
 
-    const allowedDomains = license.skin_allowed_domains ? license.skin_allowed_domains.map(d => d.domain) : [];
-    const isDomainMatch = allowedDomains.length === 0 || allowedDomains.some(domain => clientReferer.includes(domain)) || clientReferer === '';
-
-    if (!isDomainMatch) {
-      return sendDisabledScript('Domain mismatch.');
-    }
-
-    const injectedScript = `
-      (function() {
-        'use strict';
+  return (
+    // 🛠️ Fix 1: 모바일 반응형 처리를 위한 최상위 클래스 주입 및 미디어 쿼리 셋업
+    <div className="bannerit-wrapper">
+      <style>{`
+        .bannerit-wrapper { display: flex; height: 100vh; background-color: #f9fafb; flex-direction: row; }
+        .bannerit-settings-pane { flex: 1; padding: 2.5rem; border-right: 1px solid #e5e7eb; background-color: #fff; overflow-y: auto; }
+        .bannerit-preview-pane { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #e5e7eb; padding: 2rem; }
         
-        if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
-        window.__YKINAS_SKIN_LOADED__ = true;
+        /* 모바일 뷰 (768px 이하) 대응 */
+        @media (max-width: 768px) {
+          .bannerit-wrapper { flex-direction: column; height: auto; min-height: 100vh; }
+          .bannerit-settings-pane { padding: 1.5rem; border-right: none; }
+          .bannerit-preview-pane { display: none !important; /* 모바일에서는 프리뷰 영역 완전 숨김 */ }
+        }
+      `}</style>
 
-        if (window.location.pathname.includes('/member/login.html')) return;
+      <Toaster position="top-center" reverseOrder={false} />
 
-        document.addEventListener('click', function(e) {
-          const target = e.target.closest('a');
-          if (!target) return;
-          
-          const href = target.getAttribute('href') || '';
-          const requireLoginPaths = ['/myshop/index.html', '/myshop/wish_list.html', '/member/modify.html'];
-          const isRequireLogin = requireLoginPaths.some(path => href.includes(path));
-          
-          const isLoggedOut = document.querySelector('.xans-layout-statelogoff') !== null || !document.querySelector('.xans-layout-statelogon');
-          
-          if (isRequireLogin && isLoggedOut) {
-            e.preventDefault();
-            e.stopPropagation();
-            if (window.YkinasLogin && typeof window.YkinasLogin.open === 'function') {
-              window.YkinasLogin.open();
-            }
-          }
-        }, true);
+      <div className="bannerit-settings-pane">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <img src="/bannerit_logo.jpg" alt="Logo" style={{ width: '36px', height: '36px', borderRadius: '10px', marginRight: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }} />
+            <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center' }}>
+              팝업 설정
+              <span style={{ fontSize: '1rem', color: '#6b7280', fontWeight: '500', marginLeft: '8px', marginRight: '12px' }}>({currentMallId})</span>
+            </h1>
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+            <span style={{ marginRight: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#111' }}>라이브 활성화</span>
+            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }} />
+          </label>
+        </div>
 
-        let shadowRoot = null;
-        let drawer = null;
-        let backdrop = null;
-        let panel = null;
-        let isInitialized = false;
+        {slides.map((s, idx) => (
+          <div key={idx} style={{ marginBottom: '2rem', padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+              <h3 style={{ margin: 0, fontWeight: '800', color: '#111' }}>슬라이드 {idx + 1}</h3>
+              <button onClick={() => removeSlide(idx)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>삭제</button>
+            </div>
 
-        window.YkinasLogin = {
-          open: function() {
-            if (!isInitialized) initShadowDOM();
-            if (drawer) {
-              drawer.style.display = 'flex';
-              requestAnimationFrame(() => {
-                backdrop.classList.add('is-open');
-                panel.classList.add('is-open');
-              });
-              document.body.style.overflow = 'hidden';
-            }
-          },
-          close: function() {
-            if (drawer) {
-              backdrop.classList.remove('is-open');
-              panel.classList.remove('is-open');
-              setTimeout(() => {
-                drawer.style.display = 'none';
-                document.body.style.overflow = '';
-              }, 400); 
-            }
-          }
-        };
+            {/* 🛠️ Fix 2: 파일 인풋 커스텀 UI 동기화 (선택된 파일 없음 문제 해결) */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>팝업 이미지 (1MB 이하)</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff' }}>
 
-        const currentPath = window.location.pathname;
+                {/* 썸네일 미리보기 영역 */}
+                {s.imageUrl ? (
+                  <img src={s.imageUrl} alt="Preview" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #e5e7eb' }} />
+                ) : (
+                  <div style={{ width: '40px', height: '40px', backgroundColor: '#f3f4f6', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#9ca3af', fontWeight: 'bold' }}>IMG</div>
+                )}
 
-        function initShadowDOM() {
-          if (isInitialized) return;
-          isInitialized = true;
-
-          const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
-          const skinPrefix = skinMatch ? skinMatch[0] : '';
-          
-          let proxyIframe = document.getElementById('ykinas_proxy_iframe');
-          if (!proxyIframe) {
-            proxyIframe = document.createElement('iframe');
-            proxyIframe.id = 'ykinas_proxy_iframe';
-            proxyIframe.src = skinPrefix + '/member/login.html';
-            proxyIframe.style.cssText = 'position:absolute; width:1px; height:1px; left:-9999px; opacity:0; pointer-events:none;';
-            document.body.appendChild(proxyIframe);
-          }
-
-          const originWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-          if (originWrap) originWrap.style.display = 'none';
-
-          const host = document.createElement('div');
-          host.id = 'ykinas-global-drawer-root';
-          host.style.cssText = 'position: relative; z-index: 2147483647;'; 
-          document.body.appendChild(host);
-
-          shadowRoot = host.attachShadow({ mode: 'closed' });
-
-          shadowRoot.innerHTML = \`
-            <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-            <style>
-              :host { all: initial; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; }
-              * { box-sizing: border-box; }
-              #global-login-drawer { position: fixed; inset: 0; z-index: 999999; display: none; justify-content: flex-end; }
-              #login-backdrop { position: absolute; inset: 0; background-color: rgba(0,0,0,0.4); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.4s ease; cursor: pointer; }
-              #login-backdrop.is-open { opacity: 1; }
-              #login-panel { position: relative; width: 100%; max-width: 420px; height: 100%; background-color: #ffffff; box-shadow: -10px 0 40px rgba(0,0,0,0.1); transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; z-index: 10; }
-              #login-panel.is-open { transform: translateX(0); }
-              .drawer-content-wrapper { opacity: 0; transform: translateY(20px); transition: opacity 0.4s ease 0.2s, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.2s; }
-              #login-panel.is-open .drawer-content-wrapper { opacity: 1; transform: translateY(0); }
-              .custom-scrollbar-02 { overflow-y: auto; }
-              .custom-scrollbar-02::-webkit-scrollbar { width: 4px; }
-              .custom-scrollbar-02::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
-              
-              .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; }
-              .minimal-input:focus { border-bottom-color: #111 !important; }
-              .floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
-              .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
-              
-              .bg-kakao { background-color: #FEE500; color: #191919; }
-              .bg-naver { background-color: #03C75A; color: #ffffff; }
-              .bg-facebook { background-color: #1877F2; color: #ffffff; }
-              .bg-line { background-color: #06C755; color: #ffffff; }
-              .bg-apple { background-color: #000000; color: #ffffff; }
-              .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-              
-              .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; }
-              .sns-grid-btn:hover { opacity: 0.85; }
-              .bg-btn-primary { background-color: #111111; color: #ffffff; }
-              .bg-btn-primary:hover { background-color: #333333; }
-              
-              .displaynone { display: none !important; }
-            </style>
-
-            <div id="global-login-drawer">
-              <div id="login-backdrop"></div>
-              <div id="login-panel" class="custom-scrollbar-02">
-                <button type="button" id="btn_close_drawer" class="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors z-50">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-                
-                <div class="px-8 sm:px-10 py-16 flex-1 flex flex-col justify-center drawer-content-wrapper">
-                  <div id="ui-login-mode">
-                    <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
-                    <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
-                    
-                    <div class="space-y-2 mb-6">
-                      <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity {$display_kakao|display}">
-                        <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
-                        카카오로 시작하기
-                      </button>
-                      
-                      <div class="grid grid-cols-2 gap-2">
-                        <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver {$display_naver|display}">
-                          <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
-                        </button>
-                        <button type="button" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 {$display_google|display}">
-                          <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
-                          구글
-                        </button>
-                        <button type="button" id="btn_sns_apple" class="sns-grid-btn bg-apple {$display_apple|display}">
-                          <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
-                          Apple
-                        </button>
-                        <button type="button" id="btn_sns_facebook" class="sns-grid-btn bg-facebook {$display_facebook|display}">
-                          <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
-                          Facebook
-                        </button>
-                        <button type="button" id="btn_sns_line" class="sns-grid-btn bg-line {$display_line|display}">
-                          <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
-                        </button>
-                        <button type="button" id="btn_sns_yahoojp" class="sns-grid-btn bg-yahoojp {$display_yahoojp|display}">
-                          <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
-                        </button>
-                      </div>
-                    </div>
-
-                    <div class="relative flex items-center py-2">
-                      <div class="flex-grow border-t border-gray-100"></div>
-                      <span class="flex-shrink-0 mx-4 text-[11px] text-gray-400">또는 아이디로 로그인</span>
-                      <div class="flex-grow border-t border-gray-100"></div>
-                    </div>
-                    
-                    <div class="space-y-4 mt-5">
-                      <div class="relative w-full">
-                        <input type="text" id="s_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
-                        <label class="floating-label">아이디</label>
-                      </div>
-                      <div class="relative w-full">
-                        <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
-                        <label class="floating-label">비밀번호</label>
-                        <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </button>
-                      </div>
-                      <div class="flex items-center justify-between mt-2 mb-4">
-                        <label class="flex items-center cursor-pointer group">
-                          <input type="checkbox" id="s_save_id" class="w-3.5 h-3.5 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
-                          <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
-                        </label>
-                      </div>
-                      <button type="button" id="btn_submit_login" class="w-full py-3.5 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded mt-4">로그인</button>
-                    </div>
-
-                    <div class="flex justify-center items-center space-x-4 mt-6 text-[11px] text-gray-400">
-                      <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
-                      <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
-                      <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black transition-colors">회원가입</a>
-                    </div>
-                  </div>
+                {/* 파일명 또는 상태 안내 텍스트 영역 */}
+                <div style={{ flex: 1, overflow: 'hidden' }}>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: s.file || s.originalImageUrl ? '#111' : '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500' }}>
+                    {s.file ? s.file.name : (s.originalImageUrl ? '✨ 기존 등록 이미지 유지 중' : '이미지를 첨부해주세요')}
+                  </p>
                 </div>
+
+                {/* 커스텀 파일 찾기 버튼 (실제 input은 숨김) */}
+                <label style={{ cursor: 'pointer', backgroundColor: '#111', color: '#fff', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', flexShrink: 0, transition: 'background-color 0.2s' }}>
+                  찾기
+                  <input type="file" accept="image/*" onChange={(e) => handleImageChange(idx, e)} style={{ display: 'none' }} />
+                </label>
               </div>
             </div>
-          \`;
 
-          drawer = shadowRoot.querySelector('#global-login-drawer');
-          backdrop = shadowRoot.querySelector('#login-backdrop');
-          panel = shadowRoot.querySelector('#login-panel');
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>메인 타이틀</label>
+              <input type="text" value={s.title} onChange={(e) => updateSlide(idx, 'title', e.target.value)} placeholder="예: 배너잇으로 배너를 쉽고 빠르게 교체하세요." style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
+            </div>
 
-          if (skinPrefix) {
-            const allLinks = shadowRoot.querySelectorAll('a');
-            allLinks.forEach(link => {
-              const href = link.getAttribute('href');
-              if (href && href.startsWith('/')) {
-                link.setAttribute('href', skinPrefix + href);
-              }
-            });
-          }
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>서브 설명글</label>
+              <input type="text" value={s.subtitle} onChange={(e) => updateSlide(idx, 'subtitle', e.target.value)} placeholder="예: 5만원 이상 구매시 무료 배송!" style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
+            </div>
 
-          shadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
-          backdrop.addEventListener('click', window.YkinasLogin.close);
+            <div style={{ marginBottom: '1.25rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>버튼 텍스트</label>
+              <input type="text" value={s.cta_text} onChange={(e) => updateSlide(idx, 'cta_text', e.target.value)} placeholder="예: 바로가기" style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
+            </div>
 
-          shadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
-            const pw = shadowRoot.querySelector('#s_pw');
-            pw.type = pw.type === 'password' ? 'text' : 'password';
-          });
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>버튼 링크 (URL)</label>
+              <input type="text" placeholder="/product/list.html?..." value={s.cta_link} onChange={(e) => updateSlide(idx, 'cta_link', e.target.value)} style={{ width: '100%', padding: '0.8rem', border: '1px solid #d1d5db', borderRadius: '6px', outline: 'none' }} />
+            </div>
+          </div>
+        ))}
 
-          shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
-             const idVal = shadowRoot.querySelector('#s_id').value.trim();
-             const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
-             if (!idVal || !pwVal) { 
-               alert("아이디와 비밀번호를 모두 입력해주세요."); 
-               return; 
-             }
-             
-             const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-             if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
-               originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
-               originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
-               (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
-             } else {
-               try {
-                 const iframe = document.getElementById('ykinas_proxy_iframe');
-                 const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                 const ifId = iframeDoc.querySelector('input[name="member_id"]');
-                 const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
-                 const ifBtn = iframeDoc.getElementById('origin_btn_login');
+        {slides.length < 3 && (
+          <button onClick={addEmptySlide} style={{ width: '100%', padding: '1rem', backgroundColor: '#f3f4f6', color: '#374151', fontWeight: '700', borderRadius: '12px', cursor: 'pointer', border: '1px dashed #d1d5db', marginBottom: '2rem' }}>
+            + 슬라이드 추가 ({slides.length}/3)
+          </button>
+        )}
 
-                 if (ifId && ifPw && ifBtn) {
-                   ifId.value = idVal;
-                   ifPw.value = pwVal;
-                   
-                   const form = ifId.closest('form');
-                   if (form) {
-                     form.target = "_parent"; 
-                     let retInput = form.querySelector('input[name="returnUrl"]');
-                     if (!retInput) {
-                       retInput = iframeDoc.createElement('input');
-                       retInput.type = 'hidden';
-                       retInput.name = 'returnUrl';
-                       form.appendChild(retInput);
-                     }
-                     retInput.value = window.location.pathname + window.location.search;
-                   }
-                   ifBtn.click();
-                 } else {
-                   throw new Error("Iframe form not found");
-                 }
-               } catch (e) {
-                 window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
-               }
-             }
-          });
+        <button onClick={handleSave} disabled={isSaving} style={{ width: '100%', padding: '1.25rem', backgroundColor: isSaving ? '#6b7280' : '#111', color: '#fff', fontWeight: 'bold', fontSize: '1.05rem', borderRadius: '12px', cursor: isSaving ? 'not-allowed' : 'pointer', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.15)' }}>
+          {isSaving ? '저장 및 배포 중...' : '저장 및 라이브 반영'}
+        </button>
+      </div>
 
-          function handleSnsLogin(provider) {
-            try {
-              const rawUrl = window.location.pathname + window.location.search;
-              const safeReturnUrl = encodeURIComponent(decodeURIComponent(rawUrl));
-              
-              const providerMap = {
-                kakao: 'Kakao', naver: 'Naver', google: 'Google',
-                facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp'
-              };
-              const pName = providerMap[provider];
-              const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
-              
-              // [1] 최상단 원본 버튼이 존재하면 최우선으로 원본 클릭을 유도 (가장 안전한 순정 동작)
-              const originBtn = document.getElementById('origin_btn_' + provider);
-              if (originBtn) {
-                originBtn.click();
-                return; 
-              }
+      <div className="bannerit-preview-pane">
+        {/* ... (기존 프리뷰 렌더링 영역 유지) ... */}
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', opacity: 0.85 }}>
+          <img src="/bannerit_logo.jpg" alt="Preview Logo" style={{ width: '22px', height: '22px', borderRadius: '6px', marginRight: '10px' }} />
+          <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#374151', letterSpacing: '0.05em' }}>BANNERIT LIVE PREVIEW</span>
+        </div>
 
-              // [2] 최상단 스코프에 MemberAction 객체가 있다면 직접 호출
-              if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-                window.MemberAction.snsLogin(cafe24Provider, rawUrl);
-              } else {
-                let iframeSuccess = false;
-                
-                // [3] 구글을 제외한 나머지만 프록시 iframe 팝업 시도 
-                // 구글은 Iframe 내부 팝업 시 COOP 정책에 의해 부모창 연동이 깨지므로 100% 제외
-                if (provider !== 'google') {
-                  try {
-                    const iframe = document.getElementById('ykinas_proxy_iframe');
-                    if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
-                      iframe.contentWindow.MemberAction.snsLogin(cafe24Provider, rawUrl);
-                      iframeSuccess = true;
-                    }
-                  } catch (iframeErr) {
-                    console.warn('[YKINAS] Iframe access restricted.');
-                  }
-                }
-
-                // [4] 구글이거나 iframe 접근 실패 시 부모창 주소 이동 없이 최상단에서 직접 팝업
-                if (!iframeSuccess) {
-                  const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
-                  const snsPopup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
-                  
-                  if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
-                    alert('팝업이 차단되었습니다. 브라우저 주소창 우측에서 팝업 차단을 해제해주세요.');
-                  }
-                }
-              }
-            } catch (error) {
-              console.error('[YKINAS SNS Login Error]:', error);
-              alert('SNS 로그인 초기화 중 오류가 발생했습니다.');
-            } finally {
-              window.YkinasLogin.close();
-            }
-          }
-
-          ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
-            const btn = shadowRoot.querySelector('#btn_sns_' + provider);
-            if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
-          });
-
-          function syncRealtimeSnsVisibility() {
-            const snsMap = {
-              kakao: '.btnKakao', naver: '.btnNaver', google: '.btnGoogle',
-              apple: '.btnApple', facebook: '.btnFacebook', line: '.btnLine', yahoojp: '.yahoojp'
-            };
-            
-            const syncDisplay = (sourceDoc) => {
-              if (!sourceDoc) return;
-              Object.entries(snsMap).forEach(([key, selector]) => {
-                const originEl = sourceDoc.querySelector(selector);
-                const shadowBtn = shadowRoot.querySelector('#btn_sns_' + key);
-                if (shadowBtn && originEl) {
-                  if (originEl.classList.contains('displaynone') || window.getComputedStyle(originEl).display === 'none') {
-                    shadowBtn.style.display = 'none';
-                  }
-                }
-              });
-            };
-
-            const localWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-            if (localWrap) syncDisplay(localWrap);
-
-            const iframeNode = document.getElementById('ykinas_proxy_iframe');
-            if (iframeNode) {
-              iframeNode.addEventListener('load', () => {
-                try { syncDisplay(iframeNode.contentDocument || iframeNode.contentWindow.document); } catch (e) {}
-              });
-            }
-          }
-          syncRealtimeSnsVisibility();
-        }
-
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', initShadowDOM);
-        } else {
-          initShadowDOM();
-        }
-      })();
-    `;
-
-    return res.status(200).send(injectedScript);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).send('/* Initialization error */');
-  }
+        <div style={{ width: '375px', height: '667px', backgroundColor: '#fff', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '20px', border: '8px solid #f3f4f6' }}>
+          <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 1 }}></div>
+          <div style={{ position: 'relative', zIndex: 2, backgroundColor: '#fff', borderRadius: '16px', overflow: 'hidden', width: '100%', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            {slides.length > 0 && (
+              <div style={{ position: 'absolute', top: '16px', right: '16px', backgroundColor: 'rgba(0,0,0,0.65)', color: '#fff', padding: '4px 12px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '700', zIndex: 10 }}>
+                {currentPreviewIndex + 1} | {slides.length}
+              </div>
+            )}
+            {previewSlide.imageUrl ? (
+              <img src={previewSlide.imageUrl} alt="preview" style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ width: '100%', aspectRatio: '4/3', backgroundColor: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '0.9rem' }}>이미지 영역</div>
+            )}
+            <div style={{ padding: '24px 20px 28px', textAlign: 'center' }}>
+              <h2 style={{ margin: '0 0 8px', fontSize: '1.2rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'keep-all' }}>
+                {previewSlide.title || '타이틀을 입력하세요'}
+              </h2>
+              {previewSlide.subtitle && (
+                <p style={{ margin: '0 0 12px', fontSize: '0.85rem', color: '#666', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'keep-all' }}>
+                  {previewSlide.subtitle}
+                </p>
+              )}
+              {previewSlide.cta_text && (
+                <div style={{ display: 'inline-block', marginTop: '4px', padding: '12px 24px', backgroundColor: '#111', color: '#fff', borderRadius: '8px', fontSize: '0.9rem', fontWeight: '700' }}>
+                  {previewSlide.cta_text}
+                </div>
+              )}
+            </div>
+            {slides.length > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 20px 20px' }}>
+                <button disabled={currentPreviewIndex === 0} onClick={() => setCurrentPreviewIndex(prev => prev - 1)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: currentPreviewIndex === 0 ? 'not-allowed' : 'pointer', opacity: currentPreviewIndex === 0 ? 0.2 : 1 }}>◀</button>
+                <button disabled={currentPreviewIndex === slides.length - 1} onClick={() => setCurrentPreviewIndex(prev => prev + 1)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: currentPreviewIndex === slides.length - 1 ? 'not-allowed' : 'pointer', opacity: currentPreviewIndex === slides.length - 1 ? 0.2 : 1 }}>▶</button>
+              </div>
+            )}
+            <div style={{ display: 'flex', borderTop: '1px solid #f3f4f6', backgroundColor: '#fafafa' }}>
+              <div style={{ flex: 1, padding: '16px 0', textAlign: 'center', fontSize: '0.85rem', fontWeight: '500', color: '#6b7280', borderRight: '1px solid #f3f4f6', cursor: 'pointer' }}>오늘 하루 열지 않기</div>
+              <div style={{ flex: 1, padding: '16px 0', textAlign: 'center', fontSize: '0.85rem', fontWeight: '500', color: '#6b7280', cursor: 'pointer' }}>닫기</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }

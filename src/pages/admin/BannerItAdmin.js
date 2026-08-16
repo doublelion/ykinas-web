@@ -11,10 +11,17 @@ export default function BannerItAdmin() {
   const urlMallId = urlParams.get('mall_id');
 
   const [currentMallId, setCurrentMallId] = useState(urlMallId || null);
+
+  // 로그인 및 온보딩 관련 상태
   const [loginInput, setLoginInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isChecking, setIsChecking] = useState(false);
+  const [isFirstSetup, setIsFirstSetup] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // 어드민 설정 관련 상태
   const [licensePlan, setLicensePlan] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -23,7 +30,7 @@ export default function BannerItAdmin() {
   const [deletedImagePaths, setDeletedImagePaths] = useState([]);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
 
-  // 🛠️ [Fix 1] 로그인 로직 분리: RPC 함수(verify_admin_login)를 통한 보안 검증
+  // 🛠️ 로그인 및 상태 분기 (SUCCESS, NEED_SETUP, INVALID)
   const performLogin = async (targetMallId, targetPassword = '') => {
     if (!targetMallId) return;
 
@@ -36,18 +43,20 @@ export default function BannerItAdmin() {
     setLoginError('');
 
     try {
-      // 직접 테이블을 쿼리하는 대신 백엔드 RPC에 위임하여 검증 (보안 강화)
-      const { data: isAuthorized, error } = await supabase.rpc('verify_admin_login', {
+      const { data: status, error } = await supabase.rpc('verify_admin_login_v2', {
         p_mall_id: targetMallId,
         p_password: targetPassword
       });
 
       if (error) throw error;
 
-      if (!isAuthorized) {
-        setLoginError('아이디 또는 비밀번호가 일치하지 않거나 서비스 권한이 없습니다.');
-      } else {
+      if (status === 'NEED_SETUP') {
+        setIsFirstSetup(true);
+        toast('신규 등록된 쇼핑몰입니다. 최초 비밀번호를 설정해주세요.', { icon: '👋' });
+      } else if (status === 'SUCCESS') {
         window.location.href = `?mall_id=${targetMallId}`;
+      } else {
+        setLoginError('아이디 또는 비밀번호가 일치하지 않거나 서비스 권한이 없습니다.');
       }
     } catch (err) {
       console.error(err);
@@ -57,12 +66,40 @@ export default function BannerItAdmin() {
     }
   };
 
-  // 일반 로그인 핸들러: ID와 Password 모두 전달
   const handleLogin = () => performLogin(loginInput.trim(), passwordInput.trim());
-
-  // ★ 데모 몰 접속 전용 핸들러: 비밀번호 없이 통과
   const handleDemoLogin = () => performLogin('ecudemo388727', '');
 
+  // 🛠️ 최초 비밀번호 등록 처리
+  const handleSetupPassword = async () => {
+    if (!newPassword || newPassword.length < 4) {
+      setLoginError('비밀번호를 4자리 이상 입력해주세요.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setLoginError('비밀번호 확인이 일치하지 않습니다.');
+      return;
+    }
+
+    setIsChecking(true);
+    try {
+      const { data: success, error } = await supabase.rpc('set_admin_password', {
+        p_mall_id: loginInput.trim(),
+        p_new_password: newPassword.trim(),
+        p_current_password: null
+      });
+
+      if (error || !success) throw new Error('비밀번호 등록 실패');
+
+      toast.success('비밀번호가 성공적으로 설정되었습니다! 🎉');
+      setTimeout(() => {
+        window.location.href = `?mall_id=${loginInput.trim()}`;
+      }, 1000);
+    } catch (err) {
+      setLoginError('비밀번호 설정 중 오류가 발생했습니다.');
+    } finally {
+      setIsChecking(false);
+    }
+  };
 
   useEffect(() => {
     if (!currentMallId) return;
@@ -132,7 +169,6 @@ export default function BannerItAdmin() {
     setSlides([...slides, { id: null, title: '', subtitle: '', cta_text: '', cta_link: '', imageUrl: '', originalImageUrl: '', file: null }]);
   };
 
-  // 🛠️ [Fix 2] 마지막 슬라이드 삭제 처리 로직 강화
   const removeSlide = (index) => {
     const target = slides[index];
 
@@ -147,7 +183,6 @@ export default function BannerItAdmin() {
     const newSlides = slides.filter((_, i) => i !== index);
 
     if (newSlides.length === 0) {
-      // 배열이 완전히 비워지면, 즉시 빈 껍데기 폼을 던져주어 UI 무너짐 방지
       setSlides([{ id: null, title: '', subtitle: '', cta_text: '', cta_link: '', imageUrl: '', originalImageUrl: '', file: null }]);
       setCurrentPreviewIndex(0);
       toast.success('모든 내용이 초기화 되었습니다. 저장을 누르면 완전히 삭제됩니다.');
@@ -185,7 +220,6 @@ export default function BannerItAdmin() {
         .upsert({ mall_id: currentMallId, is_active: isActive }, { onConflict: 'mall_id' }).select().single();
       if (campaignError) throw campaignError;
 
-      // 삭제 큐(Queue)에 쌓인 데이터 우선 삭제
       if (deletedItemIds.length > 0) {
         await supabase.from('bannerit_items').delete().in('id', deletedItemIds);
         setDeletedItemIds([]);
@@ -195,7 +229,6 @@ export default function BannerItAdmin() {
         setDeletedImagePaths([]);
       }
 
-      // 현재 슬라이드가 완전히 비어있는 깡통 슬라이드 1개라면 저장을 스킵 (삭제만 반영됨)
       const isCompletelyEmpty = slides.length === 1 && !slides[0].imageUrl && !slides[0].title;
 
       if (!isCompletelyEmpty) {
@@ -234,7 +267,7 @@ export default function BannerItAdmin() {
         <div>
           <b>성공적으로 라이브에 저장되었습니다! 🎉</b>
           <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#6b7280' }}>
-            ※ 서버 CDN 최적화 정책으로 인해 실제 쇼핑몰에는 약 1분 이내에 반영됩니다.
+            ※ 서버 CDN 최적화 정책으로 인해 약 1분 내외로 반영됩니다.
           </p>
         </div>,
         { duration: 4000 }
@@ -252,56 +285,108 @@ export default function BannerItAdmin() {
   };
 
   // ==========================================
-  // 로그인 화면 렌더링 영역 (비밀번호 input 추가)
+  // 로그인 및 온보딩 화면 렌더링
   // ==========================================
   if (!currentMallId) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f3f4f6' }}>
+        <Toaster position="top-center" reverseOrder={false} />
         <div style={{ background: '#fff', padding: '3rem', borderRadius: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '420px', textAlign: 'center' }}>
+
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
             <img src="/bannerit_logo.jpg" alt="BannerIt Logo" style={{ width: '64px', height: '64px', borderRadius: '16px', marginBottom: '1rem', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }} />
-            <h1 style={{ margin: '0', fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>BANNERIT 관리자</h1>
+            <h1 style={{ margin: '0', fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>BANNER-IT 관리자</h1>
           </div>
-          <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '0.95rem' }}>팝업을 설정할 쇼핑몰 정보를 입력하세요.</p>
 
-          <input
-            type="text"
-            placeholder="카페24 쇼핑몰 ID (예: myshop123)"
-            value={loginInput}
-            onChange={(e) => setLoginInput(e.target.value)}
-            style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }}
-          />
+          {!isFirstSetup ? (
+            /* [1] 기본 로그인 화면 */
+            <>
+              <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '0.95rem' }}>팝업을 설정할 쇼핑몰 정보를 입력하세요.</p>
 
-          {/* 🔐 비밀번호 입력창 추가 */}
-          <input
-            type="password"
-            placeholder="관리자 비밀번호"
-            value={passwordInput}
-            onChange={(e) => setPasswordInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
-            style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }}
-          />
+              <input
+                type="text"
+                placeholder="카페24 쇼핑몰 ID (예: myshop123)"
+                value={loginInput}
+                onChange={(e) => setLoginInput(e.target.value)}
+                style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }}
+              />
 
-          {loginError && <p style={{ color: '#ef4444', fontSize: '0.9rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px' }}>{loginError}</p>}
+              <input
+                type="password"
+                placeholder="관리자 비밀번호"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }}
+                style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }}
+              />
 
-          <button onClick={handleLogin} disabled={isChecking} style={{ width: '100%', padding: '1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '0.5rem', transition: 'background-color 0.2s' }}>
-            {isChecking ? '인증 중...' : '접속하기'}
-          </button>
+              {loginError && <p style={{ color: '#ef4444', fontSize: '0.9rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px' }}>{loginError}</p>}
 
-          <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px dashed #e5e7eb' }}>
-            <button
-              onClick={handleDemoLogin}
-              disabled={isChecking}
-              style={{ width: '100%', padding: '0.8rem', backgroundColor: '#EFF6FF', color: '#3B82F6', border: '1px solid #DBEAFE', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', cursor: isChecking ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
-            >
-              👉 1초 만에 데모 계정으로 체험하기
-            </button>
-          </div>
+              <button onClick={handleLogin} disabled={isChecking} style={{ width: '100%', padding: '1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '0.5rem', transition: 'background-color 0.2s' }}>
+                {isChecking ? '인증 중...' : '접속하기'}
+              </button>
+
+              <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px dashed #e5e7eb' }}>
+                <button
+                  onClick={handleDemoLogin}
+                  disabled={isChecking}
+                  style={{ width: '100%', padding: '0.8rem', backgroundColor: '#EFF6FF', color: '#3B82F6', border: '1px solid #DBEAFE', borderRadius: '10px', fontWeight: '800', fontSize: '0.95rem', cursor: isChecking ? 'not-allowed' : 'pointer', transition: 'all 0.2s' }}
+                >
+                  👉 1초 만에 데모 계정으로 체험하기
+                </button>
+              </div>
+            </>
+          ) : (
+            /* [2] 신규 등록 상점: 최초 비밀번호 설정 폼 */
+            <>
+              <p style={{ color: '#2563eb', fontWeight: '700', marginBottom: '0.5rem', fontSize: '1rem' }}>🎉 신규 쇼핑몰 환영합니다!</p>
+              <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '0.85rem', lineHeight: '1.4' }}>
+                앞으로 안전하게 사용할<br /><b>[{loginInput}]</b> 몰의 비밀번호를 생성해주세요.
+              </p>
+
+              <input
+                type="password"
+                placeholder="새 관리자 비밀번호 (4자리 이상)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }}
+              />
+              <input
+                type="password"
+                placeholder="새 관리자 비밀번호 확인"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSetupPassword(); }}
+                style={{ width: '100%', padding: '1rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '10px', marginBottom: '0.5rem', boxSizing: 'border-box', outline: 'none' }}
+              />
+
+              {loginError && <p style={{ color: '#ef4444', fontSize: '0.9rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px' }}>{loginError}</p>}
+
+              <button
+                onClick={handleSetupPassword}
+                disabled={isChecking}
+                style={{ width: '100%', padding: '1rem', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', fontSize: '1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '0.5rem', transition: 'background-color 0.2s' }}
+              >
+                {isChecking ? '설정 중...' : '비밀번호 등록 및 시작하기'}
+              </button>
+
+              <button
+                onClick={() => { setIsFirstSetup(false); setLoginError(''); }}
+                style={{ background: 'none', border: 'none', color: '#9ca3af', marginTop: '1rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500' }}
+              >
+                ← 다시 로그인하기
+              </button>
+            </>
+          )}
+
         </div>
       </div>
     );
   }
 
+  // ==========================================
+  // 배너잇 어드민 본문 렌더링
+  // ==========================================
   const previewSlide = slides[currentPreviewIndex] || {};
 
   return (
@@ -330,7 +415,6 @@ export default function BannerItAdmin() {
           <div key={idx} style={{ marginBottom: '2rem', padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
               <h3 style={{ margin: 0, fontWeight: '800', color: '#111' }}>슬라이드 {idx + 1}</h3>
-              {/* 💡 조건(slides.length > 1) 제거. 무조건 노출 */}
               <button onClick={() => removeSlide(idx)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>삭제</button>
             </div>
 
@@ -372,6 +456,7 @@ export default function BannerItAdmin() {
         </button>
       </div>
 
+      {/* 프리뷰 영역 유지 */}
       <div style={{ flex: '1', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', backgroundColor: '#e5e7eb', padding: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', opacity: 0.85 }}>
           <img src="/bannerit_logo.jpg" alt="Preview Logo" style={{ width: '22px', height: '22px', borderRadius: '6px', marginRight: '10px' }} />
