@@ -30,7 +30,7 @@ export default function BannerItAdmin() {
   const [deletedImagePaths, setDeletedImagePaths] = useState([]);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
 
-  // 🛠️ 로그인 및 온보딩 처리 (기존 로직 동일)
+  // 🛠️ 로그인 및 온보딩 처리
   const performLogin = async (targetMallId, targetPassword = '') => {
     if (!targetMallId) return;
     if (supabaseUrl.includes('placeholder')) {
@@ -252,7 +252,6 @@ export default function BannerItAdmin() {
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f3f4f6' }}>
         <Toaster position="top-center" reverseOrder={false} />
         <div style={{ background: '#fff', padding: '3rem', borderRadius: '20px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '420px', textAlign: 'center', maxWidth: '90%' }}>
-          {/* ... (기존 로그인 UI 유지) ... */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
             <img src="/bannerit_logo.jpg" alt="BannerIt Logo" style={{ width: '64px', height: '64px', borderRadius: '16px', marginBottom: '1rem', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }} />
             <h1 style={{ margin: '0', fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>BANNER-IT 관리자</h1>
@@ -287,7 +286,6 @@ export default function BannerItAdmin() {
   const previewSlide = slides[currentPreviewIndex] || {};
 
   return (
-    // 🛠️ Fix 1: 모바일 반응형 처리를 위한 최상위 클래스 주입 및 미디어 쿼리 셋업
     <div className="bannerit-wrapper">
       <style>{`
         .bannerit-wrapper { display: flex; height: 100vh; background-color: #f9fafb; flex-direction: row; }
@@ -298,14 +296,14 @@ export default function BannerItAdmin() {
         @media (max-width: 768px) {
           .bannerit-wrapper { flex-direction: column; height: auto; min-height: 100vh; }
           .bannerit-settings-pane { padding: 1.5rem; border-right: none; }
-          .bannerit-preview-pane { display: none !important; /* 모바일에서는 프리뷰 영역 완전 숨김 */ }
+          .bannerit-preview-pane { display: none !important; }
         }
       `}</style>
 
       <Toaster position="top-center" reverseOrder={false} />
 
       <div className="bannerit-settings-pane">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <img src="/bannerit_logo.jpg" alt="Logo" style={{ width: '36px', height: '36px', borderRadius: '10px', marginRight: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }} />
             <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center' }}>
@@ -313,10 +311,23 @@ export default function BannerItAdmin() {
               <span style={{ fontSize: '1rem', color: '#6b7280', fontWeight: '500', marginLeft: '8px', marginRight: '12px' }}>({currentMallId})</span>
             </h1>
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-            <span style={{ marginRight: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#111' }}>라이브 활성화</span>
-            <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }} />
-          </label>
+
+          {/* 💡 [기능 추가] 실제 쇼핑몰 매칭 바로가기 버튼 및 라이브 토글 영역 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+            <a
+              href={`https://${currentMallId}.cafe24.com`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ padding: '0.4rem 0.8rem', backgroundColor: '#EFF6FF', color: '#3B82F6', borderRadius: '6px', fontSize: '0.85rem', fontWeight: '700', textDecoration: 'none', border: '1px solid #DBEAFE', display: 'flex', alignItems: 'center', transition: 'all 0.2s' }}
+            >
+              🚀 실제 쇼핑몰 확인
+            </a>
+
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+              <span style={{ marginRight: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#111' }}>라이브 활성화</span>
+              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} style={{ width: '1.25rem', height: '1.25rem', cursor: 'pointer' }} />
+            </label>
+          </div>
         </div>
 
         {slides.map((s, idx) => (
@@ -326,26 +337,22 @@ export default function BannerItAdmin() {
               <button onClick={() => removeSlide(idx)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}>삭제</button>
             </div>
 
-            {/* 🛠️ Fix 2: 파일 인풋 커스텀 UI 동기화 (선택된 파일 없음 문제 해결) */}
             <div style={{ marginBottom: '1.25rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: '#374151' }}>팝업 이미지 (1MB 이하)</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '6px', backgroundColor: '#fff' }}>
-                
-                {/* 썸네일 미리보기 영역 */}
+
                 {s.imageUrl ? (
                   <img src={s.imageUrl} alt="Preview" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #e5e7eb' }} />
                 ) : (
                   <div style={{ width: '40px', height: '40px', backgroundColor: '#f3f4f6', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: '#9ca3af', fontWeight: 'bold' }}>IMG</div>
                 )}
-                
-                {/* 파일명 또는 상태 안내 텍스트 영역 */}
+
                 <div style={{ flex: 1, overflow: 'hidden' }}>
                   <p style={{ margin: 0, fontSize: '0.875rem', color: s.file || s.originalImageUrl ? '#111' : '#9ca3af', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500' }}>
                     {s.file ? s.file.name : (s.originalImageUrl ? '✨ 기존 등록 이미지 유지 중' : '이미지를 첨부해주세요')}
                   </p>
                 </div>
-                
-                {/* 커스텀 파일 찾기 버튼 (실제 input은 숨김) */}
+
                 <label style={{ cursor: 'pointer', backgroundColor: '#111', color: '#fff', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', flexShrink: 0, transition: 'background-color 0.2s' }}>
                   찾기
                   <input type="file" accept="image/*" onChange={(e) => handleImageChange(idx, e)} style={{ display: 'none' }} />
@@ -387,7 +394,6 @@ export default function BannerItAdmin() {
       </div>
 
       <div className="bannerit-preview-pane">
-        {/* ... (기존 프리뷰 렌더링 영역 유지) ... */}
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1.5rem', opacity: 0.85 }}>
           <img src="/bannerit_logo.jpg" alt="Preview Logo" style={{ width: '22px', height: '22px', borderRadius: '6px', marginRight: '10px' }} />
           <span style={{ fontSize: '0.9rem', fontWeight: '800', color: '#374151', letterSpacing: '0.05em' }}>BANNERIT LIVE PREVIEW</span>
