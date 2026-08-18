@@ -74,34 +74,60 @@ export default async function handler(req, res) {
         const isLoginPage = currentPath.includes('/member/login.html');
 
         // ==========================================
-        // [공통 로직] SNS 로그인 다이렉트 리다이렉트 엔진
-        // 크롬 모바일 팝업 차단을 100% 회피하는 URL 이동 방식
+        // [공통 로직] Cafe24 네이티브 SNS 동기화 트리거
+        // 무한 로딩(먹통) 현상 해결 및 팝업 차단 우회
         // ==========================================
-        function executeDirectSnsLogin(provider, loaderElementId, isShadowDOM = false) {
-          const rawUrl = window.location.pathname + window.location.search;
-          const safeReturnUrl = encodeURIComponent(rawUrl);
-          const providerMap = { 
-            kakao: 'Kakao', naver: 'Naver', google: 'Google', 
-            facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp' 
-          };
-          const pName = providerMap[provider];
-          
-          if (!pName) return;
-
-          // 엔드포인트 URL 조합
-          const oauthUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
-
-          // 시각적 피드백: 로딩 오버레이 켜기 (사용자 중복 클릭 방지)
-          let loader;
-          if (isShadowDOM && ykinasShadowRoot) {
-            loader = ykinasShadowRoot.querySelector('#' + loaderElementId);
-          } else {
-            loader = document.getElementById(loaderElementId);
+        function executeCafe24NativeSnsLogin(provider, loaderElementId, isShadowDOM = false) {
+          // 로더 표시 (무한 로딩 방지를 위해 2.5초 후 무조건 해제)
+          let loader = isShadowDOM && ykinasShadowRoot 
+            ? ykinasShadowRoot.querySelector('#' + loaderElementId) 
+            : document.getElementById(loaderElementId);
+            
+          if (loader) {
+            loader.style.display = 'flex';
+            setTimeout(() => { loader.style.display = 'none'; }, 2500); 
           }
-          if (loader) loader.style.display = 'flex';
 
-          // [핵심] 팝업이 아닌 현재 창 리다이렉트 (크롬 모바일 완벽 호환)
-          window.location.href = oauthUrl;
+          // Cafe24 프로바이더 매핑 규칙 (구글은 googleplus 사용)
+          const providerMap = { 
+            kakao: 'kakao', naver: 'naver', google: 'googleplus', 
+            facebook: 'facebook', line: 'line', apple: 'apple', yahoojp: 'yahoojp' 
+          };
+          const cafe24Provider = providerMap[provider];
+          const rawUrl = window.location.pathname + window.location.search;
+          const targetClassName = provider === 'yahoojp' ? '.yahoojp' : '.btn' + provider.charAt(0).toUpperCase() + provider.slice(1);
+
+          // 1순위: 카페24 전역 함수 직접 호출 (팝업 통과 확률 가장 높음)
+          if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
+            window.MemberAction.snsLogin(cafe24Provider, rawUrl);
+            return;
+          }
+
+          // 2순위: 로컬 DOM에 숨겨져 있는 원본 버튼의 click() 트리거
+          const localWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
+          if (localWrap) {
+            const originEl = localWrap.querySelector(targetClassName) || localWrap.querySelector('#origin_btn_' + provider);
+            if (originEl) {
+              originEl.click();
+              return;
+            }
+          }
+
+          // 3순위: Iframe 내부의 함수 또는 버튼 트리거 (드로어 전용 폴백)
+          try {
+            const iframe = document.getElementById('ykinas_proxy_iframe');
+            if (iframe) {
+              if (iframe.contentWindow && typeof iframe.contentWindow.MemberAction !== 'undefined') {
+                iframe.contentWindow.MemberAction.snsLogin(cafe24Provider, rawUrl);
+              } else {
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                const iframeOriginEl = iframeDoc.querySelector(targetClassName) || iframeDoc.querySelector('#origin_btn_' + provider);
+                if (iframeOriginEl) iframeOriginEl.click();
+              }
+            }
+          } catch(e) {
+            console.warn('[YKINAS] Iframe execution blocked.');
+          }
         }
 
         // ==========================================
@@ -183,7 +209,6 @@ export default async function handler(req, res) {
 
                         <!-- SNS 연동 영역 -->
                         <div class="space-y-2 mb-6">
-                          <!-- <a> 태그를 사용하지 않고도 모바일 정책 우회가 가능하도록 로직 변경됨 -->
                           <button type="button" id="a_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
                             카카오로 시작하기
@@ -385,12 +410,9 @@ export default async function handler(req, res) {
               snsProviders.forEach(key => {
                 const customBtn = document.getElementById('a_sns_' + key);
                 if (!customBtn) return;
-
-                let originEl = document.getElementById('origin_btn_' + key);
-                if (!originEl) {
-                  const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
-                  originEl = document.querySelector(className);
-                }
+                
+                const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
+                let originEl = document.querySelector(className) || document.getElementById('origin_btn_' + key);
 
                 if (originEl) {
                   const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
@@ -419,13 +441,13 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [수정됨] Mode A SNS 리스너 바인딩: 다이렉트 호출 함수 사용
+            // [핵심 해결] Mode A - SNS 리스너
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = document.getElementById('a_sns_' + provider);
               if (btn) {
                 btn.addEventListener('click', (e) => {
                   e.preventDefault();
-                  executeDirectSnsLogin(provider, 'ykinas-global-loader', false);
+                  executeCafe24NativeSnsLogin(provider, 'ykinas-global-loader', false);
                 });
               }
             });
@@ -572,7 +594,7 @@ export default async function handler(req, res) {
                   <!-- 드로어 로딩 UI -->
                   <div id="ykinas-drawer-loader" class="ykinas-loader-overlay">
                     <div class="ykinas-spinner"></div>
-                    <div class="ykinas-loader-text">안전하게 페이지를 이동합니다</div>
+                    <div class="ykinas-loader-text">안전하게 통신 중입니다</div>
                   </div>
 
                   <button type="button" id="btn_close_drawer" class="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors z-50">
@@ -737,13 +759,13 @@ export default async function handler(req, res) {
                }
             });
 
-            // [수정됨] Mode B SNS 리스너 바인딩: 다이렉트 호출 함수 사용
+            // [핵심 해결] Mode B - SNS 리스너
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
                 btn.addEventListener('click', (e) => {
                   e.preventDefault();
-                  executeDirectSnsLogin(provider, 'ykinas-drawer-loader', true);
+                  executeCafe24NativeSnsLogin(provider, 'ykinas-drawer-loader', true);
                 });
               }
             });
@@ -756,11 +778,8 @@ export default async function handler(req, res) {
                 let gridActiveCount = 0;
 
                 snsProviders.forEach(key => {
-                  let originEl = sourceDoc.querySelector('#origin_btn_' + key);
-                  if (!originEl) {
-                    const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
-                    originEl = sourceDoc.querySelector(className);
-                  }
+                  const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
+                  let originEl = sourceDoc.querySelector(className) || sourceDoc.querySelector('#origin_btn_' + key);
                   
                   const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
                   if (shadowBtn && originEl) {
