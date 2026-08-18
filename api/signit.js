@@ -7,7 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    // [백엔드 최적화] 글로벌 Edge CDN 캐싱으로 콜드스타트 완벽 제거
+    // [백엔드 최적화] 글로벌 Edge CDN 캐싱
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400');
@@ -74,6 +74,37 @@ export default async function handler(req, res) {
         const isLoginPage = currentPath.includes('/member/login.html');
 
         // ==========================================
+        // [공통 로직] SNS 로그인 다이렉트 리다이렉트 엔진
+        // 크롬 모바일 팝업 차단을 100% 회피하는 URL 이동 방식
+        // ==========================================
+        function executeDirectSnsLogin(provider, loaderElementId, isShadowDOM = false) {
+          const rawUrl = window.location.pathname + window.location.search;
+          const safeReturnUrl = encodeURIComponent(rawUrl);
+          const providerMap = { 
+            kakao: 'Kakao', naver: 'Naver', google: 'Google', 
+            facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp' 
+          };
+          const pName = providerMap[provider];
+          
+          if (!pName) return;
+
+          // 엔드포인트 URL 조합
+          const oauthUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
+
+          // 시각적 피드백: 로딩 오버레이 켜기 (사용자 중복 클릭 방지)
+          let loader;
+          if (isShadowDOM && ykinasShadowRoot) {
+            loader = ykinasShadowRoot.querySelector('#' + loaderElementId);
+          } else {
+            loader = document.getElementById(loaderElementId);
+          }
+          if (loader) loader.style.display = 'flex';
+
+          // [핵심] 팝업이 아닌 현재 창 리다이렉트 (크롬 모바일 완벽 호환)
+          window.location.href = oauthUrl;
+        }
+
+        // ==========================================
         // [MODE A] 로그인 전용 페이지 (Standalone Full-Screen UI)
         // ==========================================
         if (isLoginPage) {
@@ -107,7 +138,7 @@ export default async function handler(req, res) {
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; }
+                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
 
                 /* 로딩 오버레이 */
@@ -120,7 +151,7 @@ export default async function handler(req, res) {
 
               <div id="ykinas-global-loader" class="ykinas-loader-overlay">
                 <div class="ykinas-spinner"></div>
-                <div class="ykinas-loader-text">잠시만 기다려주세요</div>
+                <div class="ykinas-loader-text">안전하게 통신 중입니다</div>
               </div>
 
               <div class="fixed inset-0 z-[99999] flex bg-[#faf9f8] overflow-hidden fade-in" style="font-family: 'Pretendard', 'Noto Sans KR', sans-serif;">
@@ -152,6 +183,7 @@ export default async function handler(req, res) {
 
                         <!-- SNS 연동 영역 -->
                         <div class="space-y-2 mb-6">
+                          <!-- <a> 태그를 사용하지 않고도 모바일 정책 우회가 가능하도록 로직 변경됨 -->
                           <button type="button" id="a_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
                             카카오로 시작하기
@@ -260,7 +292,6 @@ export default async function handler(req, res) {
             // ==========================================
             // 로직 바인딩 및 라우팅 컨트롤
             // ==========================================
-            
             const showLoader = () => {
               const loader = document.getElementById('ykinas-global-loader');
               if (loader) loader.style.display = 'flex';
@@ -385,28 +416,16 @@ export default async function handler(req, res) {
             
             let snsIntervalA = setInterval(syncSnsA, 300);
             setTimeout(() => clearInterval(snsIntervalA), 3000);
-
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [수정됨] Mode A: 모바일 팝업 차단 우회를 위한 직접 호출 로직 적용
+            // [수정됨] Mode A SNS 리스너 바인딩: 다이렉트 호출 함수 사용
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = document.getElementById('a_sns_' + provider);
               if (btn) {
                 btn.addEventListener('click', (e) => {
-                  e.preventDefault(); // 기본 동작 방지
-                  const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
-                  const rawUrl = window.location.pathname + window.location.search;
-                  
-                  // 카페24 전역 함수가 존재하면 안전하게 직접 호출 (팝업차단 우회)
-                  if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-                    window.MemberAction.snsLogin(cafe24Provider, rawUrl);
-                  } else {
-                    // Fallback: 직접 팝업 호출 (클릭 이벤트 내부이므로 모바일에서 허용됨)
-                    const providerMap = { kakao: 'Kakao', naver: 'Naver', google: 'Google', facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp' };
-                    const popupUrl = '/Api/Member/Oauth2Client/' + providerMap[provider] + '/?returnUrl=' + encodeURIComponent(rawUrl);
-                    window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
-                  }
+                  e.preventDefault();
+                  executeDirectSnsLogin(provider, 'ykinas-global-loader', false);
                 });
               }
             });
@@ -535,7 +554,7 @@ export default async function handler(req, res) {
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; }
+                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-btn-primary { background-color: #111111; color: #ffffff; }
 
@@ -553,7 +572,7 @@ export default async function handler(req, res) {
                   <!-- 드로어 로딩 UI -->
                   <div id="ykinas-drawer-loader" class="ykinas-loader-overlay">
                     <div class="ykinas-spinner"></div>
-                    <div class="ykinas-loader-text">안전하게 통신 중입니다</div>
+                    <div class="ykinas-loader-text">안전하게 페이지를 이동합니다</div>
                   </div>
 
                   <button type="button" id="btn_close_drawer" class="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors z-50">
@@ -718,37 +737,15 @@ export default async function handler(req, res) {
                }
             });
 
-            // [수정됨] Mode B: 모바일 팝업 차단 우회를 위한 직접 호출 로직 적용
-            function handleSnsLogin(provider) {
-              try {
-                const rawUrl = window.location.pathname + window.location.search;
-                const safeReturnUrl = encodeURIComponent(decodeURIComponent(rawUrl));
-                const providerMap = { kakao: 'Kakao', naver: 'Naver', google: 'Google', facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp' };
-                const pName = providerMap[provider];
-                const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
-                
-                // 숨겨진 원본 DOM 클릭 (.click) 제거 -> 팝업 차단의 주원인 해결
-                // 카페24 전역 함수가 존재하면 안전하게 직접 호출 (팝업차단 우회)
-                if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-                  window.MemberAction.snsLogin(cafe24Provider, rawUrl);
-                } else {
-                  // Fallback: 직접 팝업 호출 (클릭 이벤트 내부이므로 모바일에서 허용됨)
-                  const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
-                  const snsPopup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
-                  
-                  if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
-                    alert('팝업이 차단되었습니다. 모바일 브라우저 설정에서 팝업 차단을 해제해주세요.');
-                  }
-                }
-              } catch (error) {
-                console.error('[YKINAS SNS Login Error]:', error);
-                alert('SNS 로그인 초기화 중 오류가 발생했습니다.');
-              }
-            }
-
+            // [수정됨] Mode B SNS 리스너 바인딩: 다이렉트 호출 함수 사용
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
-              if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
+              if (btn) {
+                btn.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  executeDirectSnsLogin(provider, 'ykinas-drawer-loader', true);
+                });
+              }
             });
 
             const syncRealtimeSnsVisibility = () => {
