@@ -294,14 +294,26 @@ export default async function handler(req, res) {
               if (panel) panel.scrollTop = 0;
             };
 
-            // 비회원 주문조회 파라미터 로직 유지 (noMemberOrder)
+            // [핵심] URL 상태 관리 및 파라미터 보존 로직 추가
+            const searchParams = new URLSearchParams(window.location.search);
+            const currentReturnUrl = searchParams.get('returnUrl') || '';
+
+            // 비회원 주문조회 버튼 클릭 (noMemberOrder 파라미터 추가, returnUrl 유지)
             document.getElementById('a_btn_goto_guest').addEventListener('click', () => {
               showLoader();
-              window.location.replace('/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html'));
+              // returnUrl이 없다면 기본 주문조회 페이지 경로를 할당
+              const targetReturnUrl = currentReturnUrl || '/myshop/order/list.html';
+              window.location.replace('/member/login.html?noMemberOrder=1&returnUrl=' + encodeURIComponent(targetReturnUrl));
             });
+
+            // 회원 로그인 버튼 클릭 (noMemberOrder 파라미터 제거, returnUrl 유지)
             document.getElementById('a_btn_goto_login').addEventListener('click', () => {
               showLoader();
-              window.location.replace('/member/login.html');
+              // 기존 returnUrl 파라미터가 있으면 붙여서 이동, 없으면 순수 login.html로 이동
+              const nextUrl = currentReturnUrl 
+                ? '/member/login.html?returnUrl=' + encodeURIComponent(currentReturnUrl) 
+                : '/member/login.html';
+              window.location.replace(nextUrl);
             });
 
             document.getElementById('a_btn_toggle_pw').addEventListener('click', () => {
@@ -411,13 +423,11 @@ export default async function handler(req, res) {
               }
             });
 
-            // 비회원 조회 파라미터 감지 및 분기
-            const searchStr = window.location.search;
-            const returnUrl = new URLSearchParams(searchStr).get('returnUrl') || '';
-            if (searchStr.includes('noMemberOrder') || returnUrl.includes('order/list.html')) {
+            // 초기 로딩 시 파라미터 엄격 검사를 통한 모드 스위칭
+            if (window.location.search.includes('noMemberOrder') || currentReturnUrl.includes('order/list.html')) {
               switchMode('guest');
             } else {
-              switchMode('login');
+              switchMode('login'); // 일반 접근 시 무조건 회원 로그인이 기본
             }
           }
 
