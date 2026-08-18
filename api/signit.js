@@ -7,7 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    // [백엔드 최적화] Edge CDN 캐싱 적용: 서버리스 콜드스타트 제거, 스크립트 로드 속도 극대화
+    // [백엔드 최적화] 글로벌 Edge CDN 캐싱으로 콜드스타트 제거 (응답속도 극대화)
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400');
@@ -96,11 +96,19 @@ export default async function handler(req, res) {
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; }
                 .sns-grid-btn:hover { opacity: 0.85; }
 
-                /* 프리미엄 로딩 오버레이 CSS */
-                .ykinas-loader-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(4px); z-index: 1000; display: none; align-items: center; justify-content: center; transition: opacity 0.3s ease; }
-                .ykinas-spinner { width: 36px; height: 36px; border: 2.5px solid rgba(0, 0, 0, 0.1); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
+                /* 프리미엄 로딩 오버레이 UI */
+                .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
+                .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
+                .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
+                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
               </style>
+
+              <!-- 로딩 오버레이 마크업 -->
+              <div id="ykinas-global-loader" class="ykinas-loader-overlay">
+                <div class="ykinas-spinner"></div>
+                <div class="ykinas-loader-text">잠시만 기다려주세요</div>
+              </div>
 
               <div class="fixed inset-0 z-[99999] flex bg-[#faf9f8] overflow-hidden fade-in" style="font-family: 'Pretendard', 'Noto Sans KR', sans-serif;">
                 <div class="hidden lg:block lg:w-7/12 relative bg-gray-900">
@@ -117,12 +125,6 @@ export default async function handler(req, res) {
                 </div>
 
                 <div class="w-full lg:w-5/12 bg-white shadow-2xl z-10 flex flex-col relative custom-scrollbar-02 overflow-y-auto" id="standalone_panel">
-                  
-                  <!-- 로딩 오버레이 UI -->
-                  <div id="ykinas-loader" class="ykinas-loader-overlay">
-                    <div class="ykinas-spinner"></div>
-                  </div>
-
                   <button type="button" id="a_btn_close" class="absolute top-6 right-6 p-2 text-gray-400 !bg-transparent hover:bg-gray-100 hover:text-black rounded-full transition-colors z-[100] text-xl">✕</button>
 
                   <div class="px-8 sm:px-14 pt-24 pb-12 flex-1 flex flex-col justify-center">
@@ -137,19 +139,21 @@ export default async function handler(req, res) {
 
                         <!-- SNS 연동 영역 -->
                         <div class="space-y-2 mb-6">
-                          <button type="button" id="a_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity" style="display:none;">
+                          <!-- 카카오, 네이버, 구글은 기본 노출 -->
+                          <button type="button" id="a_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
                             카카오로 시작하기
                           </button>
                           
-                          <div id="a_sns_grid_container" class="grid grid-cols-2 gap-2" style="display:none;">
-                            <button type="button" id="a_sns_naver" class="sns-grid-btn bg-naver" style="display:none;">
+                          <div id="a_sns_grid_container" class="grid grid-cols-2 gap-2">
+                            <button type="button" id="a_sns_naver" class="sns-grid-btn bg-naver">
                               <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                             </button>
-                            <button type="button" id="a_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" style="display:none;">
+                            <button type="button" id="a_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
                               <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                               구글
                             </button>
+                            <!-- 나머지는 기본 숨김 -->
                             <button type="button" id="a_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
                               <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
                               Apple
@@ -246,12 +250,12 @@ export default async function handler(req, res) {
             // 로직 바인딩 및 라우팅 컨트롤
             // ==========================================
             
-            // 로딩 오버레이 제어 함수
+            // 전역 로딩 오버레이 함수
             const showLoader = () => {
-              const loader = document.getElementById('ykinas-loader');
+              const loader = document.getElementById('ykinas-global-loader');
               if (loader) loader.style.display = 'flex';
             };
-            
+
             const closeHandler = (e) => {
               if (e) e.preventDefault();
               if (document.referrer && document.referrer.includes(location.host)) {
@@ -277,7 +281,7 @@ export default async function handler(req, res) {
               if (panel) panel.scrollTop = 0;
             };
 
-            // [수정] 라우팅 리다이렉트 실행 직전에 로딩 오버레이 띄우기
+            // 리다이렉트 실행 즉시 로딩 오버레이 표시
             document.getElementById('a_btn_goto_guest').addEventListener('click', () => {
               showLoader();
               window.location.replace('/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html'));
@@ -302,7 +306,7 @@ export default async function handler(req, res) {
               if (!idVal || !pwVal) return alert("아이디와 비밀번호를 모두 입력해주세요.");
               const wrap = document.getElementById('cafe24-original-wrap');
               if (wrap) {
-                showLoader(); // 로그인 서밋 시에도 로딩 표시
+                showLoader();
                 wrap.querySelector('input[name="member_id"]').value = idVal;
                 wrap.querySelector('input[name="member_passwd"]').value = pwVal;
                 document.getElementById('origin_btn_login')?.click();
@@ -318,7 +322,7 @@ export default async function handler(req, res) {
               if (!nameVal || !idVal || !pwVal) return alert("주문자 정보를 모두 입력해주세요.");
               const wrap = document.getElementById('cafe24-original-wrap');
               if (wrap) {
-                showLoader(); // 서밋 시 로딩 표시
+                showLoader();
                 wrap.querySelector('input[name="order_name"]').value = nameVal;
                 wrap.querySelector('input[name="order_id"]').value = idVal;
                 wrap.querySelector('input[name="order_password"]').value = pwVal;
@@ -328,6 +332,7 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
+            // [핵심] 렌더링 동기화 및 MutationObserver 하이브리드 로직 (의존성 완전 해결)
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               const originWrap = document.getElementById('cafe24-original-wrap');
@@ -344,15 +349,16 @@ export default async function handler(req, res) {
 
                 const customBtn = document.getElementById('a_sns_' + key);
                 if (customBtn && originEl) {
-                  if (originEl.classList.contains('displaynone')) {
+                  // 카페24가 비활성화한 버튼은 displaynone 클래스 또는 명시적 인라인 스타일이 들어감
+                  const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
+                  if (isHidden) {
                     customBtn.style.display = 'none';
                   } else {
                     customBtn.style.display = '';
+                    if (key !== 'kakao') gridActiveCount++;
                   }
-                }
-
-                if (customBtn && customBtn.style.display !== 'none' && key !== 'kakao') {
-                  gridActiveCount++;
+                } else if (customBtn && !originEl) {
+                  customBtn.style.display = 'none'; // 원본 요소가 아예 없으면 렌더 안함
                 }
               });
 
@@ -361,12 +367,23 @@ export default async function handler(req, res) {
                 gridContainer.style.display = gridActiveCount > 0 ? '' : 'none';
               }
             };
+            
+            // 최초 실행 후 안전성을 위해 load 시점에도 실행
             syncSnsA();
+            window.addEventListener('load', syncSnsA);
+
+            // 카페24 코어 스크립트가 로드 후 DOM을 조작하더라도 무조건 감지하여 동기화
+            const originWrap = document.getElementById('cafe24-original-wrap');
+            if (originWrap) {
+              const observer = new MutationObserver(() => syncSnsA());
+              observer.observe(originWrap, { attributes: true, childList: true, subtree: true });
+            }
 
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = document.getElementById('a_sns_' + provider);
               if (btn) {
                 btn.addEventListener('click', () => {
+                  showLoader();
                   const originBtn = document.getElementById('origin_btn_' + provider);
                   if (originBtn) {
                     originBtn.click();
@@ -501,11 +518,24 @@ export default async function handler(req, res) {
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; }
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-btn-primary { background-color: #111111; color: #ffffff; }
+
+                /* 드로어 전용 프리미엄 로딩 오버레이 */
+                .ykinas-loader-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
+                .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
+                @keyframes ykinas-spin { to { transform: rotate(360deg); } }
+                .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
+                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
               </style>
 
               <div id="global-login-drawer">
                 <div id="login-backdrop"></div>
                 <div id="login-panel" class="custom-scrollbar-02">
+                  <!-- 드로어 로딩 UI -->
+                  <div id="ykinas-drawer-loader" class="ykinas-loader-overlay">
+                    <div class="ykinas-spinner"></div>
+                    <div class="ykinas-loader-text">안전하게 통신 중입니다</div>
+                  </div>
+
                   <button type="button" id="btn_close_drawer" class="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors z-50">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
@@ -516,16 +546,17 @@ export default async function handler(req, res) {
                       <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                       
                       <div class="space-y-2 mb-6">
-                        <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity" style="display:none;">
+                        <!-- 카카오, 네이버, 구글 기본 노출 -->
+                        <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                           <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
                           카카오로 시작하기
                         </button>
                         
-                        <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2" style="display:none;">
-                          <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver" style="display:none;">
+                        <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2">
+                          <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver">
                             <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                           </button>
-                          <button type="button" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" style="display:none;">
+                          <button type="button" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
                             <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                             구글
                           </button>
@@ -591,6 +622,11 @@ export default async function handler(req, res) {
             backdrop = shadowRoot.querySelector('#login-backdrop');
             panel = shadowRoot.querySelector('#login-panel');
 
+            const showLoader = () => {
+              const loader = shadowRoot.querySelector('#ykinas-drawer-loader');
+              if (loader) loader.style.display = 'flex';
+            };
+
             if (skinPrefix) {
               const allLinks = shadowRoot.querySelectorAll('a');
               allLinks.forEach(link => {
@@ -619,11 +655,13 @@ export default async function handler(req, res) {
                
                const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
                if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
+                 showLoader();
                  originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
                  originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
                  (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
                } else {
                  try {
+                   showLoader();
                    const iframe = document.getElementById('ykinas_proxy_iframe');
                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
                    const ifId = iframeDoc.querySelector('input[name="member_id"]');
@@ -658,6 +696,7 @@ export default async function handler(req, res) {
 
             function handleSnsLogin(provider) {
               try {
+                showLoader();
                 const rawUrl = window.location.pathname + window.location.search;
                 const safeReturnUrl = encodeURIComponent(decodeURIComponent(rawUrl));
                 const providerMap = { kakao: 'Kakao', naver: 'Naver', google: 'Google', facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp' };
@@ -697,8 +736,6 @@ export default async function handler(req, res) {
               } catch (error) {
                 console.error('[YKINAS SNS Login Error]:', error);
                 alert('SNS 로그인 초기화 중 오류가 발생했습니다.');
-              } finally {
-                window.YkinasLogin.close();
               }
             }
 
@@ -707,7 +744,8 @@ export default async function handler(req, res) {
               if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
             });
 
-            function syncRealtimeSnsVisibility() {
+            // [핵심] 브라우저 렌더링 의존성 100% 제거 로직 (클래스명 스캐닝)
+            const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               
               const syncDisplay = (sourceDoc) => {
@@ -723,15 +761,16 @@ export default async function handler(req, res) {
                   
                   const shadowBtn = shadowRoot.querySelector('#btn_sns_' + key);
                   if (shadowBtn && originEl) {
-                    if (originEl.classList.contains('displaynone')) {
+                    // 카페24 설정이 꺼지면 부여되는 displaynone 클래스와 style.display만 스캔
+                    const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
+                    if (isHidden) {
                       shadowBtn.style.display = 'none';
                     } else {
                       shadowBtn.style.display = '';
+                      if (key !== 'kakao') gridActiveCount++;
                     }
-                  }
-
-                  if (shadowBtn && shadowBtn.style.display !== 'none' && key !== 'kakao') {
-                    gridActiveCount++;
+                  } else if (shadowBtn && !originEl) {
+                    shadowBtn.style.display = 'none';
                   }
                 });
 
