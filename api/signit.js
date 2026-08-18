@@ -56,7 +56,7 @@ export default async function handler(req, res) {
         if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        // [프론트엔드 최적화] 모바일 기기 감지
+        // [모바일 라우팅 보존 로직]
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
 
         let ykinasShadowRoot = null;
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
         const isLoginPage = currentPath.includes('/member/login.html');
 
         // ==========================================
-        // [MODE A] 정식 로그인 페이지 (Mobile Dedicated)
+        // [MODE A] 모바일 전용 정식 로그인 페이지 (login.html)
         // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
@@ -110,6 +110,7 @@ export default async function handler(req, res) {
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
                 
+                /* 팝업 오버레이 클릭잭킹을 위한 기본 포지션 설정 */
                 .sns-grid-btn { position: relative; display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; text-decoration: none; cursor: pointer; overflow: hidden; }
                 .sns-grid-btn:hover { opacity: 0.85; }
 
@@ -145,81 +146,85 @@ export default async function handler(req, res) {
                   <div class="px-8 sm:px-14 pt-24 pb-12 flex-1 flex flex-col justify-center">
                     <div class="w-full max-w-sm mx-auto relative">
                       
-                      <!-- [모드 A] 회원 로그인 UI -->
-                      <div id="ui-login-mode" class="fade-in">
-                        <div class="mb-10">
-                          <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h1>
-                          <p class="text-sm text-gray-500">SNS 간편 로그인 또는 아이디로 접속하세요.</p>
-                        </div>
-
-                        <!-- SNS 연동 영역 -->
-                        <div class="space-y-2 mb-6">
-                          <a href="#none" id="a_sns_kakao" class="sns-grid-btn bg-kakao py-3 text-sm font-semibold rounded">
-                            <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
-                            카카오로 시작하기
-                          </a>
+                      <!-- [핵심 뼈대 동기화] 카페24 순정 엔진이 의존하는 클래스명 완벽 매핑 -->
+                      <div id="ui-login-mode" class="fade-in member-login-wrap">
+                        <fieldset class="form" style="border: none; padding: 0; margin: 0; width: 100%;">
+                          <legend style="display: none;">회원로그인</legend>
                           
-                          <div id="a_sns_grid_container" class="grid grid-cols-2 gap-2">
-                            <a href="#none" id="a_sns_naver" class="sns-grid-btn bg-naver">
-                              <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
-                            </a>
-                            <a href="#none" id="a_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
-                              <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                              구글
-                            </a>
-                            <a href="#none" id="a_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
-                              <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
-                              Apple
-                            </a>
-                            <a href="#none" id="a_sns_facebook" class="sns-grid-btn bg-facebook" style="display:none;">
-                              <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
-                              Facebook
-                            </a>
-                            <a href="#none" id="a_sns_line" class="sns-grid-btn bg-line" style="display:none;">
-                              <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
-                            </a>
-                            <a href="#none" id="a_sns_yahoojp" class="sns-grid-btn bg-yahoojp" style="display:none;">
-                              <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
-                            </a>
+                          <div class="mb-10">
+                            <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h1>
+                            <p class="text-sm text-gray-500">SNS 간편 로그인 또는 아이디로 접속하세요.</p>
                           </div>
-                        </div>
 
-                        <div class="relative flex items-center py-4">
-                          <div class="flex-grow border-t border-gray-200"></div>
-                          <span class="flex-shrink-0 mx-4 text-[11px] text-gray-400">또는 아이디로 로그인</span>
-                          <div class="flex-grow border-t border-gray-200"></div>
-                        </div>
-
-                        <div class="space-y-4 mt-5">
-                          <div class="relative w-full">
-                            <input type="text" id="a_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
-                            <label class="floating-label">아이디</label>
+                          <!-- SNS 연동 영역: wrap_sns_log 클래스 필수 -->
+                          <div class="wrap_sns_log space-y-2 mb-6">
+                            <a href="#none" id="a_sns_kakao" class="sns-grid-btn bg-kakao py-3 text-sm font-semibold rounded">
+                              <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
+                              카카오로 시작하기
+                            </a>
+                            
+                            <div id="a_sns_grid_container" class="grid grid-cols-2 gap-2">
+                              <a href="#none" id="a_sns_naver" class="sns-grid-btn bg-naver">
+                                <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
+                              </a>
+                              <a href="#none" id="a_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                                <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                                구글
+                              </a>
+                              <a href="#none" id="a_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
+                                <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
+                                Apple
+                              </a>
+                              <a href="#none" id="a_sns_facebook" class="sns-grid-btn bg-facebook" style="display:none;">
+                                <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
+                                Facebook
+                              </a>
+                              <a href="#none" id="a_sns_line" class="sns-grid-btn bg-line" style="display:none;">
+                                <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
+                              </a>
+                              <a href="#none" id="a_sns_yahoojp" class="sns-grid-btn bg-yahoojp" style="display:none;">
+                                <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
+                              </a>
+                            </div>
                           </div>
-                          <div class="relative w-full">
-                            <input type="password" id="a_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
-                            <label class="floating-label">비밀번호</label>
-                            <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors p-0.5">👁</button>
-                          </div>
-                          <div class="flex items-center justify-between mt-2 mb-4">
-                            <label class="flex items-center cursor-pointer group">
-                              <input type="checkbox" id="a_save_id" class="w-3.5 h-3.5 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
-                              <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
-                            </label>
-                          </div>
-                          <button type="button" id="a_btn_submit_login" class="w-full py-4 bg-black text-white text-sm font-semibold tracking-widest hover:bg-gray-800 transition-colors mt-4 rounded shadow-md active:scale-[0.99] transform">로그인</button>
-                        </div>
 
-                        <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500">
-                          <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-3 bg-gray-300"></span>
-                          <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-3 bg-gray-300"></span>
-                          <a href="/member/agreement.html" class="font-bold text-black border-b border-black pb-0.5">회원가입</a>
-                        </div>
+                          <div class="relative flex items-center py-4">
+                            <div class="flex-grow border-t border-gray-200"></div>
+                            <span class="flex-shrink-0 mx-4 text-[11px] text-gray-400">또는 아이디로 로그인</span>
+                            <div class="flex-grow border-t border-gray-200"></div>
+                          </div>
 
-                        <div class="mt-12 text-center border-t border-gray-100 pt-6 pb-[calc(2rem+env(safe-area-inset-bottom))] lg:pb-6">
-                          <button type="button" id="a_btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors active:opacity-70">
-                            비회원으로 주문하셨나요?
-                          </button>
-                        </div>
+                          <div class="login space-y-4 mt-5">
+                            <div class="relative w-full">
+                              <input type="text" id="a_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                              <label class="floating-label">아이디</label>
+                            </div>
+                            <div class="relative w-full">
+                              <input type="password" id="a_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
+                              <label class="floating-label">비밀번호</label>
+                              <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors p-0.5">👁</button>
+                            </div>
+                            <div class="flex items-center justify-between mt-2 mb-4">
+                              <label class="flex items-center cursor-pointer group">
+                                <input type="checkbox" id="a_save_id" class="w-3.5 h-3.5 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
+                                <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
+                              </label>
+                            </div>
+                            <button type="button" id="a_btn_submit_login" class="w-full py-4 bg-black text-white text-sm font-semibold tracking-widest hover:bg-gray-800 transition-colors mt-4 rounded shadow-md active:scale-[0.99] transform">로그인</button>
+                          </div>
+
+                          <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500">
+                            <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-3 bg-gray-300"></span>
+                            <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-3 bg-gray-300"></span>
+                            <a href="/member/agreement.html" class="font-bold text-black border-b border-black pb-0.5">회원가입</a>
+                          </div>
+
+                          <div class="mt-12 text-center border-t border-gray-100 pt-6 pb-[calc(2rem+env(safe-area-inset-bottom))] lg:pb-6">
+                            <button type="button" id="a_btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors active:opacity-70">
+                              비회원으로 주문하셨나요?
+                            </button>
+                          </div>
+                        </fieldset>
                       </div>
 
                       <!-- [모드 B] 비회원 주문조회 UI -->
@@ -294,7 +299,6 @@ export default async function handler(req, res) {
               if (panel) panel.scrollTop = 0;
             };
 
-            // URL 라우팅 파라미터 상태 관리
             const searchParams = new URLSearchParams(window.location.search);
             const currentReturnUrl = searchParams.get('returnUrl') || '';
 
@@ -351,10 +355,9 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            // [기획 핵심] 카카오, 네이버, 구글은 displaynone 속성을 무시하고 무조건 강제 노출
+            // [네이버/구글 완벽 노출 및 크롬 먹통 방지]
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
-              const forceExpose = ['kakao', 'naver', 'google']; // 강제 노출 타겟
               let gridActiveCount = 0;
 
               snsProviders.forEach(key => {
@@ -363,24 +366,24 @@ export default async function handler(req, res) {
 
                 const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
                 
-                // layout.html 내의 hidden 영역도 탐색하여 순정 엘리먼트를 확실하게 찾음
-                let originEl = document.querySelector('#hidden-cafe24-login-module ' + className) 
+                // 순정 DOM 타겟팅 (위치 유실 방지)
+                let originEl = customBtn.querySelector(className)
+                            || document.querySelector('#hidden-cafe24-login-module ' + className)
+                            || document.querySelector('.member-login-wrap ' + className) 
                             || document.querySelector(className) 
                             || document.getElementById('origin_btn_' + key);
 
                 if (originEl) {
-                  const isForceExposed = forceExpose.includes(key);
-                  const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
+                  // 부모 요소의 숨김 속성에 속지 않기 위해 명시적으로 'displaynone' 클래스 문자열만 확인
+                  const isHidden = originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1;
                   
-                  // 강제 노출 대상이 아니면서, 카페24에서 숨김 처리한 경우만 숨김
-                  if (isHidden && !isForceExposed) {
+                  if (isHidden) {
                     customBtn.style.display = 'none';
                   } else {
                     customBtn.style.display = 'flex';
                     if (key !== 'kakao') gridActiveCount++;
 
-                    // [물리적 오버레이 강제 매핑]
-                    // 카페24의 자체 CSS(.displaynone)를 무력화하고 버튼에 실체가 생기도록 Inline 속성을 강제 주입
+                    // 크롬 정책 우회를 위한 물리적 오버레이 이동 (뼈대가 완벽히 동일하므로 에러 발생 안함)
                     if (originEl.parentNode !== customBtn) {
                       originEl.style.cssText = 'position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; opacity: 0 !important; z-index: 9999 !important; cursor: pointer !important; margin: 0 !important; padding: 0 !important; border: none !important; font-size: 0 !important; display: block !important; visibility: visible !important; pointer-events: auto !important;';
                       customBtn.appendChild(originEl);
@@ -404,7 +407,7 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // 네이티브 클릭 시 로더 피드백
+            // 네이티브 클릭 시 로더 피드백 (이벤트 캡처링)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const customBtn = document.getElementById('a_sns_' + provider);
               if (customBtn) {
@@ -415,7 +418,6 @@ export default async function handler(req, res) {
               }
             });
 
-            // 초기 로딩 시 모드 설정
             if (window.location.search.includes('noMemberOrder') || currentReturnUrl.includes('order/list.html')) {
               switchMode('guest');
             } else {
@@ -574,81 +576,90 @@ export default async function handler(req, res) {
                   </button>
                   
                   <div class="px-8 sm:px-10 py-16 flex-1 flex flex-col justify-center drawer-content-wrapper">
-                    <div id="ui-login-mode">
-                      <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
-                      <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
-                      
-                      <div class="space-y-2 mb-6">
-                        <a href="#none" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
-                          <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
-                          카카오로 시작하기
-                        </a>
+                    
+                    <!-- [핵심 뼈대 동기화] 카페24 순정 엔진이 의존하는 클래스명 완벽 매핑 -->
+                    <div id="ui-login-mode" class="member-login-wrap">
+                      <fieldset class="form" style="border: none; padding: 0; margin: 0; width: 100%;">
+                        <legend style="display: none;">회원로그인</legend>
                         
-                        <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2">
-                          <a href="#none" id="btn_sns_naver" class="sns-grid-btn bg-naver">
-                            <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
+                        <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
+                        <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
+                        
+                        <!-- SNS 연동 영역: wrap_sns_log 클래스 필수 -->
+                        <div class="wrap_sns_log space-y-2 mb-6">
+                          <a href="#none" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
+                            <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
+                            카카오로 시작하기
                           </a>
-                          <a href="#none" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
-                            <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
-                            구글
-                          </a>
-                          <a href="#none" id="btn_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
-                            <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
-                            Apple
-                          </a>
-                          <a href="#none" id="btn_sns_facebook" class="sns-grid-btn bg-facebook" style="display:none;">
-                            <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
-                            Facebook
-                          </a>
-                          <a href="#none" id="btn_sns_line" class="sns-grid-btn bg-line" style="display:none;">
-                            <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
-                          </a>
-                          <a href="#none" id="btn_sns_yahoojp" class="sns-grid-btn bg-yahoojp" style="display:none;">
-                            <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
-                          </a>
+                          
+                          <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2">
+                            <a href="#none" id="btn_sns_naver" class="sns-grid-btn bg-naver">
+                              <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
+                            </a>
+                            <a href="#none" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                              <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+                              구글
+                            </a>
+                            <a href="#none" id="btn_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
+                              <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
+                              Apple
+                            </a>
+                            <a href="#none" id="btn_sns_facebook" class="sns-grid-btn bg-facebook" style="display:none;">
+                              <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
+                              Facebook
+                            </a>
+                            <a href="#none" id="btn_sns_line" class="sns-grid-btn bg-line" style="display:none;">
+                              <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
+                            </a>
+                            <a href="#none" id="btn_sns_yahoojp" class="sns-grid-btn bg-yahoojp" style="display:none;">
+                              <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
+                            </a>
+                          </div>
                         </div>
-                      </div>
 
-                      <div class="relative flex items-center py-2">
-                        <div class="flex-grow border-t border-gray-100"></div>
-                        <span class="flex-shrink-0 mx-4 text-[11px] text-gray-400">또는 아이디로 로그인</span>
-                        <div class="flex-grow border-t border-gray-100"></div>
-                      </div>
-                      
-                      <div class="space-y-4 mt-5">
-                        <div class="relative w-full">
-                          <input type="text" id="s_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
-                          <label class="floating-label">아이디</label>
+                        <div class="relative flex items-center py-2">
+                          <div class="flex-grow border-t border-gray-100"></div>
+                          <span class="flex-shrink-0 mx-4 text-[11px] text-gray-400">또는 아이디로 로그인</span>
+                          <div class="flex-grow border-t border-gray-100"></div>
                         </div>
-                        <div class="relative w-full">
-                          <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
-                          <label class="floating-label">비밀번호</label>
-                          <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          </button>
+                        
+                        <div class="login space-y-4 mt-5">
+                          <div class="relative w-full">
+                            <input type="text" id="s_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                            <label class="floating-label">아이디</label>
+                          </div>
+                          <div class="relative w-full">
+                            <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
+                            <label class="floating-label">비밀번호</label>
+                            <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+                          </div>
+                          <div class="flex items-center justify-between mt-2 mb-4">
+                            <label class="flex items-center cursor-pointer group">
+                              <input type="checkbox" id="s_save_id" class="w-3.5 h-3.5 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
+                              <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
+                            </label>
+                          </div>
+                          <button type="button" id="btn_submit_login" class="w-full py-3.5 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded mt-4">로그인</button>
                         </div>
-                        <div class="flex items-center justify-between mt-2 mb-4">
-                          <label class="flex items-center cursor-pointer group">
-                            <input type="checkbox" id="s_save_id" class="w-3.5 h-3.5 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
-                            <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
-                          </label>
-                        </div>
-                        <button type="button" id="btn_submit_login" class="w-full py-3.5 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded mt-4">로그인</button>
-                      </div>
 
-                      <div class="flex justify-center items-center space-x-4 mt-6 text-[11px] text-gray-400">
-                        <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
-                        <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
-                        <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black transition-colors">회원가입</a>
-                      </div>
+                        <div class="flex justify-center items-center space-x-4 mt-6 text-[11px] text-gray-400">
+                          <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
+                          <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
+                          <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black transition-colors">회원가입</a>
+                        </div>
+                      </fieldset>
                     </div>
                   </div>
                 </div>
               </div>
             \`;
+
+            ykinasShadowRoot.innerHTML = fullScreenHTML;
 
             drawer = ykinasShadowRoot.querySelector('#global-login-drawer');
             backdrop = ykinasShadowRoot.querySelector('#login-backdrop');
@@ -731,26 +742,28 @@ export default async function handler(req, res) {
                }
             });
 
-            // [데스크탑 드로어 모드 강제 노출 로직 적용]
+            // [네이버/구글 완벽 노출 및 데스크탑 원격 클릭 트리거]
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
-              const forceExpose = ['kakao', 'naver', 'google'];
               
               const syncDisplay = (sourceDoc) => {
                 if (!sourceDoc) return;
                 let gridActiveCount = 0;
 
                 snsProviders.forEach(key => {
-                  let originEl = sourceDoc.querySelector('#hidden-cafe24-login-module .btn' + key.charAt(0).toUpperCase() + key.slice(1)) 
-                            || sourceDoc.querySelector('#origin_btn_' + key);
-                  if (key === 'yahoojp') originEl = sourceDoc.querySelector('#hidden-cafe24-login-module .yahoojp') || sourceDoc.querySelector('.yahoojp');
+                  const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
+                  
+                  let originEl = sourceDoc.querySelector('#hidden-cafe24-login-module ' + className) 
+                              || sourceDoc.querySelector('.member-login-wrap ' + className)
+                              || sourceDoc.querySelector(className)
+                              || sourceDoc.getElementById('origin_btn_' + key);
                   
                   const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
+                  
                   if (shadowBtn && originEl) {
-                    const isForceExposed = forceExpose.includes(key);
-                    const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
+                    const isHidden = originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1;
                     
-                    if (isHidden && !isForceExposed) {
+                    if (isHidden) {
                       shadowBtn.style.display = 'none';
                     } else {
                       shadowBtn.style.display = 'flex';
@@ -768,19 +781,14 @@ export default async function handler(req, res) {
               };
 
               const localWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-              if (localWrap) syncDisplay(localWrap);
+              if (localWrap) syncDisplay(document);
 
               const iframeNode = document.getElementById('ykinas_proxy_iframe');
               if (iframeNode) {
-                iframeNode.addEventListener('load', () => {
-                  try { 
-                    const iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
-                    syncDisplay(iframeDoc); 
-                    
-                    const observer = new MutationObserver(() => syncDisplay(iframeDoc));
-                    observer.observe(iframeDoc.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
-                  } catch (e) {}
-                });
+                try {
+                  const iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
+                  syncDisplay(iframeDoc);
+                } catch(e) {}
               }
             };
             
@@ -788,20 +796,31 @@ export default async function handler(req, res) {
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
 
+            // [핵심] 데스크탑 드로어에서 Iframe 내장 순정 버튼을 원격으로 클릭 (빈 팝업 해결)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
                 btn.addEventListener('click', (e) => {
                   e.preventDefault();
                   
-                  const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
-                  const rawUrl = window.location.pathname + window.location.search;
+                  const targetClass = provider === 'yahoojp' ? '.yahoojp' : '.btn' + provider.charAt(0).toUpperCase() + provider.slice(1);
+                  const iframe = document.getElementById('ykinas_proxy_iframe');
                   
-                  if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-                    window.MemberAction.snsLogin(cafe24Provider, rawUrl);
-                  } else {
-                    const popupUrl = '/Api/Member/Oauth2Client/' + (provider === 'google' ? 'Google' : provider.charAt(0).toUpperCase() + provider.slice(1)) + '/?returnUrl=' + encodeURIComponent(rawUrl);
-                    window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
+                  if (iframe) {
+                    try {
+                      // 카페24 코어엔진 세션이 온전히 살아있는 Iframe 내부의 순정버튼을 터치하여 팝업 발생
+                      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                      let originBtn = iframeDoc.querySelector(targetClass) || iframeDoc.getElementById('origin_btn_' + provider);
+                      
+                      if (originBtn) {
+                        originBtn.click(); 
+                      } else {
+                        throw new Error('Iframe Button not found');
+                      }
+                    } catch(err) {
+                      const rawUrl = window.location.pathname + window.location.search;
+                      window.location.href = '/member/login.html?returnUrl=' + encodeURIComponent(rawUrl);
+                    }
                   }
                 });
               }
