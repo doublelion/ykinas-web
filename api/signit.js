@@ -7,7 +7,6 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    // [백엔드 최적화] 글로벌 Edge CDN 캐싱으로 콜드스타트 완벽 제거
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400');
@@ -56,7 +55,6 @@ export default async function handler(req, res) {
         if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        // [핵심 프론트엔드 최적화] 전역 Shadow Root 및 Alert Proxy 선언
         let ykinasShadowRoot = null;
         const originalAlert = window.alert;
         window.alert = function(msg) {
@@ -347,49 +345,52 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            // [핵심] SNS 렌더링 동기화 무결성 확보 로직
+            // [핵심 해결] SNS 레이아웃 렌더링 무결성 스캐너 (Mode A)
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
-              const wrapObj = document.getElementById('cafe24-original-wrap');
-              if (!wrapObj) return;
-              
               let gridActiveCount = 0;
 
               snsProviders.forEach(key => {
-                let originEl = wrapObj.querySelector('#origin_btn_' + key);
+                const customBtn = document.getElementById('a_sns_' + key);
+                if (!customBtn) return;
+
+                // 1순위: ID 검색, 2순위: Class 검색
+                let originEl = document.getElementById('origin_btn_' + key);
                 if (!originEl) {
                   const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
-                  originEl = wrapObj.querySelector(className);
+                  originEl = document.querySelector(className);
                 }
 
-                const customBtn = document.getElementById('a_sns_' + key);
-                if (customBtn && originEl) {
+                if (originEl) {
+                  // 카페24 설정 적용 여부를 displaynone 클래스로 확실하게 판별
                   const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
                   if (isHidden) {
                     customBtn.style.display = 'none';
                   } else {
-                    customBtn.style.display = '';
+                    customBtn.style.display = 'flex'; // 강제 flex 주입
                     if (key !== 'kakao') gridActiveCount++;
                   }
-                } else if (customBtn && !originEl) {
+                } else {
                   customBtn.style.display = 'none'; 
                 }
               });
 
               const gridContainer = document.getElementById('a_sns_grid_container');
               if (gridContainer) {
-                gridContainer.style.display = gridActiveCount > 0 ? '' : 'none';
+                // Tailwind grid 속성이 우선 적용되도록 강제 주입
+                gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
               }
             };
             
+            // 최초 실행 후 폴링(Polling) 및 MutationObserver로 무한 방어
             syncSnsA();
             window.addEventListener('load', syncSnsA);
+            
+            let snsIntervalA = setInterval(syncSnsA, 300);
+            setTimeout(() => clearInterval(snsIntervalA), 3000);
 
-            const observerTarget = document.getElementById('cafe24-original-wrap');
-            if (observerTarget) {
-              const observer = new MutationObserver(() => syncSnsA());
-              observer.observe(observerTarget, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
-            }
+            const observer = new MutationObserver(() => syncSnsA());
+            observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
             // SNS 로그인 (팝업이므로 로딩 오버레이 제외)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
@@ -564,17 +565,16 @@ export default async function handler(req, res) {
                       <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                       
                       <div class="space-y-2 mb-6">
-                        <!-- 카카오, 네이버, 구글 기본 노출 -->
-                        <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
+                        <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity" style="display:none;">
                           <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
                           카카오로 시작하기
                         </button>
                         
-                        <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2">
-                          <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver">
+                        <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2" style="display:none;">
+                          <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver" style="display:none;">
                             <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                           </button>
-                          <button type="button" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                          <button type="button" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" style="display:none;">
                             <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                             구글
                           </button>
@@ -683,7 +683,6 @@ export default async function handler(req, res) {
                    const iframe = document.getElementById('ykinas_proxy_iframe');
                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
                    
-                   // Iframe 팝업 내부의 alert까지 가로채서 부모 객체 alert으로 연결 및 로딩 초기화
                    iframe.contentWindow.alert = function(msg) {
                      window.alert(msg);
                    };
@@ -718,7 +717,6 @@ export default async function handler(req, res) {
                }
             });
 
-            // [핵심] SNS는 팝업이므로 로딩 노출 제외
             function handleSnsLogin(provider) {
               try {
                 const rawUrl = window.location.pathname + window.location.search;
@@ -768,7 +766,7 @@ export default async function handler(req, res) {
               if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
             });
 
-            // [수정] querySelector로 DOM 탐색 방식 통일
+            // [핵심] SNS 렌더링 무결성 동기화 로직 (Mode B)
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               
@@ -777,7 +775,7 @@ export default async function handler(req, res) {
                 let gridActiveCount = 0;
 
                 snsProviders.forEach(key => {
-                  let originEl = sourceDoc.querySelector('#origin_btn_' + key);
+                  let originEl = sourceDoc.getElementById('origin_btn_' + key);
                   if (!originEl) {
                     const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
                     originEl = sourceDoc.querySelector(className);
@@ -789,7 +787,7 @@ export default async function handler(req, res) {
                     if (isHidden) {
                       shadowBtn.style.display = 'none';
                     } else {
-                      shadowBtn.style.display = '';
+                      shadowBtn.style.display = 'flex'; // 강제 flex
                       if (key !== 'kakao') gridActiveCount++;
                     }
                   } else if (shadowBtn && !originEl) {
@@ -799,7 +797,7 @@ export default async function handler(req, res) {
 
                 const gridContainer = ykinasShadowRoot.querySelector('#b_sns_grid_container');
                 if (gridContainer) {
-                  gridContainer.style.display = gridActiveCount > 0 ? '' : 'none';
+                  gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none'; // 강제 grid
                 }
               };
 
