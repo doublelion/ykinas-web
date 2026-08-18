@@ -135,7 +135,7 @@ export default async function handler(req, res) {
                   </div>
                 </div>
               </div>
-            \`
+            \`;
 
             document.body.insertAdjacentHTML('beforeend', fullScreenHTML);
 
@@ -243,7 +243,8 @@ export default async function handler(req, res) {
             if (isInitialized) return;
             isInitialized = true;
 
-            const skinMatch = currentPath.match(/^\/skin-[^\/]+/);
+            // [정규식 수정 완료] 템플릿 리터럴 내부 파싱 에러 방지를 위한 이중 백슬래시 적용
+            const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
             const skinPrefix = skinMatch ? skinMatch[0] : '';
             
             let proxyIframe = document.getElementById('ykinas_proxy_iframe');
@@ -265,7 +266,6 @@ export default async function handler(req, res) {
 
             shadowRoot = host.attachShadow({ mode: 'closed' });
 
-            // [핵심 주의]: 바깥쪽 스크립트 문자열 백틱과의 충돌을 막기 위해 내부 백틱을 이스케이프(\`) 처리했습니다.
             shadowRoot.innerHTML = \`
               <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
               <style>
@@ -548,8 +548,6 @@ export default async function handler(req, res) {
             initShadowDOM();
           }
         }
-
-
       })();
     `;
 
