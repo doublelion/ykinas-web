@@ -70,6 +70,39 @@ export default async function handler(req, res) {
         const currentPath = window.location.pathname;
         const isLoginPage = currentPath.includes('/member/login.html');
 
+        // [공통 로직] SNS 다이렉트 통신 (모바일 Intent 차단 방어)
+        function executeDirectSnsLogin(provider) {
+          try {
+            const rawUrl = window.location.pathname + window.location.search;
+            const safeReturnUrl = encodeURIComponent(decodeURIComponent(rawUrl));
+            const providerMap = { kakao: 'Kakao', naver: 'Naver', google: 'Google', facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp' };
+            const pName = providerMap[provider];
+            const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
+            
+            // 1순위: 카페24 코어 객체가 존재하면 사용자의 터치 제스처를 그대로 담아 직접 호출
+            if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
+              window.MemberAction.snsLogin(cafe24Provider, rawUrl);
+            } else {
+              // 2순위: 코어 객체가 없는 페이지일 경우 (모바일/PC 환경을 감지하여 팝업 차단 회피)
+              const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+              const authUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
+
+              if (isMobile) {
+                // 모바일은 새 창을 띄우지 않고 현재 창에서 바로 라우팅 (Intent 실행 보장)
+                window.location.href = authUrl;
+              } else {
+                // 데스크탑은 팝업창
+                const snsPopup = window.open(authUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
+                if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
+                  alert('팝업이 차단되었습니다. 브라우저 주소창 우측에서 팝업 차단을 해제해주세요.');
+                }
+              }
+            }
+          } catch (error) {
+            console.error('[YKINAS SNS Login Error]:', error);
+          }
+        }
+
         // ==========================================
         // [MODE A] 로그인 전용 페이지 (Standalone Full-Screen UI)
         // ==========================================
@@ -86,7 +119,6 @@ export default async function handler(req, res) {
               document.head.appendChild(tailwind);
             }
 
-            // [핵심 해결] 고객사 스니펫 변수 호출 (없으면 기본값 매핑)
             const customConfig = window.YKINAS_SIGNIT_CONFIG || {};
             const heroImage = customConfig.heroImage || '/web/upload/hero_img_02.png';
             const subTitle = customConfig.subTitle || 'Exclusive Membership';
@@ -127,7 +159,6 @@ export default async function handler(req, res) {
               </div>
 
               <div class="fixed inset-0 z-[99999] flex bg-[#faf9f8] overflow-hidden fade-in" style="font-family: 'Pretendard', 'Noto Sans KR', sans-serif;">
-                <!-- 좌측 에디토리얼 영역: 커스텀 변수 다이내믹 바인딩 -->
                 <div class="hidden lg:block lg:w-7/12 relative bg-gray-900">
                   <img src="\${heroImage}" alt="Brand Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
                   <div class="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
@@ -264,7 +295,6 @@ export default async function handler(req, res) {
             // ==========================================
             // 로직 바인딩 및 라우팅 컨트롤
             // ==========================================
-            
             const showLoader = () => {
               const loader = document.getElementById('ykinas-global-loader');
               if (loader) loader.style.display = 'flex';
@@ -350,30 +380,28 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            // SNS 레이아웃 무결성 스캐너 유지
+            // [핵심] SNS 렌더링 동기화 무결성 확보 로직 (Mode A)
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               let gridActiveCount = 0;
 
               snsProviders.forEach(key => {
-                const customBtn = document.getElementById('a_sns_' + key);
-                if (!customBtn) return;
-
                 let originEl = document.getElementById('origin_btn_' + key);
                 if (!originEl) {
                   const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
                   originEl = document.querySelector(className);
                 }
 
-                if (originEl) {
+                const customBtn = document.getElementById('a_sns_' + key);
+                if (customBtn && originEl) {
                   const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
                   if (isHidden) {
                     customBtn.style.display = 'none';
                   } else {
-                    customBtn.style.display = 'flex';
+                    customBtn.style.display = 'flex'; 
                     if (key !== 'kakao') gridActiveCount++;
                   }
-                } else {
+                } else if (customBtn && !originEl) {
                   customBtn.style.display = 'none'; 
                 }
               });
@@ -386,29 +414,16 @@ export default async function handler(req, res) {
             
             syncSnsA();
             window.addEventListener('load', syncSnsA);
-            
             let snsIntervalA = setInterval(syncSnsA, 300);
             setTimeout(() => clearInterval(snsIntervalA), 3000);
 
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
+            // SNS 다이렉트 호출 이벤트 바인딩
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = document.getElementById('a_sns_' + provider);
-              if (btn) {
-                btn.addEventListener('click', () => {
-                  const originBtn = document.getElementById('origin_btn_' + provider);
-                  if (originBtn) {
-                    originBtn.click();
-                  } else {
-                    const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
-                    const rawUrl = window.location.pathname + window.location.search;
-                    if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-                      window.MemberAction.snsLogin(cafe24Provider, rawUrl);
-                    }
-                  }
-                });
-              }
+              if (btn) btn.addEventListener('click', () => executeDirectSnsLogin(provider));
             });
 
             const searchStr = window.location.search;
@@ -539,7 +554,7 @@ export default async function handler(req, res) {
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-btn-primary { background-color: #111111; color: #ffffff; }
 
-                /* 드로어 전용 로딩 오버레이 */
+                /* 드로어 로딩 오버레이 */
                 .ykinas-loader-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
@@ -717,55 +732,13 @@ export default async function handler(req, res) {
                }
             });
 
-            function handleSnsLogin(provider) {
-              try {
-                const rawUrl = window.location.pathname + window.location.search;
-                const safeReturnUrl = encodeURIComponent(decodeURIComponent(rawUrl));
-                const providerMap = { kakao: 'Kakao', naver: 'Naver', google: 'Google', facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp' };
-                const pName = providerMap[provider];
-                const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
-                
-                const originBtn = document.getElementById('origin_btn_' + provider);
-                if (originBtn) {
-                  originBtn.click();
-                  return; 
-                }
-
-                if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-                  window.MemberAction.snsLogin(cafe24Provider, rawUrl);
-                } else {
-                  let iframeSuccess = false;
-                  if (provider !== 'google') {
-                    try {
-                      const iframe = document.getElementById('ykinas_proxy_iframe');
-                      if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
-                        iframe.contentWindow.MemberAction.snsLogin(cafe24Provider, rawUrl);
-                        iframeSuccess = true;
-                      }
-                    } catch (iframeErr) {
-                      console.warn('[YKINAS] Iframe access restricted.');
-                    }
-                  }
-
-                  if (!iframeSuccess) {
-                    const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
-                    const snsPopup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
-                    if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
-                      alert('팝업이 차단되었습니다. 브라우저 주소창 우측에서 팝업 차단을 해제해주세요.');
-                    }
-                  }
-                }
-              } catch (error) {
-                console.error('[YKINAS SNS Login Error]:', error);
-                alert('SNS 로그인 초기화 중 오류가 발생했습니다.');
-              }
-            }
-
+            // SNS 다이렉트 호출 이벤트 바인딩 (드로어)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
-              if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
+              if (btn) btn.addEventListener('click', () => executeDirectSnsLogin(provider));
             });
 
+            // [핵심 해결] 드로어 SNS 렌더링 무결성 스캐너 (Mode B)
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               
@@ -786,7 +759,7 @@ export default async function handler(req, res) {
                     if (isHidden) {
                       shadowBtn.style.display = 'none';
                     } else {
-                      shadowBtn.style.display = 'flex';
+                      shadowBtn.style.display = 'flex'; // 강제 flex 주입
                       if (key !== 'kakao') gridActiveCount++;
                     }
                   } else if (shadowBtn && !originEl) {
@@ -796,6 +769,7 @@ export default async function handler(req, res) {
 
                 const gridContainer = ykinasShadowRoot.querySelector('#b_sns_grid_container');
                 if (gridContainer) {
+                  // Tailwind grid 속성이 우선 적용되도록 강제 주입
                   gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
                 }
               };
@@ -805,12 +779,23 @@ export default async function handler(req, res) {
 
               const iframeNode = document.getElementById('ykinas_proxy_iframe');
               if (iframeNode) {
+                // Iframe의 경우 Load 시점 스캔 후 MutationObserver로 비동기 스크립트 대응
                 iframeNode.addEventListener('load', () => {
-                  try { syncDisplay(iframeNode.contentDocument || iframeNode.contentWindow.document); } catch (e) {}
+                  try { 
+                    const iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
+                    syncDisplay(iframeDoc); 
+                    
+                    const observer = new MutationObserver(() => syncDisplay(iframeDoc));
+                    observer.observe(iframeDoc.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
+                  } catch (e) {}
                 });
               }
-            }
+            };
+            
+            // 로컬 폼 기준 초기 폴링 방어
             syncRealtimeSnsVisibility();
+            let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
+            setTimeout(() => clearInterval(snsIntervalB), 3000);
           }
 
           if (document.readyState === 'loading') {
