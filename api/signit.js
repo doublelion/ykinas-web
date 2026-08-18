@@ -7,6 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
+    // [백엔드 최적화] 글로벌 Edge CDN 캐싱으로 콜드스타트 완벽 제거
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400');
@@ -52,10 +53,10 @@ export default async function handler(req, res) {
       (function() {
         'use strict';
         
-        // [Fix] 모바일 사이드바 호출 누락 방지: 우리 프록시 Iframe 내부에서만 스크립트 정지
-        if (window.name === 'ykinas_proxy_iframe' || window.__YKINAS_SKIN_LOADED__) return;
+        if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
+        // [핵심 프론트엔드 최적화] 전역 Shadow Root 및 Alert Proxy 선언
         let ykinasShadowRoot = null;
         const originalAlert = window.alert;
         window.alert = function(msg) {
@@ -72,35 +73,6 @@ export default async function handler(req, res) {
         const currentPath = window.location.pathname;
         const isLoginPage = currentPath.includes('/member/login.html');
 
-        // [Fix] 위시리스트 등 리다이렉트 목적지 기억 변수
-        let intendedReturnUrl = new URLSearchParams(window.location.search).get('returnUrl') || (window.location.pathname + window.location.search);
-
-        // [핵심] SNS 다이렉트 라우팅 함수 (Intent 보안 차단 100% 회피)
-        function executeDirectSnsLogin(provider) {
-          try {
-            // 편법 자바스크립트 클릭(.click)을 버리고, Cafe24 OAuth 주소로 사용자 직접 이동 처리
-            const safeReturnUrl = encodeURIComponent(decodeURIComponent(intendedReturnUrl));
-            const providerMap = { kakao: 'Kakao', naver: 'Naver', google: 'Google', facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp' };
-            const pName = providerMap[provider];
-            
-            const authUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
-            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-            
-            // 모바일은 팝업 및 Intent 차단을 완벽히 막기 위해 현재 창에서 다이렉트 라우팅
-            if (isMobile) {
-              window.location.href = authUrl; 
-            } else {
-              // PC는 팝업 유지하되 차단 시 현재 창 이동 플랜 B 가동
-              const snsPopup = window.open(authUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
-              if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
-                 window.location.href = authUrl;
-              }
-            }
-          } catch (error) {
-            console.error('[YKINAS SNS Login Error]:', error);
-          }
-        }
-
         // ==========================================
         // [MODE A] 로그인 전용 페이지 (Standalone Full-Screen UI)
         // ==========================================
@@ -116,12 +88,6 @@ export default async function handler(req, res) {
               tailwind.href = 'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css';
               document.head.appendChild(tailwind);
             }
-
-            const customConfig = window.YKINAS_SIGNIT_CONFIG || {};
-            const heroImage = customConfig.heroImage || '/web/upload/hero_img_02.png';
-            const subTitle = customConfig.subTitle || 'Exclusive Membership';
-            const mainTitle = customConfig.mainTitle || 'Breathtaking<br>Clarity.';
-            const descTxt = customConfig.description || '지금 가입하시고 첫 구매 혜택과 프라이빗 컬렉션 소식을 가장 먼저 받아보세요.';
 
             const fullScreenHTML = \`
               <style>
@@ -159,15 +125,15 @@ export default async function handler(req, res) {
 
               <div class="fixed inset-0 z-[99999] flex bg-[#faf9f8] overflow-hidden fade-in" style="font-family: 'Pretendard', 'Noto Sans KR', sans-serif;">
                 <div class="hidden lg:block lg:w-7/12 relative bg-gray-900">
-                  <img src="\${heroImage}" alt="Brand Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
+                  <img src="/web/upload/hero_img_02.png" alt="Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
                   <div class="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
                   <button type="button" id="a_btn_back_shop" class="absolute top-10 left-10 !bg-transparent text-white hover:opacity-70 transition-opacity flex items-center gap-2 z-10 cursor-pointer">
                     <span class="text-xs tracking-widest uppercase font-medium">← Back to Shop</span>
                   </button>
                   <div class="absolute bottom-20 left-16 text-white max-w-lg">
-                    <span class="text-xs uppercase tracking-[0.3em] opacity-80 mb-2 block font-sans">\${subTitle}</span>
-                    <h2 class="text-5xl font-serif tracking-wide mb-4 leading-tight">\${mainTitle}</h2>
-                    <p class="text-sm tracking-wide font-light opacity-80 leading-relaxed">\${descTxt}</p>
+                    <span class="text-xs uppercase tracking-[0.3em] opacity-80 mb-2 block font-sans">Exclusive Membership</span>
+                    <h2 class="text-5xl font-serif tracking-wide mb-4 leading-tight">Breathtaking<br>Clarity.</h2>
+                    <p class="text-sm tracking-wide font-light opacity-80 leading-relaxed">지금 가입하시고 첫 구매 혜택과 프라이빗 컬렉션 소식을 가장 먼저 받아보세요.</p>
                   </div>
                 </div>
 
@@ -177,26 +143,30 @@ export default async function handler(req, res) {
                   <div class="px-8 sm:px-14 pt-24 pb-12 flex-1 flex flex-col justify-center">
                     <div class="w-full max-w-sm mx-auto relative">
                       
+                      <!-- [모드 A] 회원 로그인 UI -->
                       <div id="ui-login-mode" class="fade-in">
                         <div class="mb-10">
                           <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h1>
                           <p class="text-sm text-gray-500">SNS 간편 로그인 또는 아이디로 접속하세요.</p>
                         </div>
 
+                        <!-- SNS 연동 영역 -->
                         <div class="space-y-2 mb-6">
-                          <button type="button" id="a_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity" style="display:none;">
+                          <!-- 카카오, 네이버, 구글은 기본 노출 -->
+                          <button type="button" id="a_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
                             카카오로 시작하기
                           </button>
                           
-                          <div id="a_sns_grid_container" class="grid grid-cols-2 gap-2" style="display:none;">
-                            <button type="button" id="a_sns_naver" class="sns-grid-btn bg-naver" style="display:none;">
+                          <div id="a_sns_grid_container" class="grid grid-cols-2 gap-2">
+                            <button type="button" id="a_sns_naver" class="sns-grid-btn bg-naver">
                               <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                             </button>
-                            <button type="button" id="a_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" style="display:none;">
+                            <button type="button" id="a_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
                               <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                               구글
                             </button>
+                            <!-- 나머지는 기본 숨김 -->
                             <button type="button" id="a_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
                               <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
                               Apple
@@ -252,6 +222,7 @@ export default async function handler(req, res) {
                         </div>
                       </div>
 
+                      <!-- [모드 B] 비회원 주문조회 UI -->
                       <div id="ui-guest-mode" class="mode-hidden fade-in">
                         <div class="mb-10 text-center">
                           <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2 mt-4">비회원 주문조회</h1>
@@ -291,6 +262,7 @@ export default async function handler(req, res) {
             // ==========================================
             // 로직 바인딩 및 라우팅 컨트롤
             // ==========================================
+            
             const showLoader = () => {
               const loader = document.getElementById('ykinas-global-loader');
               if (loader) loader.style.display = 'flex';
@@ -344,7 +316,7 @@ export default async function handler(req, res) {
               opw.type = opw.type === 'password' ? 'text' : 'password';
             });
 
-            // 로그인 및 조회 서밋 (위시리스트 리다이렉트 대응)
+            // 로그인 및 조회 서밋
             const submitLogin = () => {
               const idVal = document.getElementById('a_id').value.trim();
               const pwVal = document.getElementById('a_pw').value.trim();
@@ -354,19 +326,6 @@ export default async function handler(req, res) {
                 showLoader();
                 wrap.querySelector('input[name="member_id"]').value = idVal;
                 wrap.querySelector('input[name="member_passwd"]').value = pwVal;
-                
-                // returnUrl 동적 반영
-                const form = wrap.querySelector('input[name="member_id"]').closest('form');
-                if (form) {
-                  let retInput = form.querySelector('input[name="returnUrl"]');
-                  if (!retInput) {
-                    retInput = document.createElement('input');
-                    retInput.type = 'hidden';
-                    retInput.name = 'returnUrl';
-                    form.appendChild(retInput);
-                  }
-                  retInput.value = intendedReturnUrl;
-                }
                 document.getElementById('origin_btn_login')?.click();
               }
             };
@@ -390,7 +349,7 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            // SNS 노출 동기화 스캐너 (Mode A)
+            // [핵심] SNS 레이아웃 렌더링 무결성 스캐너 (Mode A)
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               let gridActiveCount = 0;
@@ -426,21 +385,35 @@ export default async function handler(req, res) {
             
             syncSnsA();
             window.addEventListener('load', syncSnsA);
+            
             let snsIntervalA = setInterval(syncSnsA, 300);
             setTimeout(() => clearInterval(snsIntervalA), 3000);
 
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // SNS 버튼 다이렉트 호출 이벤트 바인딩
+            // SNS 로그인 (팝업이므로 로딩 오버레이 제외)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = document.getElementById('a_sns_' + provider);
-              if (btn) btn.addEventListener('click', () => executeDirectSnsLogin(provider));
+              if (btn) {
+                btn.addEventListener('click', () => {
+                  const originBtn = document.getElementById('origin_btn_' + provider);
+                  if (originBtn) {
+                    originBtn.click();
+                  } else {
+                    const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
+                    const rawUrl = window.location.pathname + window.location.search;
+                    if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
+                      window.MemberAction.snsLogin(cafe24Provider, rawUrl);
+                    }
+                  }
+                });
+              }
             });
 
             const searchStr = window.location.search;
-            const returnUrlParam = new URLSearchParams(searchStr).get('returnUrl') || '';
-            if (searchStr.includes('noMemberOrder') || returnUrlParam.includes('order/list.html')) {
+            const returnUrl = new URLSearchParams(searchStr).get('returnUrl') || '';
+            if (searchStr.includes('noMemberOrder') || returnUrl.includes('order/list.html')) {
               switchMode('guest');
             } else {
               switchMode('login');
@@ -457,21 +430,17 @@ export default async function handler(req, res) {
           // ==========================================
           // [MODE B] 글로벌 드로어 (Global Login Drawer)
           // ==========================================
-          
-          // [Fix] 위시리스트/로그인 필수 액션 인터셉터 & 목적지 기억
           document.addEventListener('click', function(e) {
             const target = e.target.closest('a');
             if (!target) return;
             const href = target.getAttribute('href') || '';
-            const requireLoginPaths = ['/myshop/index.html', '/myshop/wish_list.html', '/member/modify.html', '/order/basket.html'];
+            const requireLoginPaths = ['/myshop/index.html', '/myshop/wish_list.html', '/member/modify.html'];
             const isRequireLogin = requireLoginPaths.some(path => href.includes(path));
-            
             const isLoggedOut = document.querySelector('.xans-layout-statelogoff') !== null || !document.querySelector('.xans-layout-statelogon');
             
             if (isRequireLogin && isLoggedOut) {
               e.preventDefault();
               e.stopPropagation();
-              intendedReturnUrl = href; // 목적지 기록!
               if (window.YkinasLogin && typeof window.YkinasLogin.open === 'function') {
                 window.YkinasLogin.open();
               }
@@ -581,6 +550,7 @@ export default async function handler(req, res) {
               <div id="global-login-drawer">
                 <div id="login-backdrop"></div>
                 <div id="login-panel" class="custom-scrollbar-02">
+                  <!-- 드로어 로딩 UI -->
                   <div id="ykinas-drawer-loader" class="ykinas-loader-overlay">
                     <div class="ykinas-spinner"></div>
                     <div class="ykinas-loader-text">안전하게 통신 중입니다</div>
@@ -596,7 +566,7 @@ export default async function handler(req, res) {
                       <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                       
                       <div class="space-y-2 mb-6">
-                        <!-- 카카오, 네이버, 구글 기본 노출 -->
+                        <!-- 카카오, 네이버, 구글 기본 노출 템플릿 변경 -->
                         <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                           <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
                           카카오로 시작하기
@@ -610,6 +580,7 @@ export default async function handler(req, res) {
                             <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                             구글
                           </button>
+                          <!-- 서브 SNS는 기본 숨김 -->
                           <button type="button" id="btn_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
                             <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
                             Apple
@@ -668,8 +639,9 @@ export default async function handler(req, res) {
               </div>
             \`;
 
-            ykinasShadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
-            ykinasShadowRoot.querySelector('#login-backdrop').addEventListener('click', window.YkinasLogin.close);
+            drawer = ykinasShadowRoot.querySelector('#global-login-drawer');
+            backdrop = ykinasShadowRoot.querySelector('#login-backdrop');
+            panel = ykinasShadowRoot.querySelector('#login-panel');
 
             const showDrawerLoader = () => {
               const loader = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
@@ -685,6 +657,9 @@ export default async function handler(req, res) {
                 }
               });
             }
+
+            ykinasShadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
+            backdrop.addEventListener('click', window.YkinasLogin.close);
 
             ykinasShadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
               const pw = ykinasShadowRoot.querySelector('#s_pw');
@@ -704,19 +679,6 @@ export default async function handler(req, res) {
                  showDrawerLoader();
                  originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
                  originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
-                 
-                 // [Fix] 위시리스트 리다이렉트 대응 (드로어)
-                 const form = originWrapInner.querySelector('input[name="member_id"]').closest('form');
-                 if (form) {
-                   let retInput = form.querySelector('input[name="returnUrl"]');
-                   if (!retInput) {
-                     retInput = document.createElement('input');
-                     retInput.type = 'hidden';
-                     retInput.name = 'returnUrl';
-                     form.appendChild(retInput);
-                   }
-                   retInput.value = intendedReturnUrl;
-                 }
                  (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
                } else {
                  try {
@@ -746,23 +708,69 @@ export default async function handler(req, res) {
                          retInput.name = 'returnUrl';
                          form.appendChild(retInput);
                        }
-                       retInput.value = intendedReturnUrl;
+                       retInput.value = window.location.pathname + window.location.search;
                      }
                      ifBtn.click();
                    } else {
                      throw new Error("Iframe form not found");
                    }
                  } catch (e) {
-                   window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(intendedReturnUrl);
+                   window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
                  }
                }
             });
 
+            // SNS 팝업 호출 (로딩 미사용)
+            function handleSnsLogin(provider) {
+              try {
+                const rawUrl = window.location.pathname + window.location.search;
+                const safeReturnUrl = encodeURIComponent(decodeURIComponent(rawUrl));
+                const providerMap = { kakao: 'Kakao', naver: 'Naver', google: 'Google', facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp' };
+                const pName = providerMap[provider];
+                const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
+                
+                const originBtn = document.getElementById('origin_btn_' + provider);
+                if (originBtn) {
+                  originBtn.click();
+                  return; 
+                }
+
+                if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
+                  window.MemberAction.snsLogin(cafe24Provider, rawUrl);
+                } else {
+                  let iframeSuccess = false;
+                  if (provider !== 'google') {
+                    try {
+                      const iframe = document.getElementById('ykinas_proxy_iframe');
+                      if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
+                        iframe.contentWindow.MemberAction.snsLogin(cafe24Provider, rawUrl);
+                        iframeSuccess = true;
+                      }
+                    } catch (iframeErr) {
+                      console.warn('[YKINAS] Iframe access restricted.');
+                    }
+                  }
+
+                  if (!iframeSuccess) {
+                    const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
+                    const snsPopup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
+                    if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
+                      alert('팝업이 차단되었습니다. 브라우저 주소창 우측에서 팝업 차단을 해제해주세요.');
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error('[YKINAS SNS Login Error]:', error);
+                alert('SNS 로그인 초기화 중 오류가 발생했습니다.');
+              }
+            }
+
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
-              if (btn) btn.addEventListener('click', () => executeDirectSnsLogin(provider));
+              if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
             });
 
+            // [핵심 해결] 드로어 SNS 렌더링 무결성 스캐너 (Mode B) - querySelector 통일 및 Iframe 무한 방어
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               
@@ -793,6 +801,7 @@ export default async function handler(req, res) {
 
                 const gridContainer = ykinasShadowRoot.querySelector('#b_sns_grid_container');
                 if (gridContainer) {
+                  // Tailwind grid 속성이 우선 적용되도록 강제 주입
                   gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
                 }
               };
@@ -802,10 +811,12 @@ export default async function handler(req, res) {
 
               const iframeNode = document.getElementById('ykinas_proxy_iframe');
               if (iframeNode) {
+                // Iframe의 경우 Load 시점 스캔 후 MutationObserver로 비동기 스크립트 대응
                 iframeNode.addEventListener('load', () => {
                   try { 
                     const iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
                     syncDisplay(iframeDoc); 
+                    
                     const observer = new MutationObserver(() => syncDisplay(iframeDoc));
                     observer.observe(iframeDoc.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
                   } catch (e) {}
@@ -813,6 +824,7 @@ export default async function handler(req, res) {
               }
             };
             
+            // 로컬 폼 기준 초기 폴링 방어
             syncRealtimeSnsVisibility();
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
