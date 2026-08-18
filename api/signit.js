@@ -74,63 +74,6 @@ export default async function handler(req, res) {
         const isLoginPage = currentPath.includes('/member/login.html');
 
         // ==========================================
-        // [공통 로직] Cafe24 네이티브 SNS 동기화 트리거
-        // 무한 로딩(먹통) 현상 해결 및 팝업 차단 우회
-        // ==========================================
-        function executeCafe24NativeSnsLogin(provider, loaderElementId, isShadowDOM = false) {
-          // 로더 표시 (무한 로딩 방지를 위해 2.5초 후 무조건 해제)
-          let loader = isShadowDOM && ykinasShadowRoot 
-            ? ykinasShadowRoot.querySelector('#' + loaderElementId) 
-            : document.getElementById(loaderElementId);
-            
-          if (loader) {
-            loader.style.display = 'flex';
-            setTimeout(() => { loader.style.display = 'none'; }, 2500); 
-          }
-
-          // Cafe24 프로바이더 매핑 규칙 (구글은 googleplus 사용)
-          const providerMap = { 
-            kakao: 'kakao', naver: 'naver', google: 'googleplus', 
-            facebook: 'facebook', line: 'line', apple: 'apple', yahoojp: 'yahoojp' 
-          };
-          const cafe24Provider = providerMap[provider];
-          const rawUrl = window.location.pathname + window.location.search;
-          const targetClassName = provider === 'yahoojp' ? '.yahoojp' : '.btn' + provider.charAt(0).toUpperCase() + provider.slice(1);
-
-          // 1순위: 카페24 전역 함수 직접 호출 (팝업 통과 확률 가장 높음)
-          if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-            window.MemberAction.snsLogin(cafe24Provider, rawUrl);
-            return;
-          }
-
-          // 2순위: 로컬 DOM에 숨겨져 있는 원본 버튼의 click() 트리거
-          const localWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-          if (localWrap) {
-            const originEl = localWrap.querySelector(targetClassName) || localWrap.querySelector('#origin_btn_' + provider);
-            if (originEl) {
-              originEl.click();
-              return;
-            }
-          }
-
-          // 3순위: Iframe 내부의 함수 또는 버튼 트리거 (드로어 전용 폴백)
-          try {
-            const iframe = document.getElementById('ykinas_proxy_iframe');
-            if (iframe) {
-              if (iframe.contentWindow && typeof iframe.contentWindow.MemberAction !== 'undefined') {
-                iframe.contentWindow.MemberAction.snsLogin(cafe24Provider, rawUrl);
-              } else {
-                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                const iframeOriginEl = iframeDoc.querySelector(targetClassName) || iframeDoc.querySelector('#origin_btn_' + provider);
-                if (iframeOriginEl) iframeOriginEl.click();
-              }
-            }
-          } catch(e) {
-            console.warn('[YKINAS] Iframe execution blocked.');
-          }
-        }
-
-        // ==========================================
         // [MODE A] 로그인 전용 페이지 (Standalone Full-Screen UI)
         // ==========================================
         if (isLoginPage) {
@@ -441,13 +384,32 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [핵심 해결] Mode A - SNS 리스너
+            // [핵심 해결] Mode A - 브라우저 네이티브 팝업 호출 (동기식)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = document.getElementById('a_sns_' + provider);
               if (btn) {
                 btn.addEventListener('click', (e) => {
                   e.preventDefault();
-                  executeCafe24NativeSnsLogin(provider, 'ykinas-global-loader', false);
+                  
+                  // 스피너 표시 및 2.5초 후 자동 숨김 (무한 로딩 및 먹통 완벽 차단)
+                  const loader = document.getElementById('ykinas-global-loader');
+                  if (loader) {
+                    loader.style.display = 'flex';
+                    setTimeout(() => { loader.style.display = 'none'; }, 2500);
+                  }
+
+                  // 1. 카페24 서버 스펙에 맞춘 정확한 소문자 엔드포인트 세팅 (대문자 사용 시 500에러 발생)
+                  const cafe24Type = (provider === 'google') ? 'googleplus' : provider;
+                  const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+                  const popupUrl = '/Api/Member/Oauth2Client/' + cafe24Type + '/?returnUrl=' + returnUrl;
+
+                  // 2. 사용자의 물리적 클릭 이벤트 안에서 즉각적으로 팝업 호출 (모바일 크롬 차단 우회)
+                  const popup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
+                  
+                  // 만약 브라우저 설정으로 인해 팝업이 차단되었다면 안내 띄우기
+                  if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+                    alert('팝업 차단이 감지되었습니다. 원활한 로그인을 위해 모바일 브라우저 설정에서 팝업을 허용해주세요.');
+                  }
                 });
               }
             });
@@ -759,13 +721,28 @@ export default async function handler(req, res) {
                }
             });
 
-            // [핵심 해결] Mode B - SNS 리스너
+            // [핵심 해결] Mode B - 브라우저 네이티브 팝업 호출 (동기식)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
                 btn.addEventListener('click', (e) => {
                   e.preventDefault();
-                  executeCafe24NativeSnsLogin(provider, 'ykinas-drawer-loader', true);
+                  
+                  const loader = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
+                  if (loader) {
+                    loader.style.display = 'flex';
+                    setTimeout(() => { loader.style.display = 'none'; }, 2500);
+                  }
+
+                  const cafe24Type = (provider === 'google') ? 'googleplus' : provider;
+                  const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
+                  const popupUrl = '/Api/Member/Oauth2Client/' + cafe24Type + '/?returnUrl=' + returnUrl;
+
+                  const popup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
+                  
+                  if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+                    alert('팝업 차단이 감지되었습니다. 원활한 로그인을 위해 모바일 브라우저 설정에서 팝업을 허용해주세요.');
+                  }
                 });
               }
             });
