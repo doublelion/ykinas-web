@@ -10,6 +10,7 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=0, must-revalidate');
+    res.setHeader('X-Cafe24-Api-Version', '2026-03-01');
 
     const clientReferer = req.headers['referer'] || '';
     const clientMallId = req.query.mall_id;
@@ -97,7 +98,6 @@ export default async function handler(req, res) {
               </style>
 
               <div class="fixed inset-0 z-[99999] flex bg-[#faf9f8] overflow-hidden fade-in" style="font-family: 'Pretendard', 'Noto Sans KR', sans-serif;">
-                <!-- 좌측 에디토리얼 영역 -->
                 <div class="hidden lg:block lg:w-7/12 relative bg-gray-900">
                   <img src="/web/upload/hero_img_02.png" alt="Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
                   <div class="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
@@ -111,7 +111,6 @@ export default async function handler(req, res) {
                   </div>
                 </div>
 
-                <!-- 우측 폼 패널 -->
                 <div class="w-full lg:w-5/12 bg-white shadow-2xl z-10 flex flex-col relative custom-scrollbar-02 overflow-y-auto" id="standalone_panel">
                   <button type="button" id="a_btn_close" class="absolute top-6 right-6 p-2 text-gray-400 !bg-transparent hover:bg-gray-100 hover:text-black rounded-full transition-colors z-[100] text-xl">✕</button>
 
@@ -125,7 +124,7 @@ export default async function handler(req, res) {
                           <p class="text-sm text-gray-500">SNS 간편 로그인 또는 아이디로 접속하세요.</p>
                         </div>
 
-                        <!-- SNS 연동 영역 (동기화) -->
+                        <!-- SNS 연동 영역 -->
                         <div class="space-y-2 mb-6">
                           <button type="button" id="a_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity" style="display:none;">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
@@ -263,7 +262,7 @@ export default async function handler(req, res) {
               if (panel) panel.scrollTop = 0;
             };
 
-            // 비회원 라우팅 리다이렉트 (강제 세션 분기)
+            // 비회원 라우팅 리다이렉트
             document.getElementById('a_btn_goto_guest').addEventListener('click', () => {
               window.location.replace('/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html'));
             });
@@ -312,34 +311,48 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            // [핵심] SNS 버튼 표시 동기화 (카페24 관리자 설정과 일치)
+            // [핵심] ID와 Class 하이브리드 SNS 동기화 (대표님 커스텀 폼 + 카페24 기본 폼 모두 대응)
             const syncSnsA = () => {
-              const snsMap = { kakao: '.btnKakao', naver: '.btnNaver', google: '.btnGoogle', apple: '.btnApple', facebook: '.btnFacebook', line: '.btnLine', yahoojp: '.yahoojp' };
+              const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               const originWrap = document.getElementById('cafe24-original-wrap');
               if (!originWrap) return;
               
-              Object.entries(snsMap).forEach(([key, selector]) => {
-                const originEl = originWrap.querySelector(selector);
+              snsProviders.forEach(key => {
+                // 1순위: 대표님이 세팅한 ID 검색 (#origin_btn_kakao) / 2순위: 카페24 기본 클래스 검색 (.btnKakao)
+                let originEl = originWrap.querySelector('#origin_btn_' + key);
+                if (!originEl) {
+                  const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
+                  originEl = originWrap.querySelector(className);
+                }
+
                 const customBtn = document.getElementById('a_sns_' + key);
                 if (customBtn) {
-                  // 원본이 없거나 숨김 처리되어 있으면 커스텀 버튼도 숨김
                   if (!originEl || originEl.classList.contains('displaynone') || window.getComputedStyle(originEl).display === 'none') {
                     customBtn.style.display = 'none';
                   } else {
-                    customBtn.style.display = '';
+                    customBtn.style.display = ''; // 기존 Tailwind 클래스(flex) 복구
                   }
                 }
               });
             };
-            syncSnsA(); // 렌더링 직후 1회 동기화
+            syncSnsA(); // 렌더링 즉시 실행
 
-            // SNS 로그인 서밋 통신
+            // SNS 로그인 클릭 통신 (ID 트리거 및 MemberAction 강제 통신 Fallback 적용)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = document.getElementById('a_sns_' + provider);
               if (btn) {
                 btn.addEventListener('click', () => {
                   const originBtn = document.getElementById('origin_btn_' + provider);
-                  if (originBtn) originBtn.click();
+                  if (originBtn) {
+                    originBtn.click();
+                  } else {
+                    // originBtn이 없을 경우를 대비한 강력한 카페24 API 다이렉트 호출 방어 로직
+                    const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
+                    const rawUrl = window.location.pathname + window.location.search;
+                    if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
+                      window.MemberAction.snsLogin(cafe24Provider, rawUrl);
+                    }
+                  }
                 });
               }
             });
@@ -362,7 +375,7 @@ export default async function handler(req, res) {
 
         } else {
           // ==========================================
-          // [MODE B] 글로벌 드로어 (Global Login Drawer) - 기존 로직 유지
+          // [MODE B] 글로벌 드로어 (Global Login Drawer)
           // ==========================================
           document.addEventListener('click', function(e) {
             const target = e.target.closest('a');
@@ -464,7 +477,7 @@ export default async function handler(req, res) {
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; }
                 .sns-grid-btn:hover { opacity: 0.85; }
-                .displaynone { display: none !important; }
+                .bg-btn-primary { background-color: #111111; color: #ffffff; }
               </style>
 
               <div id="global-login-drawer">
@@ -480,31 +493,31 @@ export default async function handler(req, res) {
                       <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                       
                       <div class="space-y-2 mb-6">
-                        <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
+                        <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity" style="display:none;">
                           <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
                           카카오로 시작하기
                         </button>
                         
                         <div class="grid grid-cols-2 gap-2">
-                          <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver">
+                          <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver" style="display:none;">
                             <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                           </button>
-                          <button type="button" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                          <button type="button" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" style="display:none;">
                             <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                             구글
                           </button>
-                          <button type="button" id="btn_sns_apple" class="sns-grid-btn bg-apple">
+                          <button type="button" id="btn_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
                             <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
                             Apple
                           </button>
-                          <button type="button" id="btn_sns_facebook" class="sns-grid-btn bg-facebook">
+                          <button type="button" id="btn_sns_facebook" class="sns-grid-btn bg-facebook" style="display:none;">
                             <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
                             Facebook
                           </button>
-                          <button type="button" id="btn_sns_line" class="sns-grid-btn bg-line">
+                          <button type="button" id="btn_sns_line" class="sns-grid-btn bg-line" style="display:none;">
                             <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
                           </button>
-                          <button type="button" id="btn_sns_yahoojp" class="sns-grid-btn bg-yahoojp">
+                          <button type="button" id="btn_sns_yahoojp" class="sns-grid-btn bg-yahoojp" style="display:none;">
                             <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
                           </button>
                         </div>
@@ -675,16 +688,19 @@ export default async function handler(req, res) {
               if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
             });
 
+            // [핵심] ID와 Class 하이브리드 SNS 동기화 (드로어)
             function syncRealtimeSnsVisibility() {
-              const snsMap = {
-                kakao: '.btnKakao', naver: '.btnNaver', google: '.btnGoogle',
-                apple: '.btnApple', facebook: '.btnFacebook', line: '.btnLine', yahoojp: '.yahoojp'
-              };
+              const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               
               const syncDisplay = (sourceDoc) => {
                 if (!sourceDoc) return;
-                Object.entries(snsMap).forEach(([key, selector]) => {
-                  const originEl = sourceDoc.querySelector(selector);
+                snsProviders.forEach(key => {
+                  let originEl = sourceDoc.querySelector('#origin_btn_' + key);
+                  if (!originEl) {
+                    const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
+                    originEl = sourceDoc.querySelector(className);
+                  }
+                  
                   const shadowBtn = shadowRoot.querySelector('#btn_sns_' + key);
                   if (shadowBtn && originEl) {
                     if (originEl.classList.contains('displaynone') || window.getComputedStyle(originEl).display === 'none') {
