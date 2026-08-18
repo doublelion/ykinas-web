@@ -131,7 +131,7 @@ export default async function handler(req, res) {
                             카카오로 시작하기
                           </button>
                           
-                          <div class="grid grid-cols-2 gap-2">
+                          <div id="a_sns_grid_container" class="grid grid-cols-2 gap-2" style="display:none;">
                             <button type="button" id="a_sns_naver" class="sns-grid-btn bg-naver" style="display:none;">
                               <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                             </button>
@@ -235,7 +235,6 @@ export default async function handler(req, res) {
             // 로직 바인딩 및 라우팅 컨트롤
             // ==========================================
             
-            // 닫기 및 뒤로가기
             const closeHandler = (e) => {
               if (e) e.preventDefault();
               if (document.referrer && document.referrer.includes(location.host)) {
@@ -247,7 +246,6 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_close').addEventListener('click', closeHandler);
             document.getElementById('a_btn_back_shop').addEventListener('click', closeHandler);
 
-            // 모드 전환
             const switchMode = (mode) => {
               const loginMode = document.getElementById('ui-login-mode');
               const guestMode = document.getElementById('ui-guest-mode');
@@ -262,7 +260,6 @@ export default async function handler(req, res) {
               if (panel) panel.scrollTop = 0;
             };
 
-            // 비회원 라우팅 리다이렉트
             document.getElementById('a_btn_goto_guest').addEventListener('click', () => {
               window.location.replace('/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html'));
             });
@@ -270,7 +267,6 @@ export default async function handler(req, res) {
               window.location.replace('/member/login.html');
             });
 
-            // 비밀번호 토글
             document.getElementById('a_btn_toggle_pw').addEventListener('click', () => {
               const pw = document.getElementById('a_pw');
               pw.type = pw.type === 'password' ? 'text' : 'password';
@@ -280,7 +276,6 @@ export default async function handler(req, res) {
               opw.type = opw.type === 'password' ? 'text' : 'password';
             });
 
-            // 원본 폼 데이터 서밋 통신
             const submitLogin = () => {
               const idVal = document.getElementById('a_id').value.trim();
               const pwVal = document.getElementById('a_pw').value.trim();
@@ -311,14 +306,15 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            // [핵심] ID와 Class 하이브리드 SNS 동기화 (대표님 커스텀 폼 + 카페24 기본 폼 모두 대응)
+            // [핵심] getComputedStyle 브라우저 렌더링 의존성 제거 (클래스명 직접 파싱)
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               const originWrap = document.getElementById('cafe24-original-wrap');
               if (!originWrap) return;
               
+              let activeGridCount = 0;
+
               snsProviders.forEach(key => {
-                // 1순위: 대표님이 세팅한 ID 검색 (#origin_btn_kakao) / 2순위: 카페24 기본 클래스 검색 (.btnKakao)
                 let originEl = originWrap.querySelector('#origin_btn_' + key);
                 if (!originEl) {
                   const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
@@ -327,17 +323,26 @@ export default async function handler(req, res) {
 
                 const customBtn = document.getElementById('a_sns_' + key);
                 if (customBtn) {
-                  if (!originEl || originEl.classList.contains('displaynone') || window.getComputedStyle(originEl).display === 'none') {
+                  // 부모가 display:none 이어도 정확히 판단하기 위해 클래스(displaynone)와 인라인 스타일만 직접 체크
+                  const isHidden = !originEl || originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
+                  
+                  if (isHidden) {
                     customBtn.style.display = 'none';
                   } else {
-                    customBtn.style.display = ''; // 기존 Tailwind 클래스(flex) 복구
+                    customBtn.style.display = '';
+                    if (key !== 'kakao') activeGridCount++;
                   }
                 }
               });
-            };
-            syncSnsA(); // 렌더링 즉시 실행
 
-            // SNS 로그인 클릭 통신 (ID 트리거 및 MemberAction 강제 통신 Fallback 적용)
+              // 서브 SNS(네이버, 구글 등)가 하나도 없으면 그리드 컨테이너 자체를 숨김
+              const gridContainer = document.getElementById('a_sns_grid_container');
+              if (gridContainer) {
+                gridContainer.style.display = activeGridCount > 0 ? '' : 'none';
+              }
+            };
+            syncSnsA();
+
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = document.getElementById('a_sns_' + provider);
               if (btn) {
@@ -346,7 +351,6 @@ export default async function handler(req, res) {
                   if (originBtn) {
                     originBtn.click();
                   } else {
-                    // originBtn이 없을 경우를 대비한 강력한 카페24 API 다이렉트 호출 방어 로직
                     const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
                     const rawUrl = window.location.pathname + window.location.search;
                     if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
@@ -357,7 +361,6 @@ export default async function handler(req, res) {
               }
             });
 
-            // 라우팅 초기화 평가
             const searchStr = window.location.search;
             const returnUrl = new URLSearchParams(searchStr).get('returnUrl') || '';
             if (searchStr.includes('noMemberOrder') || returnUrl.includes('order/list.html')) {
@@ -498,7 +501,7 @@ export default async function handler(req, res) {
                           카카오로 시작하기
                         </button>
                         
-                        <div class="grid grid-cols-2 gap-2">
+                        <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2" style="display:none;">
                           <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver" style="display:none;">
                             <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                           </button>
@@ -637,11 +640,7 @@ export default async function handler(req, res) {
               try {
                 const rawUrl = window.location.pathname + window.location.search;
                 const safeReturnUrl = encodeURIComponent(decodeURIComponent(rawUrl));
-                
-                const providerMap = {
-                  kakao: 'Kakao', naver: 'Naver', google: 'Google',
-                  facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp'
-                };
+                const providerMap = { kakao: 'Kakao', naver: 'Naver', google: 'Google', facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp' };
                 const pName = providerMap[provider];
                 const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
                 
@@ -688,12 +687,14 @@ export default async function handler(req, res) {
               if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
             });
 
-            // [핵심] ID와 Class 하이브리드 SNS 동기화 (드로어)
+            // [핵심] 브라우저 렌더링(getComputedStyle) 의존성 완벽 제거 (드로어 모드)
             function syncRealtimeSnsVisibility() {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               
               const syncDisplay = (sourceDoc) => {
                 if (!sourceDoc) return;
+                let activeGridCount = 0;
+
                 snsProviders.forEach(key => {
                   let originEl = sourceDoc.querySelector('#origin_btn_' + key);
                   if (!originEl) {
@@ -702,14 +703,23 @@ export default async function handler(req, res) {
                   }
                   
                   const shadowBtn = shadowRoot.querySelector('#btn_sns_' + key);
-                  if (shadowBtn && originEl) {
-                    if (originEl.classList.contains('displaynone') || window.getComputedStyle(originEl).display === 'none') {
+                  if (shadowBtn) {
+                    // 순수하게 문자열 레벨의 displaynone 클래스와 인라인 속성만 검사합니다.
+                    const isHidden = !originEl || originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
+                    
+                    if (isHidden) {
                       shadowBtn.style.display = 'none';
                     } else {
                       shadowBtn.style.display = '';
+                      if (key !== 'kakao') activeGridCount++;
                     }
                   }
                 });
+
+                const gridContainer = shadowRoot.querySelector('#b_sns_grid_container');
+                if (gridContainer) {
+                  gridContainer.style.display = activeGridCount > 0 ? '' : 'none';
+                }
               };
 
               const localWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
