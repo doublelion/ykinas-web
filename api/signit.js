@@ -64,6 +64,7 @@ export default async function handler(req, res) {
         // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
+            // [Fix] 함수 최상단 변수 선언
             const originWrap = document.getElementById('cafe24-original-wrap');
             if (originWrap) originWrap.style.display = 'none';
 
@@ -335,21 +336,20 @@ export default async function handler(req, res) {
             // [핵심] 렌더링 동기화 및 MutationObserver 하이브리드 로직 (의존성 완전 해결)
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
-              const originWrap = document.getElementById('cafe24-original-wrap');
-              if (!originWrap) return;
+              const wrapObj = document.getElementById('cafe24-original-wrap');
+              if (!wrapObj) return;
               
               let gridActiveCount = 0;
 
               snsProviders.forEach(key => {
-                let originEl = originWrap.querySelector('#origin_btn_' + key);
+                let originEl = wrapObj.querySelector('#origin_btn_' + key);
                 if (!originEl) {
                   const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
-                  originEl = originWrap.querySelector(className);
+                  originEl = wrapObj.querySelector(className);
                 }
 
                 const customBtn = document.getElementById('a_sns_' + key);
                 if (customBtn && originEl) {
-                  // 카페24가 비활성화한 버튼은 displaynone 클래스 또는 명시적 인라인 스타일이 들어감
                   const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
                   if (isHidden) {
                     customBtn.style.display = 'none';
@@ -358,7 +358,7 @@ export default async function handler(req, res) {
                     if (key !== 'kakao') gridActiveCount++;
                   }
                 } else if (customBtn && !originEl) {
-                  customBtn.style.display = 'none'; // 원본 요소가 아예 없으면 렌더 안함
+                  customBtn.style.display = 'none'; 
                 }
               });
 
@@ -368,15 +368,14 @@ export default async function handler(req, res) {
               }
             };
             
-            // 최초 실행 후 안전성을 위해 load 시점에도 실행
             syncSnsA();
             window.addEventListener('load', syncSnsA);
 
-            // 카페24 코어 스크립트가 로드 후 DOM을 조작하더라도 무조건 감지하여 동기화
-            const originWrap = document.getElementById('cafe24-original-wrap');
-            if (originWrap) {
+            // [Fix] 변수 스코프 충돌 방지: observerTarget으로 변경
+            const observerTarget = document.getElementById('cafe24-original-wrap');
+            if (observerTarget) {
               const observer = new MutationObserver(() => syncSnsA());
-              observer.observe(originWrap, { attributes: true, childList: true, subtree: true });
+              observer.observe(observerTarget, { attributes: true, childList: true, subtree: true });
             }
 
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
@@ -744,7 +743,6 @@ export default async function handler(req, res) {
               if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
             });
 
-            // [핵심] 브라우저 렌더링 의존성 100% 제거 로직 (클래스명 스캐닝)
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               
@@ -761,7 +759,6 @@ export default async function handler(req, res) {
                   
                   const shadowBtn = shadowRoot.querySelector('#btn_sns_' + key);
                   if (shadowBtn && originEl) {
-                    // 카페24 설정이 꺼지면 부여되는 displaynone 클래스와 style.display만 스캔
                     const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
                     if (isHidden) {
                       shadowBtn.style.display = 'none';
