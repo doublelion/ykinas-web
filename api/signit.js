@@ -56,7 +56,7 @@ export default async function handler(req, res) {
         if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        // [프론트엔드 최적화] 모바일 기기 감지 (모바일은 드로어 대신 login.html 다이렉트 이동)
+        // [프론트엔드 기획 반영] 모바일 기기 감지: 모바일 접속 시 무조건 login.html로 라우팅
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
 
         let ykinasShadowRoot = null;
@@ -76,8 +76,7 @@ export default async function handler(req, res) {
         const isLoginPage = currentPath.includes('/member/login.html');
 
         // ==========================================
-        // [MODE A] 정식 로그인 페이지 (Standalone Full-Screen UI)
-        // 모바일은 무조건 이 모드로 진입하여 카페24 코어엔진을 사용합니다.
+        // [MODE A] 정규 회원 로그인 페이지 (Mobile Dedicated)
         // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
@@ -110,7 +109,9 @@ export default async function handler(req, res) {
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; text-decoration: none; cursor: pointer; }
+                
+                /* [핵심] SNS 버튼 상대적 위치 고정 (오버레이 기준점) */
+                .sns-grid-btn { position: relative; display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; text-decoration: none; cursor: pointer; overflow: hidden; }
                 .sns-grid-btn:hover { opacity: 0.85; }
 
                 .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
@@ -154,7 +155,7 @@ export default async function handler(req, res) {
 
                         <!-- SNS 연동 영역 -->
                         <div class="space-y-2 mb-6">
-                          <a href="#none" id="a_sns_kakao" class="sns-grid-btn bg-kakao w-full py-3 text-sm font-semibold rounded">
+                          <a href="#none" id="a_sns_kakao" class="sns-grid-btn bg-kakao py-3 text-sm font-semibold rounded">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
                             카카오로 시작하기
                           </a>
@@ -294,25 +295,21 @@ export default async function handler(req, res) {
               if (panel) panel.scrollTop = 0;
             };
 
-            // [핵심] URL 상태 관리 및 파라미터 보존 로직 추가
+            // [기획 반영] 현재 URL의 파라미터를 보존하여 라우팅 충돌 방지
             const searchParams = new URLSearchParams(window.location.search);
             const currentReturnUrl = searchParams.get('returnUrl') || '';
 
-            // 비회원 주문조회 버튼 클릭 (noMemberOrder 파라미터 추가, returnUrl 유지)
+            // 비회원 주문조회 버튼 클릭 (returnUrl 유지 + noMemberOrder 꼬리표 추가)
             document.getElementById('a_btn_goto_guest').addEventListener('click', () => {
               showLoader();
-              // returnUrl이 없다면 기본 주문조회 페이지 경로를 할당
               const targetReturnUrl = currentReturnUrl || '/myshop/order/list.html';
-              window.location.replace('/member/login.html?noMemberOrder=1&returnUrl=' + encodeURIComponent(targetReturnUrl));
+              window.location.replace('/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent(targetReturnUrl));
             });
 
-            // 회원 로그인 버튼 클릭 (noMemberOrder 파라미터 제거, returnUrl 유지)
+            // 회원 로그인 버튼 클릭 (noMemberOrder 제거 + returnUrl 유지)
             document.getElementById('a_btn_goto_login').addEventListener('click', () => {
               showLoader();
-              // 기존 returnUrl 파라미터가 있으면 붙여서 이동, 없으면 순수 login.html로 이동
-              const nextUrl = currentReturnUrl 
-                ? '/member/login.html?returnUrl=' + encodeURIComponent(currentReturnUrl) 
-                : '/member/login.html';
+              const nextUrl = currentReturnUrl ? '/member/login.html?returnUrl=' + encodeURIComponent(currentReturnUrl) : '/member/login.html';
               window.location.replace(nextUrl);
             });
 
@@ -357,6 +354,7 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
+            // [프론트엔드 최적화] 크롬 팝업 차단 완벽 회피를 위한 물리적 오버레이 매핑 (DOM Node Migration)
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               let gridActiveCount = 0;
@@ -365,11 +363,10 @@ export default async function handler(req, res) {
                 const customBtn = document.getElementById('a_sns_' + key);
                 if (!customBtn) return;
 
-                let originEl = document.getElementById('origin_btn_' + key);
-                if (!originEl) {
-                  const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
-                  originEl = document.querySelector(className);
-                }
+                const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
+                
+                // 사용자가 layout에 심어둔 hidden 모듈이나 원본 wrap에서 순정 요소를 추적
+                let originEl = document.querySelector(className) || document.getElementById('origin_btn_' + key);
 
                 if (originEl) {
                   const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
@@ -378,6 +375,13 @@ export default async function handler(req, res) {
                   } else {
                     customBtn.style.display = 'flex';
                     if (key !== 'kakao') gridActiveCount++;
+
+                    // [물리적 오버레이] 순정 카페24 버튼을 커스텀 버튼 위로 강제 이동 및 투명화 처리
+                    // 브라우저는 사용자가 커스텀 UI가 아닌 '카페24 순정 태그'를 직접 터치한 것으로 인식하여 차단을 해제함
+                    if (originEl.parentNode !== customBtn) {
+                      originEl.style.cssText = 'position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; opacity: 0 !important; z-index: 9999 !important; cursor: pointer !important; margin: 0 !important; padding: 0 !important; border: none !important; font-size: 0 !important;';
+                      customBtn.appendChild(originEl);
+                    }
                   }
                 } else {
                   customBtn.style.display = 'none'; 
@@ -392,42 +396,27 @@ export default async function handler(req, res) {
             
             syncSnsA();
             window.addEventListener('load', syncSnsA);
-            
             let snsIntervalA = setInterval(syncSnsA, 300);
             setTimeout(() => clearInterval(snsIntervalA), 3000);
+            const observer = new MutationObserver(() => syncSnsA());
+            observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [가장 중요] 파라미터 내재화 및 네이티브 함수 동기 실행
-            // 이곳은 login.html 내부이므로 카페24 코어엔진(MemberAction)이 가장 정상적으로 동작합니다.
+            // 네이티브 클릭 시 로더 피드백 (이벤트 버블링 캡처)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
-              const btn = document.getElementById('a_sns_' + provider);
-              if (btn) {
-                btn.addEventListener('click', (e) => {
-                  e.preventDefault();
-                  
-                  const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
-                  const rawUrl = window.location.pathname + window.location.search;
-                  
-                  if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-                    // 카페24 정품 엔진 직접 호출 (팝업차단 우회 및 세션 연결 보장)
-                    window.MemberAction.snsLogin(cafe24Provider, rawUrl);
-                  } else {
-                    // Fallback (login.html에서는 거의 발생하지 않음)
-                    const targetClassName = provider === 'yahoojp' ? '.yahoojp' : '.btn' + provider.charAt(0).toUpperCase() + provider.slice(1);
-                    const wrap = document.getElementById('cafe24-original-wrap');
-                    if (wrap) {
-                      const originEl = wrap.querySelector(targetClassName) || wrap.querySelector('#origin_btn_' + provider);
-                      if (originEl) originEl.click();
-                    }
-                  }
+              const customBtn = document.getElementById('a_sns_' + provider);
+              if (customBtn) {
+                customBtn.addEventListener('click', () => {
+                  showLoader();
+                  setTimeout(() => { hideLoader(); }, 2500); // 팝업 대기 중 먹통 방지
                 });
               }
             });
 
-            // 초기 로딩 시 파라미터 엄격 검사를 통한 모드 스위칭
+            // 초기 진입 시 쿼리 파라미터 상태에 따른 모드 결정
             if (window.location.search.includes('noMemberOrder') || currentReturnUrl.includes('order/list.html')) {
               switchMode('guest');
             } else {
-              switchMode('login'); // 일반 접근 시 무조건 회원 로그인이 기본
+              switchMode('login');
             }
           }
 
@@ -439,7 +428,7 @@ export default async function handler(req, res) {
 
         } else {
           // ==========================================
-          // [MODE B] 글로벌 드로어 (Global Login Drawer) - 데스크탑 전용
+          // [MODE B] 글로벌 드로어 (Desktop Dedicated)
           // ==========================================
           document.addEventListener('click', function(e) {
             const target = e.target.closest('a');
@@ -453,12 +442,12 @@ export default async function handler(req, res) {
               e.preventDefault();
               e.stopPropagation();
               
-              // [핵심 기획 반영] 모바일 기기는 드로어 진입을 원천 차단하고 정규 login.html로 보냄
+              // [기획 반영] 모바일은 드로어 원천 차단 및 URL 리다이렉트
               if (isMobile) {
                 const rawUrl = window.location.pathname + window.location.search;
                 window.location.href = '/member/login.html?returnUrl=' + encodeURIComponent(rawUrl);
               } else {
-                // 데스크탑은 기존대로 세련된 드로어 사용
+                // 데스크탑은 우아하게 드로어 오픈
                 if (window.YkinasLogin && typeof window.YkinasLogin.open === 'function') {
                   window.YkinasLogin.open();
                 }
@@ -480,7 +469,6 @@ export default async function handler(req, res) {
 
           window.YkinasLogin = {
             open: function() {
-              // 안전장치: 혹시라도 스크립트로 직접 open()을 호출해도 모바일이면 리다이렉트
               if (isMobile) {
                 const rawUrl = window.location.pathname + window.location.search;
                 window.location.href = '/member/login.html?returnUrl=' + encodeURIComponent(rawUrl);
@@ -797,7 +785,7 @@ export default async function handler(req, res) {
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
 
-            // [데스크탑 드로어 전용] SNS 버튼 클릭 처리
+            // [데스크탑 드로어 전용] SNS 버튼 클릭 처리 (Desktop은 Chrome 팝업 차단 이슈 없음)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
