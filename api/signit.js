@@ -500,6 +500,13 @@ export default async function handler(req, res) {
             }
           };
 
+          const showDrawerLoader = () => {
+            if (ykinasShadowRoot) {
+              const loader = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
+              if (loader) loader.style.display = 'flex';
+            }
+          };
+
           window.YkinasLogin = {
             open: function() {
               if (!isInitialized) initShadowDOM();
@@ -576,7 +583,7 @@ export default async function handler(req, res) {
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; cursor: pointer; }
+                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; text-decoration: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-btn-primary { background-color: #111111; color: #ffffff; }
 
@@ -672,6 +679,14 @@ export default async function handler(req, res) {
                         <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
                         <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black transition-colors">회원가입</a>
                       </div>
+
+                      <!-- [추가된 드로어 비회원 섹션] -->
+                      <div class="mt-12 text-center border-t border-gray-100 pt-6 pb-6">
+                        <button type="button" id="btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors active:opacity-70">
+                          비회원으로 주문하셨나요?
+                        </button>
+                      </div>
+
                     </div>
                   </div>
                 </div>
@@ -681,11 +696,6 @@ export default async function handler(req, res) {
             drawer = ykinasShadowRoot.querySelector('#global-login-drawer');
             backdrop = ykinasShadowRoot.querySelector('#login-backdrop');
             panel = ykinasShadowRoot.querySelector('#login-panel');
-
-            const showDrawerLoader = () => {
-              const loader = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
-              if (loader) loader.style.display = 'flex';
-            };
 
             if (skinPrefix) {
               const allLinks = ykinasShadowRoot.querySelectorAll('a');
@@ -699,6 +709,15 @@ export default async function handler(req, res) {
 
             ykinasShadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
             backdrop.addEventListener('click', window.YkinasLogin.close);
+
+            // [추가된 드로어 비회원 라우팅 이벤트]
+            const btnGotoGuest = ykinasShadowRoot.querySelector('#btn_goto_guest');
+            if (btnGotoGuest) {
+              btnGotoGuest.addEventListener('click', function() {
+                showDrawerLoader();
+                window.location.href = '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
+              });
+            }
 
             ykinasShadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
               const pw = ykinasShadowRoot.querySelector('#s_pw');
