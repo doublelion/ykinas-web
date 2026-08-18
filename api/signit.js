@@ -56,7 +56,6 @@ export default async function handler(req, res) {
         if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        // 모바일 라우팅 보존 로직
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
 
         let ykinasShadowRoot = null;
@@ -75,7 +74,6 @@ export default async function handler(req, res) {
         const currentPath = window.location.pathname;
         const isLoginPage = currentPath.includes('/member/login.html');
 
-        // BFCache (뒤로가기) 복원 시 로더 안전 해제
         window.addEventListener('pageshow', (e) => {
           if (e.persisted) {
             const loaderA = document.getElementById('ykinas-global-loader');
@@ -92,7 +90,6 @@ export default async function handler(req, res) {
         // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
-            // [수정] display: none 대신 Visually Hidden 처리하여 Cafe24 내장 JS의 DOM 인식 오류 방지
             const originWrap = document.getElementById('cafe24-original-wrap');
             if (originWrap) {
               originWrap.style.cssText = 'position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0;';
@@ -160,7 +157,6 @@ export default async function handler(req, res) {
                   <div class="px-8 sm:px-14 pt-24 pb-12 flex-1 flex flex-col justify-center">
                     <div class="w-full max-w-sm mx-auto relative">
                       
-                      <!-- 카페24 순정 엔진이 의존하는 클래스명 완벽 매핑 -->
                       <div id="ui-login-mode" class="fade-in member-login-wrap">
                         <fieldset class="form" style="border: none; padding: 0; margin: 0; width: 100%;">
                           <legend style="display: none;">회원로그인</legend>
@@ -240,7 +236,6 @@ export default async function handler(req, res) {
                         </fieldset>
                       </div>
 
-                      <!-- [모드 B] 비회원 주문조회 UI -->
                       <div id="ui-guest-mode" class="mode-hidden fade-in">
                         <div class="mb-10 text-center">
                           <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2 mt-4">비회원 주문조회</h1>
@@ -368,7 +363,6 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            // [핵심] DOM 구조 이동(appendChild)를 완벽히 제거하고, 순수 상태(Visibility)만 동기화
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               let gridActiveCount = 0;
@@ -379,7 +373,6 @@ export default async function handler(req, res) {
 
                 const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
                 
-                // 순정 DOM 타겟팅 (카페24 원본 트리 안에서만 찾음)
                 let originEl = document.querySelector('#hidden-cafe24-login-module ' + className)
                             || document.querySelector('.member-login-wrap ' + className) 
                             || document.querySelector(className) 
@@ -409,8 +402,10 @@ export default async function handler(req, res) {
             window.addEventListener('load', syncSnsA);
             let snsIntervalA = setInterval(syncSnsA, 300);
             setTimeout(() => clearInterval(snsIntervalA), 3000);
+            const observer = new MutationObserver(() => syncSnsA());
+            observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [핵심 해결] DOM 오버레이를 지우고, 사용자가 클릭하면 순정 버튼을 명시적으로 .click() 처리 (Remote Control)
+            // [모바일 핵심 수정] 순정 Cafe24 버튼을 .click()으로 직접 제어하는 리모컨 방식 적용
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const customBtn = document.getElementById('a_sns_' + provider);
               if (customBtn) {
@@ -433,10 +428,10 @@ export default async function handler(req, res) {
 
                   showLoader();
                   
-                  // 모바일 크롬 팝업 정책을 뚫어내는 가장 표준적인 사용자 스택 동기화 방식
+                  // 카페24 순정 버튼 클릭 트리거 (모바일 크롬 정책 준수)
                   originBtn.click();
 
-                  // BFCache 대비 및 실패 시 안전장치 (블라인드 타임아웃 대신 문서 가시성 확인)
+                  // 문서 가시성 기반 안전한 로더 해제
                   setTimeout(() => {
                     if (document.visibilityState === 'visible') {
                       hideLoader();
@@ -819,7 +814,6 @@ export default async function handler(req, res) {
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
 
-            // [데스크탑 드로어 모드] 명시적 click() 리모컨 방식
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
