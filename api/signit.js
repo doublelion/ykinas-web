@@ -107,7 +107,9 @@ export default async function handler(req, res) {
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; cursor: pointer; }
+                
+                /* [프론트엔드 최적화] a 태그 활용을 위한 css 속성 보강 */
+                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; text-decoration: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
 
                 /* 로딩 오버레이 */
@@ -120,7 +122,7 @@ export default async function handler(req, res) {
 
               <div id="ykinas-global-loader" class="ykinas-loader-overlay">
                 <div class="ykinas-spinner"></div>
-                <div class="ykinas-loader-text">안전하게 통신 중입니다</div>
+                <div class="ykinas-loader-text">잠시만 기다려주세요</div>
               </div>
 
               <div class="fixed inset-0 z-[99999] flex bg-[#faf9f8] overflow-hidden fade-in" style="font-family: 'Pretendard', 'Noto Sans KR', sans-serif;">
@@ -152,33 +154,34 @@ export default async function handler(req, res) {
 
                         <!-- SNS 연동 영역 -->
                         <div class="space-y-2 mb-6">
-                          <button type="button" id="a_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
+                          <!-- 브라우저 정책 우회를 위해 button 태그 대신 a 태그로 모두 치환 -->
+                          <a href="#none" id="a_sns_kakao" class="sns-grid-btn bg-kakao w-full py-3 text-sm font-semibold rounded">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
                             카카오로 시작하기
-                          </button>
+                          </a>
                           
                           <div id="a_sns_grid_container" class="grid grid-cols-2 gap-2">
-                            <button type="button" id="a_sns_naver" class="sns-grid-btn bg-naver">
+                            <a href="#none" id="a_sns_naver" class="sns-grid-btn bg-naver">
                               <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
-                            </button>
-                            <button type="button" id="a_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                            </a>
+                            <a href="#none" id="a_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
                               <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                               구글
-                            </button>
-                            <button type="button" id="a_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
+                            </a>
+                            <a href="#none" id="a_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
                               <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
                               Apple
-                            </button>
-                            <button type="button" id="a_sns_facebook" class="sns-grid-btn bg-facebook" style="display:none;">
+                            </a>
+                            <a href="#none" id="a_sns_facebook" class="sns-grid-btn bg-facebook" style="display:none;">
                               <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
                               Facebook
-                            </button>
-                            <button type="button" id="a_sns_line" class="sns-grid-btn bg-line" style="display:none;">
+                            </a>
+                            <a href="#none" id="a_sns_line" class="sns-grid-btn bg-line" style="display:none;">
                               <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
-                            </button>
-                            <button type="button" id="a_sns_yahoojp" class="sns-grid-btn bg-yahoojp" style="display:none;">
+                            </a>
+                            <a href="#none" id="a_sns_yahoojp" class="sns-grid-btn bg-yahoojp" style="display:none;">
                               <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
-                            </button>
+                            </a>
                           </div>
                         </div>
 
@@ -260,6 +263,7 @@ export default async function handler(req, res) {
             // ==========================================
             // 로직 바인딩 및 라우팅 컨트롤
             // ==========================================
+            
             const showLoader = () => {
               const loader = document.getElementById('ykinas-global-loader');
               if (loader) loader.style.display = 'flex';
@@ -313,7 +317,6 @@ export default async function handler(req, res) {
               opw.type = opw.type === 'password' ? 'text' : 'password';
             });
 
-            // 로그인 및 조회 서밋
             const submitLogin = () => {
               const idVal = document.getElementById('a_id').value.trim();
               const pwVal = document.getElementById('a_pw').value.trim();
@@ -353,9 +356,12 @@ export default async function handler(req, res) {
               snsProviders.forEach(key => {
                 const customBtn = document.getElementById('a_sns_' + key);
                 if (!customBtn) return;
-                
-                const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
-                let originEl = document.querySelector(className) || document.getElementById('origin_btn_' + key);
+
+                let originEl = document.getElementById('origin_btn_' + key);
+                if (!originEl) {
+                  const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
+                  originEl = document.querySelector(className);
+                }
 
                 if (originEl) {
                   const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
@@ -381,34 +387,29 @@ export default async function handler(req, res) {
             
             let snsIntervalA = setInterval(syncSnsA, 300);
             setTimeout(() => clearInterval(snsIntervalA), 3000);
+
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [핵심 해결] Mode A - 브라우저 네이티브 팝업 호출 (동기식)
+            // [핵심 기획 반영] 파라미터 내재화 및 물리적 클릭 동기화 로직 (Mode A)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = document.getElementById('a_sns_' + provider);
               if (btn) {
                 btn.addEventListener('click', (e) => {
                   e.preventDefault();
                   
-                  // 스피너 표시 및 2.5초 후 자동 숨김 (무한 로딩 및 먹통 완벽 차단)
-                  const loader = document.getElementById('ykinas-global-loader');
-                  if (loader) {
-                    loader.style.display = 'flex';
-                    setTimeout(() => { loader.style.display = 'none'; }, 2500);
-                  }
-
-                  // 1. 카페24 서버 스펙에 맞춘 정확한 소문자 엔드포인트 세팅 (대문자 사용 시 500에러 발생)
-                  const cafe24Type = (provider === 'google') ? 'googleplus' : provider;
-                  const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
-                  const popupUrl = '/Api/Member/Oauth2Client/' + cafe24Type + '/?returnUrl=' + returnUrl;
-
-                  // 2. 사용자의 물리적 클릭 이벤트 안에서 즉각적으로 팝업 호출 (모바일 크롬 차단 우회)
-                  const popup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
+                  // 카페24 프로바이더명 매핑 (구글 예외처리)
+                  const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
                   
-                  // 만약 브라우저 설정으로 인해 팝업이 차단되었다면 안내 띄우기
-                  if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-                    alert('팝업 차단이 감지되었습니다. 원활한 로그인을 위해 모바일 브라우저 설정에서 팝업을 허용해주세요.');
+                  // 유저 기획: 카페24 코어 엔진이 요구하는 URL 파라미터를 그대로 내재화
+                  const rawUrl = window.location.pathname + window.location.search;
+                  
+                  // 물리적 클릭 안에서 즉각적으로 전역 함수 실행 (가짜 클릭 .click() 배제 -> 팝업 차단 완벽 회피)
+                  if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
+                    window.MemberAction.snsLogin(cafe24Provider, rawUrl);
+                  } else {
+                    // 예외 상황: 파라미터를 들고 안전하게 로그인 페이지로 랜딩 처리
+                    window.location.href = '/member/login.html?returnUrl=' + encodeURIComponent(rawUrl);
                   }
                 });
               }
@@ -538,7 +539,9 @@ export default async function handler(req, res) {
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; cursor: pointer; }
+                
+                /* [프론트엔드 최적화] a 태그 활용을 위한 css 속성 보강 */
+                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; text-decoration: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-btn-primary { background-color: #111111; color: #ffffff; }
 
@@ -569,33 +572,34 @@ export default async function handler(req, res) {
                       <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                       
                       <div class="space-y-2 mb-6">
-                        <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
+                        <!-- 브라우저 정책 우회를 위해 button 태그 대신 a 태그로 모두 치환 -->
+                        <a href="#none" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                           <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
                           카카오로 시작하기
-                        </button>
+                        </a>
                         
                         <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2">
-                          <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver">
+                          <a href="#none" id="btn_sns_naver" class="sns-grid-btn bg-naver">
                             <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
-                          </button>
-                          <button type="button" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                          </a>
+                          <a href="#none" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
                             <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                             구글
-                          </button>
-                          <button type="button" id="btn_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
+                          </a>
+                          <a href="#none" id="btn_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
                             <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
                             Apple
-                          </button>
-                          <button type="button" id="btn_sns_facebook" class="sns-grid-btn bg-facebook" style="display:none;">
+                          </a>
+                          <a href="#none" id="btn_sns_facebook" class="sns-grid-btn bg-facebook" style="display:none;">
                             <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
                             Facebook
-                          </button>
-                          <button type="button" id="btn_sns_line" class="sns-grid-btn bg-line" style="display:none;">
+                          </a>
+                          <a href="#none" id="btn_sns_line" class="sns-grid-btn bg-line" style="display:none;">
                             <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
-                          </button>
-                          <button type="button" id="btn_sns_yahoojp" class="sns-grid-btn bg-yahoojp" style="display:none;">
+                          </a>
+                          <a href="#none" id="btn_sns_yahoojp" class="sns-grid-btn bg-yahoojp" style="display:none;">
                             <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
-                          </button>
+                          </a>
                         </div>
                       </div>
 
@@ -721,32 +725,6 @@ export default async function handler(req, res) {
                }
             });
 
-            // [핵심 해결] Mode B - 브라우저 네이티브 팝업 호출 (동기식)
-            ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
-              const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
-              if (btn) {
-                btn.addEventListener('click', (e) => {
-                  e.preventDefault();
-                  
-                  const loader = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
-                  if (loader) {
-                    loader.style.display = 'flex';
-                    setTimeout(() => { loader.style.display = 'none'; }, 2500);
-                  }
-
-                  const cafe24Type = (provider === 'google') ? 'googleplus' : provider;
-                  const returnUrl = encodeURIComponent(window.location.pathname + window.location.search);
-                  const popupUrl = '/Api/Member/Oauth2Client/' + cafe24Type + '/?returnUrl=' + returnUrl;
-
-                  const popup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
-                  
-                  if (!popup || popup.closed || typeof popup.closed === 'undefined') {
-                    alert('팝업 차단이 감지되었습니다. 원활한 로그인을 위해 모바일 브라우저 설정에서 팝업을 허용해주세요.');
-                  }
-                });
-              }
-            });
-
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               
@@ -755,8 +733,11 @@ export default async function handler(req, res) {
                 let gridActiveCount = 0;
 
                 snsProviders.forEach(key => {
-                  const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
-                  let originEl = sourceDoc.querySelector(className) || sourceDoc.querySelector('#origin_btn_' + key);
+                  let originEl = sourceDoc.querySelector('#origin_btn_' + key);
+                  if (!originEl) {
+                    const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
+                    originEl = sourceDoc.querySelector(className);
+                  }
                   
                   const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
                   if (shadowBtn && originEl) {
@@ -798,6 +779,31 @@ export default async function handler(req, res) {
             syncRealtimeSnsVisibility();
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
+
+            // [핵심 기획 반영] 파라미터 내재화 및 물리적 클릭 동기화 로직 (Mode B)
+            ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
+              const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
+              if (btn) {
+                btn.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  
+                  // 카페24 프로바이더명 매핑
+                  const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
+                  
+                  // 유저 기획: 카페24 코어 엔진이 요구하는 URL 파라미터를 그대로 내재화
+                  const rawUrl = window.location.pathname + window.location.search;
+                  
+                  // 물리적 클릭 안에서 즉각적으로 전역 함수 실행 (가짜 클릭 배제)
+                  if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
+                    window.MemberAction.snsLogin(cafe24Provider, rawUrl);
+                  } else {
+                    // 예외 상황: 드로어 모드라 전역 함수가 없다면 파라미터를 들고 로그인 페이지로 랜딩
+                    window.location.href = '/member/login.html?returnUrl=' + encodeURIComponent(rawUrl);
+                  }
+                });
+              }
+            });
+
           }
 
           if (document.readyState === 'loading') {
