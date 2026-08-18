@@ -56,7 +56,9 @@ export default async function handler(req, res) {
         if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        // [핵심 프론트엔드 최적화] 전역 Shadow Root 및 Alert Proxy 선언
+        // [프론트엔드 최적화] 모바일 기기 감지 (모바일은 드로어 대신 login.html 다이렉트 이동)
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
+
         let ykinasShadowRoot = null;
         const originalAlert = window.alert;
         window.alert = function(msg) {
@@ -74,7 +76,8 @@ export default async function handler(req, res) {
         const isLoginPage = currentPath.includes('/member/login.html');
 
         // ==========================================
-        // [MODE A] 로그인 전용 페이지 (Standalone Full-Screen UI)
+        // [MODE A] 정식 로그인 페이지 (Standalone Full-Screen UI)
+        // 모바일은 무조건 이 모드로 진입하여 카페24 코어엔진을 사용합니다.
         // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
@@ -107,12 +110,9 @@ export default async function handler(req, res) {
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-                
-                /* [프론트엔드 최적화] a 태그 활용을 위한 css 속성 보강 */
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; text-decoration: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
 
-                /* 로딩 오버레이 */
                 .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
@@ -154,7 +154,6 @@ export default async function handler(req, res) {
 
                         <!-- SNS 연동 영역 -->
                         <div class="space-y-2 mb-6">
-                          <!-- 브라우저 정책 우회를 위해 button 태그 대신 a 태그로 모두 치환 -->
                           <a href="#none" id="a_sns_kakao" class="sns-grid-btn bg-kakao w-full py-3 text-sm font-semibold rounded">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
                             카카오로 시작하기
@@ -260,10 +259,6 @@ export default async function handler(req, res) {
 
             document.body.insertAdjacentHTML('beforeend', fullScreenHTML);
 
-            // ==========================================
-            // 로직 바인딩 및 라우팅 컨트롤
-            // ==========================================
-            
             const showLoader = () => {
               const loader = document.getElementById('ykinas-global-loader');
               if (loader) loader.style.display = 'flex';
@@ -299,6 +294,7 @@ export default async function handler(req, res) {
               if (panel) panel.scrollTop = 0;
             };
 
+            // 비회원 주문조회 파라미터 로직 유지 (noMemberOrder)
             document.getElementById('a_btn_goto_guest').addEventListener('click', () => {
               showLoader();
               window.location.replace('/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html'));
@@ -388,33 +384,34 @@ export default async function handler(req, res) {
             let snsIntervalA = setInterval(syncSnsA, 300);
             setTimeout(() => clearInterval(snsIntervalA), 3000);
 
-            const observer = new MutationObserver(() => syncSnsA());
-            observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
-
-            // [핵심 기획 반영] 파라미터 내재화 및 물리적 클릭 동기화 로직 (Mode A)
+            // [가장 중요] 파라미터 내재화 및 네이티브 함수 동기 실행
+            // 이곳은 login.html 내부이므로 카페24 코어엔진(MemberAction)이 가장 정상적으로 동작합니다.
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = document.getElementById('a_sns_' + provider);
               if (btn) {
                 btn.addEventListener('click', (e) => {
                   e.preventDefault();
                   
-                  // 카페24 프로바이더명 매핑 (구글 예외처리)
                   const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
-                  
-                  // 유저 기획: 카페24 코어 엔진이 요구하는 URL 파라미터를 그대로 내재화
                   const rawUrl = window.location.pathname + window.location.search;
                   
-                  // 물리적 클릭 안에서 즉각적으로 전역 함수 실행 (가짜 클릭 .click() 배제 -> 팝업 차단 완벽 회피)
                   if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
+                    // 카페24 정품 엔진 직접 호출 (팝업차단 우회 및 세션 연결 보장)
                     window.MemberAction.snsLogin(cafe24Provider, rawUrl);
                   } else {
-                    // 예외 상황: 파라미터를 들고 안전하게 로그인 페이지로 랜딩 처리
-                    window.location.href = '/member/login.html?returnUrl=' + encodeURIComponent(rawUrl);
+                    // Fallback (login.html에서는 거의 발생하지 않음)
+                    const targetClassName = provider === 'yahoojp' ? '.yahoojp' : '.btn' + provider.charAt(0).toUpperCase() + provider.slice(1);
+                    const wrap = document.getElementById('cafe24-original-wrap');
+                    if (wrap) {
+                      const originEl = wrap.querySelector(targetClassName) || wrap.querySelector('#origin_btn_' + provider);
+                      if (originEl) originEl.click();
+                    }
                   }
                 });
               }
             });
 
+            // 비회원 조회 파라미터 감지 및 분기
             const searchStr = window.location.search;
             const returnUrl = new URLSearchParams(searchStr).get('returnUrl') || '';
             if (searchStr.includes('noMemberOrder') || returnUrl.includes('order/list.html')) {
@@ -432,7 +429,7 @@ export default async function handler(req, res) {
 
         } else {
           // ==========================================
-          // [MODE B] 글로벌 드로어 (Global Login Drawer)
+          // [MODE B] 글로벌 드로어 (Global Login Drawer) - 데스크탑 전용
           // ==========================================
           document.addEventListener('click', function(e) {
             const target = e.target.closest('a');
@@ -445,8 +442,16 @@ export default async function handler(req, res) {
             if (isRequireLogin && isLoggedOut) {
               e.preventDefault();
               e.stopPropagation();
-              if (window.YkinasLogin && typeof window.YkinasLogin.open === 'function') {
-                window.YkinasLogin.open();
+              
+              // [핵심 기획 반영] 모바일 기기는 드로어 진입을 원천 차단하고 정규 login.html로 보냄
+              if (isMobile) {
+                const rawUrl = window.location.pathname + window.location.search;
+                window.location.href = '/member/login.html?returnUrl=' + encodeURIComponent(rawUrl);
+              } else {
+                // 데스크탑은 기존대로 세련된 드로어 사용
+                if (window.YkinasLogin && typeof window.YkinasLogin.open === 'function') {
+                  window.YkinasLogin.open();
+                }
               }
             }
           }, true);
@@ -465,6 +470,13 @@ export default async function handler(req, res) {
 
           window.YkinasLogin = {
             open: function() {
+              // 안전장치: 혹시라도 스크립트로 직접 open()을 호출해도 모바일이면 리다이렉트
+              if (isMobile) {
+                const rawUrl = window.location.pathname + window.location.search;
+                window.location.href = '/member/login.html?returnUrl=' + encodeURIComponent(rawUrl);
+                return;
+              }
+
               if (!isInitialized) initShadowDOM();
               if (drawer) {
                 drawer.style.display = 'flex';
@@ -539,13 +551,10 @@ export default async function handler(req, res) {
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-                
-                /* [프론트엔드 최적화] a 태그 활용을 위한 css 속성 보강 */
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; text-decoration: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-btn-primary { background-color: #111111; color: #ffffff; }
 
-                /* 드로어 전용 로딩 오버레이 */
                 .ykinas-loader-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
@@ -556,7 +565,6 @@ export default async function handler(req, res) {
               <div id="global-login-drawer">
                 <div id="login-backdrop"></div>
                 <div id="login-panel" class="custom-scrollbar-02">
-                  <!-- 드로어 로딩 UI -->
                   <div id="ykinas-drawer-loader" class="ykinas-loader-overlay">
                     <div class="ykinas-spinner"></div>
                     <div class="ykinas-loader-text">안전하게 통신 중입니다</div>
@@ -572,7 +580,6 @@ export default async function handler(req, res) {
                       <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                       
                       <div class="space-y-2 mb-6">
-                        <!-- 브라우저 정책 우회를 위해 button 태그 대신 a 태그로 모두 치환 -->
                         <a href="#none" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                           <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
                           카카오로 시작하기
@@ -780,25 +787,21 @@ export default async function handler(req, res) {
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
 
-            // [핵심 기획 반영] 파라미터 내재화 및 물리적 클릭 동기화 로직 (Mode B)
+            // [데스크탑 드로어 전용] SNS 버튼 클릭 처리
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
                 btn.addEventListener('click', (e) => {
                   e.preventDefault();
                   
-                  // 카페24 프로바이더명 매핑
                   const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
-                  
-                  // 유저 기획: 카페24 코어 엔진이 요구하는 URL 파라미터를 그대로 내재화
                   const rawUrl = window.location.pathname + window.location.search;
                   
-                  // 물리적 클릭 안에서 즉각적으로 전역 함수 실행 (가짜 클릭 배제)
                   if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
                     window.MemberAction.snsLogin(cafe24Provider, rawUrl);
                   } else {
-                    // 예외 상황: 드로어 모드라 전역 함수가 없다면 파라미터를 들고 로그인 페이지로 랜딩
-                    window.location.href = '/member/login.html?returnUrl=' + encodeURIComponent(rawUrl);
+                    const popupUrl = '/Api/Member/Oauth2Client/' + (provider === 'google' ? 'Google' : provider.charAt(0).toUpperCase() + provider.slice(1)) + '/?returnUrl=' + encodeURIComponent(rawUrl);
+                    window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
                   }
                 });
               }
