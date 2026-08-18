@@ -152,7 +152,6 @@ export default async function handler(req, res) {
 
                         <!-- SNS 연동 영역 -->
                         <div class="space-y-2 mb-6">
-                          <!-- 카카오, 네이버, 구글은 기본 노출 -->
                           <button type="button" id="a_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
                             카카오로 시작하기
@@ -166,7 +165,6 @@ export default async function handler(req, res) {
                               <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                               구글
                             </button>
-                            <!-- 나머지는 기본 숨김 -->
                             <button type="button" id="a_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
                               <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
                               Apple
@@ -349,7 +347,6 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            // [핵심] SNS 레이아웃 렌더링 무결성 스캐너 (Mode A)
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               let gridActiveCount = 0;
@@ -392,20 +389,23 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // SNS 로그인 (팝업이므로 로딩 오버레이 제외)
+            // [수정됨] Mode A: 모바일 팝업 차단 우회를 위한 직접 호출 로직 적용
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = document.getElementById('a_sns_' + provider);
               if (btn) {
-                btn.addEventListener('click', () => {
-                  const originBtn = document.getElementById('origin_btn_' + provider);
-                  if (originBtn) {
-                    originBtn.click();
+                btn.addEventListener('click', (e) => {
+                  e.preventDefault(); // 기본 동작 방지
+                  const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
+                  const rawUrl = window.location.pathname + window.location.search;
+                  
+                  // 카페24 전역 함수가 존재하면 안전하게 직접 호출 (팝업차단 우회)
+                  if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
+                    window.MemberAction.snsLogin(cafe24Provider, rawUrl);
                   } else {
-                    const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
-                    const rawUrl = window.location.pathname + window.location.search;
-                    if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
-                      window.MemberAction.snsLogin(cafe24Provider, rawUrl);
-                    }
+                    // Fallback: 직접 팝업 호출 (클릭 이벤트 내부이므로 모바일에서 허용됨)
+                    const providerMap = { kakao: 'Kakao', naver: 'Naver', google: 'Google', facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp' };
+                    const popupUrl = '/Api/Member/Oauth2Client/' + providerMap[provider] + '/?returnUrl=' + encodeURIComponent(rawUrl);
+                    window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
                   }
                 });
               }
@@ -566,7 +566,6 @@ export default async function handler(req, res) {
                       <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                       
                       <div class="space-y-2 mb-6">
-                        <!-- 카카오, 네이버, 구글 기본 노출 템플릿 변경 -->
                         <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                           <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
                           카카오로 시작하기
@@ -580,7 +579,6 @@ export default async function handler(req, res) {
                             <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                             구글
                           </button>
-                          <!-- 서브 SNS는 기본 숨김 -->
                           <button type="button" id="btn_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
                             <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
                             Apple
@@ -720,7 +718,7 @@ export default async function handler(req, res) {
                }
             });
 
-            // SNS 팝업 호출 (로딩 미사용)
+            // [수정됨] Mode B: 모바일 팝업 차단 우회를 위한 직접 호출 로직 적용
             function handleSnsLogin(provider) {
               try {
                 const rawUrl = window.location.pathname + window.location.search;
@@ -729,34 +727,17 @@ export default async function handler(req, res) {
                 const pName = providerMap[provider];
                 const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
                 
-                const originBtn = document.getElementById('origin_btn_' + provider);
-                if (originBtn) {
-                  originBtn.click();
-                  return; 
-                }
-
+                // 숨겨진 원본 DOM 클릭 (.click) 제거 -> 팝업 차단의 주원인 해결
+                // 카페24 전역 함수가 존재하면 안전하게 직접 호출 (팝업차단 우회)
                 if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
                   window.MemberAction.snsLogin(cafe24Provider, rawUrl);
                 } else {
-                  let iframeSuccess = false;
-                  if (provider !== 'google') {
-                    try {
-                      const iframe = document.getElementById('ykinas_proxy_iframe');
-                      if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
-                        iframe.contentWindow.MemberAction.snsLogin(cafe24Provider, rawUrl);
-                        iframeSuccess = true;
-                      }
-                    } catch (iframeErr) {
-                      console.warn('[YKINAS] Iframe access restricted.');
-                    }
-                  }
-
-                  if (!iframeSuccess) {
-                    const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
-                    const snsPopup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
-                    if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
-                      alert('팝업이 차단되었습니다. 브라우저 주소창 우측에서 팝업 차단을 해제해주세요.');
-                    }
+                  // Fallback: 직접 팝업 호출 (클릭 이벤트 내부이므로 모바일에서 허용됨)
+                  const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
+                  const snsPopup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
+                  
+                  if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
+                    alert('팝업이 차단되었습니다. 모바일 브라우저 설정에서 팝업 차단을 해제해주세요.');
                   }
                 }
               } catch (error) {
@@ -770,7 +751,6 @@ export default async function handler(req, res) {
               if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
             });
 
-            // [핵심 해결] 드로어 SNS 렌더링 무결성 스캐너 (Mode B) - querySelector 통일 및 Iframe 무한 방어
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               
@@ -791,7 +771,7 @@ export default async function handler(req, res) {
                     if (isHidden) {
                       shadowBtn.style.display = 'none';
                     } else {
-                      shadowBtn.style.display = 'flex'; // 강제 flex 주입
+                      shadowBtn.style.display = 'flex';
                       if (key !== 'kakao') gridActiveCount++;
                     }
                   } else if (shadowBtn && !originEl) {
@@ -801,7 +781,6 @@ export default async function handler(req, res) {
 
                 const gridContainer = ykinasShadowRoot.querySelector('#b_sns_grid_container');
                 if (gridContainer) {
-                  // Tailwind grid 속성이 우선 적용되도록 강제 주입
                   gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
                 }
               };
@@ -811,7 +790,6 @@ export default async function handler(req, res) {
 
               const iframeNode = document.getElementById('ykinas_proxy_iframe');
               if (iframeNode) {
-                // Iframe의 경우 Load 시점 스캔 후 MutationObserver로 비동기 스크립트 대응
                 iframeNode.addEventListener('load', () => {
                   try { 
                     const iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
@@ -824,7 +802,6 @@ export default async function handler(req, res) {
               }
             };
             
-            // 로컬 폼 기준 초기 폴링 방어
             syncRealtimeSnsVisibility();
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
