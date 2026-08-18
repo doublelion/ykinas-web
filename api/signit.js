@@ -62,7 +62,6 @@ export default async function handler(req, res) {
         // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
-            // 원본 폼 숨김
             const originWrap = document.getElementById('cafe24-original-wrap');
             if (originWrap) originWrap.style.display = 'none';
 
@@ -74,55 +73,37 @@ export default async function handler(req, res) {
               document.head.appendChild(tailwind);
             }
 
-            // 대표님의 UI + CSS 원본 100% 반영
             const fullScreenHTML = \`
               <style>
-                .minimal-input {
-                  border: none !important;
-                  border-bottom: 1px solid #e5e5e5 !important;
-                  border-radius: 0 !important;
-                  background-color: transparent !important;
-                  box-shadow: none !important;
-                  outline: none !important;
-                  transition: border-bottom-color 0.3s ease !important;
-                }
-                .minimal-input:focus {
-                  border-bottom-color: #111 !important;
-                }
-                .floating-label {
-                  position: absolute;
-                  left: 0;
-                  top: 10px;
-                  font-size: 0.875rem;
-                  color: #9ca3af;
-                  transition: transform 0.3s ease, color 0.3s ease;
-                  pointer-events: none;
-                }
-                .minimal-input:focus~.floating-label,
-                .minimal-input:not(:placeholder-shown)~.floating-label {
-                  transform: translateY(-120%) scale(0.85);
-                  color: #111;
-                  transform-origin: left top;
-                }
-                .fade-in {
-                  animation: fadeIn 0.4s ease-in-out forwards;
-                }
-                @keyframes fadeIn {
-                  from { opacity: 0; }
-                  to { opacity: 1; }
-                }
-                .mode-hidden {
-                  display: none !important;
-                }
+                .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; }
+                .minimal-input:focus { border-bottom-color: #111 !important; }
+                .floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
+                .minimal-input:focus~.floating-label, .minimal-input:not(:placeholder-shown)~.floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
+                .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                .mode-hidden { display: none !important; }
+                .custom-scrollbar-02::-webkit-scrollbar { width: 4px; }
+                .custom-scrollbar-02::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
+                
+                /* SNS 버튼 컬러 변수 */
+                .bg-kakao { background-color: #FEE500; color: #191919; }
+                .bg-naver { background-color: #03C75A; color: #ffffff; }
+                .bg-facebook { background-color: #1877F2; color: #ffffff; }
+                .bg-line { background-color: #06C755; color: #ffffff; }
+                .bg-apple { background-color: #000000; color: #ffffff; }
+                .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
+                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; }
+                .sns-grid-btn:hover { opacity: 0.85; }
               </style>
 
-              <div class="fixed inset-0 z-[99999] flex bg-[#faf9f8] overflow-hidden fade-in" style="font-family: 'Pretendard', sans-serif;">
+              <div class="fixed inset-0 z-[99999] flex bg-[#faf9f8] overflow-hidden fade-in" style="font-family: 'Pretendard', 'Noto Sans KR', sans-serif;">
+                <!-- 좌측 에디토리얼 영역 -->
                 <div class="hidden lg:block lg:w-7/12 relative bg-gray-900">
-                  <img src="/web/upload/hero_img_02.png" alt="Brand Editorial Campaign" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
+                  <img src="/web/upload/hero_img_02.png" alt="Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
                   <div class="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
-                  <a href="javascript:void(0);" onclick="closeLoginStandalone(event)" class="absolute top-10 left-10 !bg-transparent text-white hover:opacity-70 transition-opacity flex items-center gap-2 z-10 cursor-pointer">
+                  <button type="button" id="a_btn_back_shop" class="absolute top-10 left-10 !bg-transparent text-white hover:opacity-70 transition-opacity flex items-center gap-2 z-10 cursor-pointer">
                     <span class="text-xs tracking-widest uppercase font-medium">← Back to Shop</span>
-                  </a>
+                  </button>
                   <div class="absolute bottom-20 left-16 text-white max-w-lg">
                     <span class="text-xs uppercase tracking-[0.3em] opacity-80 mb-2 block font-sans">Exclusive Membership</span>
                     <h2 class="text-5xl font-serif tracking-wide mb-4 leading-tight">Breathtaking<br>Clarity.</h2>
@@ -130,10 +111,9 @@ export default async function handler(req, res) {
                   </div>
                 </div>
 
+                <!-- 우측 폼 패널 -->
                 <div class="w-full lg:w-5/12 bg-white shadow-2xl z-10 flex flex-col relative custom-scrollbar-02 overflow-y-auto" id="standalone_panel">
-                  <button type="button" onclick="closeLoginStandalone(event)" class="absolute top-6 right-6 p-2 text-gray-400 !bg-transparent hover:bg-gray-100 hover:text-black rounded-full transition-colors z-[100] text-xl">
-                    ✕
-                  </button>
+                  <button type="button" id="a_btn_close" class="absolute top-6 right-6 p-2 text-gray-400 !bg-transparent hover:bg-gray-100 hover:text-black rounded-full transition-colors z-[100] text-xl">✕</button>
 
                   <div class="px-8 sm:px-14 pt-24 pb-12 flex-1 flex flex-col justify-center">
                     <div class="w-full max-w-sm mx-auto relative">
@@ -145,35 +125,61 @@ export default async function handler(req, res) {
                           <p class="text-sm text-gray-500">SNS 간편 로그인 또는 아이디로 접속하세요.</p>
                         </div>
 
-                        <div class="space-y-3 mb-8">
-                          <button type="button" onclick="triggerSNS('kakao')" class="w-full flex items-center justify-center py-3.5 bg-[#FEE500] text-[#191919] text-sm font-semibold rounded transition-opacity hover:opacity-90 shadow-sm">
+                        <!-- SNS 연동 영역 (동기화) -->
+                        <div class="space-y-2 mb-6">
+                          <button type="button" id="a_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity" style="display:none;">
+                            <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
                             카카오로 시작하기
                           </button>
-                          <div class="flex gap-2">
-                            <button type="button" onclick="triggerSNS('naver')" class="flex-1 flex items-center justify-center py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
-                              네이버
+                          
+                          <div class="grid grid-cols-2 gap-2">
+                            <button type="button" id="a_sns_naver" class="sns-grid-btn bg-naver" style="display:none;">
+                              <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                             </button>
-                            <button type="button" onclick="triggerSNS('google')" class="flex-1 flex items-center justify-center py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded hover:bg-gray-50 transition-colors">
+                            <button type="button" id="a_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" style="display:none;">
+                              <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                               구글
+                            </button>
+                            <button type="button" id="a_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
+                              <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
+                              Apple
+                            </button>
+                            <button type="button" id="a_sns_facebook" class="sns-grid-btn bg-facebook" style="display:none;">
+                              <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
+                              Facebook
+                            </button>
+                            <button type="button" id="a_sns_line" class="sns-grid-btn bg-line" style="display:none;">
+                              <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
+                            </button>
+                            <button type="button" id="a_sns_yahoojp" class="sns-grid-btn bg-yahoojp" style="display:none;">
+                              <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
                             </button>
                           </div>
                         </div>
 
                         <div class="relative flex items-center py-4">
                           <div class="flex-grow border-t border-gray-200"></div>
-                          <span class="flex-shrink-0 mx-4 text-xs text-gray-400">또는 일반 아이디 로그인</span>
+                          <span class="flex-shrink-0 mx-4 text-[11px] text-gray-400">또는 아이디로 로그인</span>
                           <div class="flex-grow border-t border-gray-200"></div>
                         </div>
 
-                        <div class="space-y-6 mt-6">
+                        <div class="space-y-4 mt-5">
                           <div class="relative w-full">
-                            <input type="text" id="custom_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" /><label class="floating-label" for="custom_id">아이디</label>
+                            <input type="text" id="a_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                            <label class="floating-label">아이디</label>
                           </div>
                           <div class="relative w-full">
-                            <input type="password" id="custom_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" /><label class="floating-label" for="custom_pw">비밀번호</label>
-                            <button type="button" onclick="togglePassword('custom_pw')" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors p-0.5">👁</button>
+                            <input type="password" id="a_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
+                            <label class="floating-label">비밀번호</label>
+                            <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors p-0.5">👁</button>
                           </div>
-                          <button type="button" onclick="submitCustomLogin()" class="w-full py-4 bg-black text-white text-sm font-semibold tracking-widest hover:bg-gray-800 transition-colors mt-4 rounded shadow-md active:scale-[0.99] transform">로그인</button>
+                          <div class="flex items-center justify-between mt-2 mb-4">
+                            <label class="flex items-center cursor-pointer group">
+                              <input type="checkbox" id="a_save_id" class="w-3.5 h-3.5 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
+                              <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
+                            </label>
+                          </div>
+                          <button type="button" id="a_btn_submit_login" class="w-full py-4 bg-black text-white text-sm font-semibold tracking-widest hover:bg-gray-800 transition-colors mt-4 rounded shadow-md active:scale-[0.99] transform">로그인</button>
                         </div>
 
                         <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500">
@@ -183,7 +189,7 @@ export default async function handler(req, res) {
                         </div>
 
                         <div class="mt-12 text-center border-t border-gray-100 pt-6 pb-[calc(2rem+env(safe-area-inset-bottom))] lg:pb-6">
-                          <button type="button" onclick="redirectToGuestMode()" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors active:opacity-70">
+                          <button type="button" id="a_btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors active:opacity-70">
                             비회원으로 주문하셨나요?
                           </button>
                         </div>
@@ -198,20 +204,23 @@ export default async function handler(req, res) {
 
                         <div class="space-y-6 mt-6">
                           <div class="relative w-full">
-                            <input type="text" id="custom_order_name" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" /><label class="floating-label">주문자명</label>
+                            <input type="text" id="a_order_name" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                            <label class="floating-label">주문자명</label>
                           </div>
                           <div class="relative w-full">
-                            <input type="text" id="custom_order_id" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" /><label class="floating-label">주문번호 (하이픈 포함)</label>
+                            <input type="text" id="a_order_id" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                            <label class="floating-label">주문번호 (하이픈 포함)</label>
                           </div>
                           <div class="relative w-full">
-                            <input type="password" id="custom_order_pw" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" /><label class="floating-label">주문 비밀번호</label>
-                            <button type="button" onclick="togglePassword('custom_order_pw')" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">👁</button>
+                            <input type="password" id="a_order_pw" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
+                            <label class="floating-label">주문 비밀번호</label>
+                            <button type="button" id="a_btn_toggle_order_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">👁</button>
                           </div>
-                          <button type="button" onclick="submitCustomGuest()" class="w-full py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors mt-4 rounded shadow-sm">주문 추적하기</button>
+                          <button type="button" id="a_btn_submit_guest" class="w-full py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors mt-4 rounded shadow-sm">주문 추적하기</button>
                         </div>
 
                         <div class="mt-12 text-center border-t border-gray-100 pt-6">
-                          <button type="button" onclick="switchMode('login')" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">회원 로그인으로 돌아가기</button>
+                          <button type="button" id="a_btn_goto_login" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">회원 로그인으로 돌아가기</button>
                         </div>
                       </div>
 
@@ -224,28 +233,11 @@ export default async function handler(req, res) {
             document.body.insertAdjacentHTML('beforeend', fullScreenHTML);
 
             // ==========================================
-            // 인라인 이벤트 바인딩 전역 객체 (window) 등록
+            // 로직 바인딩 및 라우팅 컨트롤
             // ==========================================
-            window.redirectToGuestMode = function() {
-              window.location.replace('/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html'));
-            };
-
-            window.switchMode = function(mode) {
-              const loginMode = document.getElementById('ui-login-mode');
-              const guestMode = document.getElementById('ui-guest-mode');
-              const panel = document.getElementById('standalone_panel');
-
-              if (mode === 'guest') {
-                if (loginMode) loginMode.classList.add('mode-hidden');
-                if (guestMode) guestMode.classList.remove('mode-hidden');
-              } else {
-                if (guestMode) guestMode.classList.add('mode-hidden');
-                if (loginMode) loginMode.classList.remove('mode-hidden');
-              }
-              if (panel) panel.scrollTop = 0;
-            };
-
-            window.closeLoginStandalone = function(e) {
+            
+            // 닫기 및 뒤로가기
+            const closeHandler = (e) => {
               if (e) e.preventDefault();
               if (document.referrer && document.referrer.includes(location.host)) {
                 window.history.back();
@@ -253,80 +245,112 @@ export default async function handler(req, res) {
                 window.location.href = '/';
               }
             };
+            document.getElementById('a_btn_close').addEventListener('click', closeHandler);
+            document.getElementById('a_btn_back_shop').addEventListener('click', closeHandler);
 
-            window.triggerSNS = function(type) {
-              const originSnsBtn = document.getElementById('origin_btn_' + type);
-              if (originSnsBtn) originSnsBtn.click();
+            // 모드 전환
+            const switchMode = (mode) => {
+              const loginMode = document.getElementById('ui-login-mode');
+              const guestMode = document.getElementById('ui-guest-mode');
+              const panel = document.getElementById('standalone_panel');
+              if (mode === 'guest') {
+                loginMode.classList.add('mode-hidden');
+                guestMode.classList.remove('mode-hidden');
+              } else {
+                guestMode.classList.add('mode-hidden');
+                loginMode.classList.remove('mode-hidden');
+              }
+              if (panel) panel.scrollTop = 0;
             };
 
-            window.submitCustomLogin = function() {
-              const customIdVal = document.getElementById('custom_id').value.trim();
-              const customPwVal = document.getElementById('custom_pw').value.trim();
-              if (!customIdVal || !customPwVal) return alert("아이디와 비밀번호를 모두 입력해주세요.");
+            // 비회원 라우팅 리다이렉트 (강제 세션 분기)
+            document.getElementById('a_btn_goto_guest').addEventListener('click', () => {
+              window.location.replace('/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html'));
+            });
+            document.getElementById('a_btn_goto_login').addEventListener('click', () => {
+              window.location.replace('/member/login.html');
+            });
 
-              const originWrap = document.getElementById('cafe24-original-wrap');
-              if (!originWrap) return;
-              const originId = originWrap.querySelector('input[name="member_id"]');
-              const originPw = originWrap.querySelector('input[name="member_passwd"]');
-              const originBtn = document.getElementById('origin_btn_login');
+            // 비밀번호 토글
+            document.getElementById('a_btn_toggle_pw').addEventListener('click', () => {
+              const pw = document.getElementById('a_pw');
+              pw.type = pw.type === 'password' ? 'text' : 'password';
+            });
+            document.getElementById('a_btn_toggle_order_pw').addEventListener('click', () => {
+              const opw = document.getElementById('a_order_pw');
+              opw.type = opw.type === 'password' ? 'text' : 'password';
+            });
 
-              if (originId && originPw && originBtn) {
-                originId.value = customIdVal;
-                originPw.value = customPwVal;
-                originBtn.click();
+            // 원본 폼 데이터 서밋 통신
+            const submitLogin = () => {
+              const idVal = document.getElementById('a_id').value.trim();
+              const pwVal = document.getElementById('a_pw').value.trim();
+              if (!idVal || !pwVal) return alert("아이디와 비밀번호를 모두 입력해주세요.");
+              const wrap = document.getElementById('cafe24-original-wrap');
+              if (wrap) {
+                wrap.querySelector('input[name="member_id"]').value = idVal;
+                wrap.querySelector('input[name="member_passwd"]').value = pwVal;
+                document.getElementById('origin_btn_login')?.click();
               }
             };
+            document.getElementById('a_btn_submit_login').addEventListener('click', submitLogin);
+            document.getElementById('a_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitLogin(); });
 
-            window.submitCustomGuest = function() {
-              const customNameVal = document.getElementById('custom_order_name').value.trim();
-              const customIdVal = document.getElementById('custom_order_id').value.trim();
-              const customPwVal = document.getElementById('custom_order_pw').value.trim();
-              if (!customNameVal || !customIdVal || !customPwVal) return alert("주문자 정보를 모두 입력해주세요.");
-
-              const originWrap = document.getElementById('cafe24-original-wrap');
-              if (!originWrap) return;
-              const originName = originWrap.querySelector('input[name="order_name"]');
-              const originId = originWrap.querySelector('input[name="order_id"]');
-              const originPw = originWrap.querySelector('input[name="order_password"]');
-              const originBtn = document.getElementById('origin_btn_order_history');
-
-              if (originName && originId && originPw && originBtn) {
-                originName.value = customNameVal;
-                originId.value = customIdVal;
-                originPw.value = customPwVal;
-                originBtn.click();
+            const submitGuest = () => {
+              const nameVal = document.getElementById('a_order_name').value.trim();
+              const idVal = document.getElementById('a_order_id').value.trim();
+              const pwVal = document.getElementById('a_order_pw').value.trim();
+              if (!nameVal || !idVal || !pwVal) return alert("주문자 정보를 모두 입력해주세요.");
+              const wrap = document.getElementById('cafe24-original-wrap');
+              if (wrap) {
+                wrap.querySelector('input[name="order_name"]').value = nameVal;
+                wrap.querySelector('input[name="order_id"]').value = idVal;
+                wrap.querySelector('input[name="order_password"]').value = pwVal;
+                document.getElementById('origin_btn_order_history')?.click();
               }
             };
+            document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
+            document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            window.togglePassword = function(inputId) {
-              const pwInput = document.getElementById(inputId);
-              pwInput.type = pwInput.type === 'password' ? 'text' : 'password';
+            // [핵심] SNS 버튼 표시 동기화 (카페24 관리자 설정과 일치)
+            const syncSnsA = () => {
+              const snsMap = { kakao: '.btnKakao', naver: '.btnNaver', google: '.btnGoogle', apple: '.btnApple', facebook: '.btnFacebook', line: '.btnLine', yahoojp: '.yahoojp' };
+              const originWrap = document.getElementById('cafe24-original-wrap');
+              if (!originWrap) return;
+              
+              Object.entries(snsMap).forEach(([key, selector]) => {
+                const originEl = originWrap.querySelector(selector);
+                const customBtn = document.getElementById('a_sns_' + key);
+                if (customBtn) {
+                  // 원본이 없거나 숨김 처리되어 있으면 커스텀 버튼도 숨김
+                  if (!originEl || originEl.classList.contains('displaynone') || window.getComputedStyle(originEl).display === 'none') {
+                    customBtn.style.display = 'none';
+                  } else {
+                    customBtn.style.display = '';
+                  }
+                }
+              });
             };
+            syncSnsA(); // 렌더링 직후 1회 동기화
 
-            // Enter 키 이벤트 리스너 바인딩
-            const customPwEl = document.getElementById('custom_pw');
-            if(customPwEl) {
-              customPwEl.addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') window.submitCustomLogin();
-              });
-            }
+            // SNS 로그인 서밋 통신
+            ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
+              const btn = document.getElementById('a_sns_' + provider);
+              if (btn) {
+                btn.addEventListener('click', () => {
+                  const originBtn = document.getElementById('origin_btn_' + provider);
+                  if (originBtn) originBtn.click();
+                });
+              }
+            });
 
-            const customOrderPwEl = document.getElementById('custom_order_pw');
-            if(customOrderPwEl) {
-              customOrderPwEl.addEventListener('keypress', function (e) {
-                if (e.key === 'Enter') window.submitCustomGuest();
-              });
-            }
-
-            // 라우팅 초기화 실행
+            // 라우팅 초기화 평가
             const searchStr = window.location.search;
-            const urlParams = new URLSearchParams(searchStr);
-            const returnUrl = urlParams.get('returnUrl') || '';
-
+            const returnUrl = new URLSearchParams(searchStr).get('returnUrl') || '';
             if (searchStr.includes('noMemberOrder') || returnUrl.includes('order/list.html')) {
-              window.switchMode('guest');
+              switchMode('guest');
             } else {
-              window.switchMode('login');
+              switchMode('login');
             }
           }
 
@@ -338,7 +362,7 @@ export default async function handler(req, res) {
 
         } else {
           // ==========================================
-          // [MODE B] 글로벌 드로어 (Global Login Drawer) - 기존 코드 유지
+          // [MODE B] 글로벌 드로어 (Global Login Drawer) - 기존 로직 유지
           // ==========================================
           document.addEventListener('click', function(e) {
             const target = e.target.closest('a');
@@ -410,6 +434,7 @@ export default async function handler(req, res) {
             host.id = 'ykinas-global-drawer-root';
             host.style.cssText = 'position: relative; z-index: 2147483647;'; 
             document.body.appendChild(host);
+
             shadowRoot = host.attachShadow({ mode: 'closed' });
 
             shadowRoot.innerHTML = \`
@@ -439,42 +464,85 @@ export default async function handler(req, res) {
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; }
                 .sns-grid-btn:hover { opacity: 0.85; }
-                .bg-btn-primary { background-color: #111111; color: #ffffff; }
-                .bg-btn-primary:hover { background-color: #333333; }
                 .displaynone { display: none !important; }
               </style>
-              <!-- (이전 답변의 드로어 HTML 내용 유지) -->
+
               <div id="global-login-drawer">
                 <div id="login-backdrop"></div>
                 <div id="login-panel" class="custom-scrollbar-02">
-                  <button type="button" id="btn_close_drawer" class="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors z-50">✕</button>
+                  <button type="button" id="btn_close_drawer" class="absolute top-6 right-6 text-gray-400 hover:text-black transition-colors z-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                  
                   <div class="px-8 sm:px-10 py-16 flex-1 flex flex-col justify-center drawer-content-wrapper">
                     <div id="ui-login-mode">
                       <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
                       <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
+                      
                       <div class="space-y-2 mb-6">
-                        <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity {$display_kakao|display}">카카오로 시작하기</button>
+                        <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
+                          <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
+                          카카오로 시작하기
+                        </button>
+                        
                         <div class="grid grid-cols-2 gap-2">
-                          <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver {$display_naver|display}">네이버</button>
-                          <button type="button" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 {$display_google|display}">구글</button>
+                          <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver">
+                            <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
+                          </button>
+                          <button type="button" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
+                            <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+                            구글
+                          </button>
+                          <button type="button" id="btn_sns_apple" class="sns-grid-btn bg-apple">
+                            <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
+                            Apple
+                          </button>
+                          <button type="button" id="btn_sns_facebook" class="sns-grid-btn bg-facebook">
+                            <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
+                            Facebook
+                          </button>
+                          <button type="button" id="btn_sns_line" class="sns-grid-btn bg-line">
+                            <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
+                          </button>
+                          <button type="button" id="btn_sns_yahoojp" class="sns-grid-btn bg-yahoojp">
+                            <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
+                          </button>
                         </div>
                       </div>
+
                       <div class="relative flex items-center py-2">
                         <div class="flex-grow border-t border-gray-100"></div>
                         <span class="flex-shrink-0 mx-4 text-[11px] text-gray-400">또는 아이디로 로그인</span>
                         <div class="flex-grow border-t border-gray-100"></div>
                       </div>
+                      
                       <div class="space-y-4 mt-5">
                         <div class="relative w-full">
-                          <input type="text" id="s_id" placeholder=" " required class="minimal-input w-full py-2.5 text-sm text-gray-900" /><label class="floating-label">아이디</label>
+                          <input type="text" id="s_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                          <label class="floating-label">아이디</label>
                         </div>
                         <div class="relative w-full">
-                          <input type="password" id="s_pw" placeholder=" " required class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" /><label class="floating-label">비밀번호</label>
-                          <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">👁</button>
+                          <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
+                          <label class="floating-label">비밀번호</label>
+                          <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          </button>
+                        </div>
+                        <div class="flex items-center justify-between mt-2 mb-4">
+                          <label class="flex items-center cursor-pointer group">
+                            <input type="checkbox" id="s_save_id" class="w-3.5 h-3.5 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
+                            <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
+                          </label>
                         </div>
                         <button type="button" id="btn_submit_login" class="w-full py-3.5 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded mt-4">로그인</button>
                       </div>
+
                       <div class="flex justify-center items-center space-x-4 mt-6 text-[11px] text-gray-400">
+                        <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
+                        <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
                         <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black transition-colors">회원가입</a>
                       </div>
                     </div>
@@ -487,6 +555,16 @@ export default async function handler(req, res) {
             backdrop = shadowRoot.querySelector('#login-backdrop');
             panel = shadowRoot.querySelector('#login-panel');
 
+            if (skinPrefix) {
+              const allLinks = shadowRoot.querySelectorAll('a');
+              allLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href && href.startsWith('/')) {
+                  link.setAttribute('href', skinPrefix + href);
+                }
+              });
+            }
+
             shadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
             backdrop.addEventListener('click', window.YkinasLogin.close);
 
@@ -498,7 +576,10 @@ export default async function handler(req, res) {
             shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
                const idVal = shadowRoot.querySelector('#s_id').value.trim();
                const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
-               if (!idVal || !pwVal) return alert("아이디와 비밀번호를 모두 입력해주세요.");
+               if (!idVal || !pwVal) { 
+                 alert("아이디와 비밀번호를 모두 입력해주세요."); 
+                 return; 
+               }
                
                const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
                if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
@@ -509,27 +590,123 @@ export default async function handler(req, res) {
                  try {
                    const iframe = document.getElementById('ykinas_proxy_iframe');
                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                   iframeDoc.querySelector('input[name="member_id"]').value = idVal;
-                   iframeDoc.querySelector('input[name="member_passwd"]').value = pwVal;
-                   const form = iframeDoc.querySelector('input[name="member_id"]').closest('form');
-                   form.target = "_parent"; 
-                   let retInput = form.querySelector('input[name="returnUrl"]');
-                   if (!retInput) { retInput = iframeDoc.createElement('input'); retInput.type = 'hidden'; retInput.name = 'returnUrl'; form.appendChild(retInput); }
-                   retInput.value = window.location.pathname + window.location.search;
-                   iframeDoc.getElementById('origin_btn_login').click();
+                   const ifId = iframeDoc.querySelector('input[name="member_id"]');
+                   const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
+                   const ifBtn = iframeDoc.getElementById('origin_btn_login');
+
+                   if (ifId && ifPw && ifBtn) {
+                     ifId.value = idVal;
+                     ifPw.value = pwVal;
+                     
+                     const form = ifId.closest('form');
+                     if (form) {
+                       form.target = "_parent"; 
+                       let retInput = form.querySelector('input[name="returnUrl"]');
+                       if (!retInput) {
+                         retInput = iframeDoc.createElement('input');
+                         retInput.type = 'hidden';
+                         retInput.name = 'returnUrl';
+                         form.appendChild(retInput);
+                       }
+                       retInput.value = window.location.pathname + window.location.search;
+                     }
+                     ifBtn.click();
+                   } else {
+                     throw new Error("Iframe form not found");
+                   }
                  } catch (e) {
                    window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
                  }
                }
             });
 
-            ['kakao', 'naver', 'google'].forEach(provider => {
-              const btn = shadowRoot.querySelector('#btn_sns_' + provider);
-              if (btn) btn.addEventListener('click', () => {
+            function handleSnsLogin(provider) {
+              try {
+                const rawUrl = window.location.pathname + window.location.search;
+                const safeReturnUrl = encodeURIComponent(decodeURIComponent(rawUrl));
+                
+                const providerMap = {
+                  kakao: 'Kakao', naver: 'Naver', google: 'Google',
+                  facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp'
+                };
+                const pName = providerMap[provider];
+                const cafe24Provider = provider === 'google' ? 'googleplus' : provider;
+                
                 const originBtn = document.getElementById('origin_btn_' + provider);
-                if (originBtn) originBtn.click();
-              });
+                if (originBtn) {
+                  originBtn.click();
+                  return; 
+                }
+
+                if (window.MemberAction && typeof window.MemberAction.snsLogin === 'function') {
+                  window.MemberAction.snsLogin(cafe24Provider, rawUrl);
+                } else {
+                  let iframeSuccess = false;
+                  if (provider !== 'google') {
+                    try {
+                      const iframe = document.getElementById('ykinas_proxy_iframe');
+                      if (iframe && iframe.contentWindow && typeof iframe.contentWindow.MemberAction.snsLogin === 'function') {
+                        iframe.contentWindow.MemberAction.snsLogin(cafe24Provider, rawUrl);
+                        iframeSuccess = true;
+                      }
+                    } catch (iframeErr) {
+                      console.warn('[YKINAS] Iframe access restricted.');
+                    }
+                  }
+
+                  if (!iframeSuccess) {
+                    const popupUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
+                    const snsPopup = window.open(popupUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
+                    if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
+                      alert('팝업이 차단되었습니다. 브라우저 주소창 우측에서 팝업 차단을 해제해주세요.');
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error('[YKINAS SNS Login Error]:', error);
+                alert('SNS 로그인 초기화 중 오류가 발생했습니다.');
+              } finally {
+                window.YkinasLogin.close();
+              }
+            }
+
+            ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
+              const btn = shadowRoot.querySelector('#btn_sns_' + provider);
+              if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
             });
+
+            function syncRealtimeSnsVisibility() {
+              const snsMap = {
+                kakao: '.btnKakao', naver: '.btnNaver', google: '.btnGoogle',
+                apple: '.btnApple', facebook: '.btnFacebook', line: '.btnLine', yahoojp: '.yahoojp'
+              };
+              
+              const syncDisplay = (sourceDoc) => {
+                if (!sourceDoc) return;
+                Object.entries(snsMap).forEach(([key, selector]) => {
+                  const originEl = sourceDoc.querySelector(selector);
+                  const shadowBtn = shadowRoot.querySelector('#btn_sns_' + key);
+                  if (shadowBtn && originEl) {
+                    if (originEl.classList.contains('displaynone') || window.getComputedStyle(originEl).display === 'none') {
+                      shadowBtn.style.display = 'none';
+                    } else {
+                      shadowBtn.style.display = '';
+                    }
+                  }
+                });
+              };
+
+              const localWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
+              if (localWrap) syncDisplay(localWrap);
+
+              const iframeNode = document.getElementById('ykinas_proxy_iframe');
+              if (iframeNode) {
+                iframeNode.addEventListener('load', () => {
+                  try { syncDisplay(iframeNode.contentDocument || iframeNode.contentWindow.document); } catch (e) {}
+                });
+              }
+            }
+            syncRealtimeSnsVisibility();
           }
 
           if (document.readyState === 'loading') {
