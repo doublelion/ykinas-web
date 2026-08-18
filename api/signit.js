@@ -578,6 +578,12 @@ export default async function handler(req, res) {
                 .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
                 .bg-kakao { background-color: #FEE500; color: #191919; }
                 .bg-naver { background-color: #03C75A; color: #ffffff; }
+                .bg-google { background-color: #F8F9FA; color: #3C4043; }
+                .bg-facebook { background-color: #1877F2; color: #ffffff; }
+                .bg-line { background-color: #06C755; color: #ffffff; }
+                .bg-apple { background-color: #000000; color: #ffffff; }
+                .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
+                .bg-google:hover { background-color: #F1F3F4; opacity: 1; } /* 구글 전용 hover */
                 .bg-facebook { background-color: #1877F2; color: #ffffff; }
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
