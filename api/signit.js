@@ -7,7 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    // [백엔드 최적화] 글로벌 Edge CDN 캐싱으로 응답속도 극대화
+    // [백엔드 최적화] 글로벌 Edge CDN 캐싱으로 콜드스타트 완벽 제거
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400');
@@ -55,6 +55,21 @@ export default async function handler(req, res) {
         
         if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
+
+        // [핵심 프론트엔드 최적화] 전역 Shadow Root 및 Alert Proxy 선언
+        // 카페24 네이티브 폼 유효성 검사 실패 시 발생하는 alert()을 가로채서 로딩 오버레이를 즉각 해제합니다.
+        let ykinasShadowRoot = null;
+        const originalAlert = window.alert;
+        window.alert = function(msg) {
+          const globalLoader = document.getElementById('ykinas-global-loader');
+          if (globalLoader) globalLoader.style.display = 'none';
+
+          if (ykinasShadowRoot) {
+            const drawerLoader = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
+            if (drawerLoader) drawerLoader.style.display = 'none';
+          }
+          originalAlert(msg);
+        };
 
         const currentPath = window.location.pathname;
         const isLoginPage = currentPath.includes('/member/login.html');
@@ -138,6 +153,7 @@ export default async function handler(req, res) {
 
                         <!-- SNS 연동 영역 -->
                         <div class="space-y-2 mb-6">
+                          <!-- 카카오, 네이버, 구글 기본 노출 -->
                           <button type="button" id="a_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
                             카카오로 시작하기
@@ -251,14 +267,13 @@ export default async function handler(req, res) {
               const loader = document.getElementById('ykinas-global-loader');
               if (loader) loader.style.display = 'flex';
             };
-            
             const hideLoader = () => {
               const loader = document.getElementById('ykinas-global-loader');
               if (loader) loader.style.display = 'none';
             };
 
             const closeHandler = (e) => {
-              hideLoader(); // 닫기 누르면 무조건 로딩 해제 (무한 로딩 방지)
+              hideLoader(); 
               if (e) e.preventDefault();
               if (document.referrer && document.referrer.includes(location.host)) {
                 window.history.back();
@@ -301,6 +316,7 @@ export default async function handler(req, res) {
               opw.type = opw.type === 'password' ? 'text' : 'password';
             });
 
+            // 로그인 및 조회 서밋
             const submitLogin = () => {
               const idVal = document.getElementById('a_id').value.trim();
               const pwVal = document.getElementById('a_pw').value.trim();
@@ -333,17 +349,19 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            // [핵심] SNS 렌더링 무결성: body 전체 감지 및 글로벌 쿼리
+            // [핵심] SNS 렌더링 동기화 무결성 확보 로직 (MutationObserver + body 감지)
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
+              const wrapObj = document.getElementById('cafe24-original-wrap');
+              if (!wrapObj) return;
+              
               let gridActiveCount = 0;
 
               snsProviders.forEach(key => {
-                // 레이스 컨디션 방지를 위해 문서 전체(document) 기준으로 스캔
-                let originEl = document.getElementById('origin_btn_' + key);
+                let originEl = wrapObj.querySelector('#origin_btn_' + key);
                 if (!originEl) {
                   const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
-                  originEl = document.querySelector(className);
+                  originEl = wrapObj.querySelector(className);
                 }
 
                 const customBtn = document.getElementById('a_sns_' + key);
@@ -355,6 +373,8 @@ export default async function handler(req, res) {
                     customBtn.style.display = '';
                     if (key !== 'kakao') gridActiveCount++;
                   }
+                } else if (customBtn && !originEl) {
+                  customBtn.style.display = 'none'; 
                 }
               });
 
@@ -367,11 +387,13 @@ export default async function handler(req, res) {
             syncSnsA();
             window.addEventListener('load', syncSnsA);
 
-            // document.body를 관찰하여 카페24 JS 렌더링 지연 및 동적 변경 완벽 대응
-            const observer = new MutationObserver(() => syncSnsA());
-            observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
+            const observerTarget = document.getElementById('cafe24-original-wrap');
+            if (observerTarget) {
+              const observer = new MutationObserver(() => syncSnsA());
+              observer.observe(observerTarget, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
+            }
 
-            // [핵심] SNS는 팝업 방식이므로 무한 로딩 방지를 위해 showLoader() 호출 제거
+            // SNS 로그인 (팝업이므로 로딩 오버레이 제외)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = document.getElementById('a_sns_' + provider);
               if (btn) {
@@ -433,8 +455,8 @@ export default async function handler(req, res) {
           let isInitialized = false;
 
           const hideDrawerLoader = () => {
-            if (shadowRoot) {
-              const loader = shadowRoot.querySelector('#ykinas-drawer-loader');
+            if (ykinasShadowRoot) {
+              const loader = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
               if (loader) loader.style.display = 'none';
             }
           };
@@ -452,7 +474,7 @@ export default async function handler(req, res) {
               }
             },
             close: function() {
-              hideDrawerLoader(); // 드로어 닫힐 때 로딩 초기화
+              hideDrawerLoader(); 
               if (drawer) {
                 backdrop.classList.remove('is-open');
                 panel.classList.remove('is-open');
@@ -488,9 +510,9 @@ export default async function handler(req, res) {
             host.style.cssText = 'position: relative; z-index: 2147483647;'; 
             document.body.appendChild(host);
 
-            shadowRoot = host.attachShadow({ mode: 'closed' });
+            ykinasShadowRoot = host.attachShadow({ mode: 'closed' });
 
-            shadowRoot.innerHTML = \`
+            ykinasShadowRoot.innerHTML = \`
               <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
               <style>
                 :host { all: initial; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; }
@@ -617,17 +639,16 @@ export default async function handler(req, res) {
               </div>
             \`;
 
-            drawer = shadowRoot.querySelector('#global-login-drawer');
-            backdrop = shadowRoot.querySelector('#login-backdrop');
-            panel = shadowRoot.querySelector('#login-panel');
+            ykinasShadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
+            ykinasShadowRoot.querySelector('#login-backdrop').addEventListener('click', window.YkinasLogin.close);
 
             const showDrawerLoader = () => {
-              const loader = shadowRoot.querySelector('#ykinas-drawer-loader');
+              const loader = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
               if (loader) loader.style.display = 'flex';
             };
 
             if (skinPrefix) {
-              const allLinks = shadowRoot.querySelectorAll('a');
+              const allLinks = ykinasShadowRoot.querySelectorAll('a');
               allLinks.forEach(link => {
                 const href = link.getAttribute('href');
                 if (href && href.startsWith('/')) {
@@ -636,17 +657,14 @@ export default async function handler(req, res) {
               });
             }
 
-            shadowRoot.querySelector('#btn_close_drawer').addEventListener('click', window.YkinasLogin.close);
-            backdrop.addEventListener('click', window.YkinasLogin.close);
-
-            shadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
-              const pw = shadowRoot.querySelector('#s_pw');
+            ykinasShadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
+              const pw = ykinasShadowRoot.querySelector('#s_pw');
               pw.type = pw.type === 'password' ? 'text' : 'password';
             });
 
-            shadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
-               const idVal = shadowRoot.querySelector('#s_id').value.trim();
-               const pwVal = shadowRoot.querySelector('#s_pw').value.trim();
+            ykinasShadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
+               const idVal = ykinasShadowRoot.querySelector('#s_id').value.trim();
+               const pwVal = ykinasShadowRoot.querySelector('#s_pw').value.trim();
                if (!idVal || !pwVal) { 
                  alert("아이디와 비밀번호를 모두 입력해주세요."); 
                  return; 
@@ -663,6 +681,12 @@ export default async function handler(req, res) {
                    showDrawerLoader();
                    const iframe = document.getElementById('ykinas_proxy_iframe');
                    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                   
+                   // Iframe 팝업 내부의 alert까지 가로채서 부모 객체 alert으로 연결 및 로딩 초기화
+                   iframe.contentWindow.alert = function(msg) {
+                     window.alert(msg);
+                   };
+
                    const ifId = iframeDoc.querySelector('input[name="member_id"]');
                    const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
                    const ifBtn = iframeDoc.getElementById('origin_btn_login');
@@ -693,7 +717,7 @@ export default async function handler(req, res) {
                }
             });
 
-            // [핵심] SNS는 팝업이므로 로딩 노출 제외
+            // [핵심] SNS는 팝업이므로 로딩 노출 제거
             function handleSnsLogin(provider) {
               try {
                 const rawUrl = window.location.pathname + window.location.search;
@@ -739,7 +763,7 @@ export default async function handler(req, res) {
             }
 
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
-              const btn = shadowRoot.querySelector('#btn_sns_' + provider);
+              const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) btn.addEventListener('click', () => handleSnsLogin(provider));
             });
 
@@ -758,7 +782,7 @@ export default async function handler(req, res) {
                     originEl = sourceDoc.querySelector(className);
                   }
                   
-                  const shadowBtn = shadowRoot.querySelector('#btn_sns_' + key);
+                  const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
                   if (shadowBtn && originEl) {
                     const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
                     if (isHidden) {
@@ -772,7 +796,7 @@ export default async function handler(req, res) {
                   }
                 });
 
-                const gridContainer = shadowRoot.querySelector('#b_sns_grid_container');
+                const gridContainer = ykinasShadowRoot.querySelector('#b_sns_grid_container');
                 if (gridContainer) {
                   gridContainer.style.display = gridActiveCount > 0 ? '' : 'none';
                 }
