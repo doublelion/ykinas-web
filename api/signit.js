@@ -56,7 +56,7 @@ export default async function handler(req, res) {
         if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        // [모바일 라우팅 보존 로직]
+        // 모바일 라우팅 보존 로직
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
 
         let ykinasShadowRoot = null;
@@ -75,13 +75,28 @@ export default async function handler(req, res) {
         const currentPath = window.location.pathname;
         const isLoginPage = currentPath.includes('/member/login.html');
 
+        // BFCache (뒤로가기) 복원 시 로더 안전 해제
+        window.addEventListener('pageshow', (e) => {
+          if (e.persisted) {
+            const loaderA = document.getElementById('ykinas-global-loader');
+            if (loaderA) loaderA.style.display = 'none';
+            if (ykinasShadowRoot) {
+              const loaderB = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
+              if (loaderB) loaderB.style.display = 'none';
+            }
+          }
+        });
+
         // ==========================================
         // [MODE A] 모바일 전용 정식 로그인 페이지 (login.html)
         // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
+            // [수정] display: none 대신 Visually Hidden 처리하여 Cafe24 내장 JS의 DOM 인식 오류 방지
             const originWrap = document.getElementById('cafe24-original-wrap');
-            if (originWrap) originWrap.style.display = 'none';
+            if (originWrap) {
+              originWrap.style.cssText = 'position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0;';
+            }
 
             if (!document.getElementById('ykinas-tailwind')) {
               const tailwind = document.createElement('link');
@@ -110,8 +125,7 @@ export default async function handler(req, res) {
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
                 
-                /* 팝업 오버레이 클릭잭킹을 위한 기본 포지션 설정 */
-                .sns-grid-btn { position: relative; display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; text-decoration: none; cursor: pointer; overflow: hidden; }
+                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; text-decoration: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
 
                 .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
@@ -146,7 +160,7 @@ export default async function handler(req, res) {
                   <div class="px-8 sm:px-14 pt-24 pb-12 flex-1 flex flex-col justify-center">
                     <div class="w-full max-w-sm mx-auto relative">
                       
-                      <!-- [핵심 뼈대 동기화] 카페24 순정 엔진이 의존하는 클래스명 완벽 매핑 -->
+                      <!-- 카페24 순정 엔진이 의존하는 클래스명 완벽 매핑 -->
                       <div id="ui-login-mode" class="fade-in member-login-wrap">
                         <fieldset class="form" style="border: none; padding: 0; margin: 0; width: 100%;">
                           <legend style="display: none;">회원로그인</legend>
@@ -156,7 +170,6 @@ export default async function handler(req, res) {
                             <p class="text-sm text-gray-500">SNS 간편 로그인 또는 아이디로 접속하세요.</p>
                           </div>
 
-                          <!-- SNS 연동 영역: wrap_sns_log 클래스 필수 -->
                           <div class="wrap_sns_log space-y-2 mb-6">
                             <a href="#none" id="a_sns_kakao" class="sns-grid-btn bg-kakao py-3 text-sm font-semibold rounded">
                               <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
@@ -355,7 +368,7 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            // [네이버/구글 완벽 노출 및 크롬 먹통 방지]
+            // [핵심] DOM 구조 이동(appendChild)를 완벽히 제거하고, 순수 상태(Visibility)만 동기화
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               let gridActiveCount = 0;
@@ -366,15 +379,13 @@ export default async function handler(req, res) {
 
                 const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
                 
-                // 순정 DOM 타겟팅 (위치 유실 방지)
-                let originEl = customBtn.querySelector(className)
-                            || document.querySelector('#hidden-cafe24-login-module ' + className)
+                // 순정 DOM 타겟팅 (카페24 원본 트리 안에서만 찾음)
+                let originEl = document.querySelector('#hidden-cafe24-login-module ' + className)
                             || document.querySelector('.member-login-wrap ' + className) 
                             || document.querySelector(className) 
                             || document.getElementById('origin_btn_' + key);
 
                 if (originEl) {
-                  // 부모 요소의 숨김 속성에 속지 않기 위해 명시적으로 'displaynone' 클래스 문자열만 확인
                   const isHidden = originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1;
                   
                   if (isHidden) {
@@ -382,12 +393,6 @@ export default async function handler(req, res) {
                   } else {
                     customBtn.style.display = 'flex';
                     if (key !== 'kakao') gridActiveCount++;
-
-                    // 크롬 정책 우회를 위한 물리적 오버레이 이동 (뼈대가 완벽히 동일하므로 에러 발생 안함)
-                    if (originEl.parentNode !== customBtn) {
-                      originEl.style.cssText = 'position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; opacity: 0 !important; z-index: 9999 !important; cursor: pointer !important; margin: 0 !important; padding: 0 !important; border: none !important; font-size: 0 !important; display: block !important; visibility: visible !important; pointer-events: auto !important;';
-                      customBtn.appendChild(originEl);
-                    }
                   }
                 } else {
                   customBtn.style.display = 'none'; 
@@ -404,16 +409,39 @@ export default async function handler(req, res) {
             window.addEventListener('load', syncSnsA);
             let snsIntervalA = setInterval(syncSnsA, 300);
             setTimeout(() => clearInterval(snsIntervalA), 3000);
-            const observer = new MutationObserver(() => syncSnsA());
-            observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // 네이티브 클릭 시 로더 피드백 (이벤트 캡처링)
+            // [핵심 해결] DOM 오버레이를 지우고, 사용자가 클릭하면 순정 버튼을 명시적으로 .click() 처리 (Remote Control)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const customBtn = document.getElementById('a_sns_' + provider);
               if (customBtn) {
-                customBtn.addEventListener('click', () => {
+                customBtn.addEventListener('click', (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  const targetClass = provider === 'yahoojp' ? '.yahoojp' : '.btn' + provider.charAt(0).toUpperCase() + provider.slice(1);
+                  
+                  const originBtn = document.querySelector('#hidden-cafe24-login-module ' + targetClass) 
+                                 || document.querySelector('.member-login-wrap ' + targetClass) 
+                                 || document.querySelector(targetClass) 
+                                 || document.getElementById('origin_btn_' + provider);
+
+                  if (!originBtn) {
+                    console.error('[Sign-It] SNS button not found:', provider);
+                    alert('간편 로그인 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
+                    return;
+                  }
+
                   showLoader();
-                  setTimeout(() => { hideLoader(); }, 2500); 
+                  
+                  // 모바일 크롬 팝업 정책을 뚫어내는 가장 표준적인 사용자 스택 동기화 방식
+                  originBtn.click();
+
+                  // BFCache 대비 및 실패 시 안전장치 (블라인드 타임아웃 대신 문서 가시성 확인)
+                  setTimeout(() => {
+                    if (document.visibilityState === 'visible') {
+                      hideLoader();
+                    }
+                  }, 5000);
                 });
               }
             });
@@ -518,7 +546,9 @@ export default async function handler(req, res) {
             }
 
             const originWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-            if (originWrap) originWrap.style.display = 'none';
+            if (originWrap) {
+              originWrap.style.cssText = 'position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0;';
+            }
 
             const host = document.createElement('div');
             host.id = 'ykinas-global-drawer-root';
@@ -577,7 +607,6 @@ export default async function handler(req, res) {
                   
                   <div class="px-8 sm:px-10 py-16 flex-1 flex flex-col justify-center drawer-content-wrapper">
                     
-                    <!-- [핵심 뼈대 동기화] 카페24 순정 엔진이 의존하는 클래스명 완벽 매핑 -->
                     <div id="ui-login-mode" class="member-login-wrap">
                       <fieldset class="form" style="border: none; padding: 0; margin: 0; width: 100%;">
                         <legend style="display: none;">회원로그인</legend>
@@ -585,7 +614,6 @@ export default async function handler(req, res) {
                         <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
                         <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                         
-                        <!-- SNS 연동 영역: wrap_sns_log 클래스 필수 -->
                         <div class="wrap_sns_log space-y-2 mb-6">
                           <a href="#none" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
@@ -742,7 +770,6 @@ export default async function handler(req, res) {
                }
             });
 
-            // [네이버/구글 완벽 노출 및 데스크탑 원격 클릭 트리거]
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               
@@ -752,17 +779,13 @@ export default async function handler(req, res) {
 
                 snsProviders.forEach(key => {
                   const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
-                  
                   let originEl = sourceDoc.querySelector('#hidden-cafe24-login-module ' + className) 
-                              || sourceDoc.querySelector('.member-login-wrap ' + className)
                               || sourceDoc.querySelector(className)
                               || sourceDoc.getElementById('origin_btn_' + key);
                   
                   const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
-                  
                   if (shadowBtn && originEl) {
-                    const isHidden = originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1;
-                    
+                    const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
                     if (isHidden) {
                       shadowBtn.style.display = 'none';
                     } else {
@@ -796,19 +819,19 @@ export default async function handler(req, res) {
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
 
-            // [핵심] 데스크탑 드로어에서 Iframe 내장 순정 버튼을 원격으로 클릭 (빈 팝업 해결)
+            // [데스크탑 드로어 모드] 명시적 click() 리모컨 방식
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
                 btn.addEventListener('click', (e) => {
                   e.preventDefault();
-                  
+                  e.stopPropagation();
+
                   const targetClass = provider === 'yahoojp' ? '.yahoojp' : '.btn' + provider.charAt(0).toUpperCase() + provider.slice(1);
                   const iframe = document.getElementById('ykinas_proxy_iframe');
                   
                   if (iframe) {
                     try {
-                      // 카페24 코어엔진 세션이 온전히 살아있는 Iframe 내부의 순정버튼을 터치하여 팝업 발생
                       const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
                       let originBtn = iframeDoc.querySelector(targetClass) || iframeDoc.getElementById('origin_btn_' + provider);
                       
@@ -825,7 +848,6 @@ export default async function handler(req, res) {
                 });
               }
             });
-
           }
 
           if (document.readyState === 'loading') {
