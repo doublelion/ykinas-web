@@ -7,7 +7,6 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    // [백엔드 최적화] 글로벌 Edge CDN 캐싱 적용
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400');
@@ -53,7 +52,8 @@ export default async function handler(req, res) {
       (function() {
         'use strict';
         
-        if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
+        // [Fix] 모바일 사이드바 호출 누락 방지: 우리 프록시 Iframe 내부에서만 스크립트 정지
+        if (window.name === 'ykinas_proxy_iframe' || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
         let ykinasShadowRoot = null;
@@ -71,6 +71,35 @@ export default async function handler(req, res) {
 
         const currentPath = window.location.pathname;
         const isLoginPage = currentPath.includes('/member/login.html');
+
+        // [Fix] 위시리스트 등 리다이렉트 목적지 기억 변수
+        let intendedReturnUrl = new URLSearchParams(window.location.search).get('returnUrl') || (window.location.pathname + window.location.search);
+
+        // [핵심] SNS 다이렉트 라우팅 함수 (Intent 보안 차단 100% 회피)
+        function executeDirectSnsLogin(provider) {
+          try {
+            // 편법 자바스크립트 클릭(.click)을 버리고, Cafe24 OAuth 주소로 사용자 직접 이동 처리
+            const safeReturnUrl = encodeURIComponent(decodeURIComponent(intendedReturnUrl));
+            const providerMap = { kakao: 'Kakao', naver: 'Naver', google: 'Google', facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp' };
+            const pName = providerMap[provider];
+            
+            const authUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
+            // 모바일은 팝업 및 Intent 차단을 완벽히 막기 위해 현재 창에서 다이렉트 라우팅
+            if (isMobile) {
+              window.location.href = authUrl; 
+            } else {
+              // PC는 팝업 유지하되 차단 시 현재 창 이동 플랜 B 가동
+              const snsPopup = window.open(authUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
+              if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
+                 window.location.href = authUrl;
+              }
+            }
+          } catch (error) {
+            console.error('[YKINAS SNS Login Error]:', error);
+          }
+        }
 
         // ==========================================
         // [MODE A] 로그인 전용 페이지 (Standalone Full-Screen UI)
@@ -115,6 +144,7 @@ export default async function handler(req, res) {
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; }
                 .sns-grid-btn:hover { opacity: 0.85; }
 
+                /* 로딩 오버레이 */
                 .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
@@ -147,14 +177,12 @@ export default async function handler(req, res) {
                   <div class="px-8 sm:px-14 pt-24 pb-12 flex-1 flex flex-col justify-center">
                     <div class="w-full max-w-sm mx-auto relative">
                       
-                      <!-- [모드 A] 회원 로그인 UI -->
                       <div id="ui-login-mode" class="fade-in">
                         <div class="mb-10">
                           <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h1>
                           <p class="text-sm text-gray-500">SNS 간편 로그인 또는 아이디로 접속하세요.</p>
                         </div>
 
-                        <!-- SNS 연동 영역 -->
                         <div class="space-y-2 mb-6">
                           <button type="button" id="a_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity" style="display:none;">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
@@ -224,7 +252,6 @@ export default async function handler(req, res) {
                         </div>
                       </div>
 
-                      <!-- [모드 B] 비회원 주문조회 UI -->
                       <div id="ui-guest-mode" class="mode-hidden fade-in">
                         <div class="mb-10 text-center">
                           <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2 mt-4">비회원 주문조회</h1>
@@ -317,6 +344,7 @@ export default async function handler(req, res) {
               opw.type = opw.type === 'password' ? 'text' : 'password';
             });
 
+            // 로그인 및 조회 서밋 (위시리스트 리다이렉트 대응)
             const submitLogin = () => {
               const idVal = document.getElementById('a_id').value.trim();
               const pwVal = document.getElementById('a_pw').value.trim();
@@ -326,6 +354,19 @@ export default async function handler(req, res) {
                 showLoader();
                 wrap.querySelector('input[name="member_id"]').value = idVal;
                 wrap.querySelector('input[name="member_passwd"]').value = pwVal;
+                
+                // returnUrl 동적 반영
+                const form = wrap.querySelector('input[name="member_id"]').closest('form');
+                if (form) {
+                  let retInput = form.querySelector('input[name="returnUrl"]');
+                  if (!retInput) {
+                    retInput = document.createElement('input');
+                    retInput.type = 'hidden';
+                    retInput.name = 'returnUrl';
+                    form.appendChild(retInput);
+                  }
+                  retInput.value = intendedReturnUrl;
+                }
                 document.getElementById('origin_btn_login')?.click();
               }
             };
@@ -349,7 +390,7 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            // [핵심] SNS 오버레이 (Clickjacking) 기술 적용 - 모바일 Intent 차단 완벽 우회
+            // SNS 노출 동기화 스캐너 (Mode A)
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               let gridActiveCount = 0;
@@ -370,25 +411,6 @@ export default async function handler(req, res) {
                     customBtn.style.display = 'none';
                   } else {
                     customBtn.style.display = 'flex';
-                    customBtn.style.position = 'relative'; // 자식의 absolute 포지셔닝을 위한 부모 세팅
-                    
-                    // [해결] 원본 카페24 버튼을 우리 버튼 내부로 이동시켜 투명하게 덮어버림
-                    originEl.style.setProperty('position', 'absolute', 'important');
-                    originEl.style.setProperty('top', '0', 'important');
-                    originEl.style.setProperty('left', '0', 'important');
-                    originEl.style.setProperty('width', '100%', 'important');
-                    originEl.style.setProperty('height', '100%', 'important');
-                    originEl.style.setProperty('opacity', '0', 'important');
-                    originEl.style.setProperty('z-index', '10', 'important');
-                    originEl.style.setProperty('cursor', 'pointer', 'important');
-                    originEl.style.setProperty('display', 'block', 'important');
-                    originEl.style.setProperty('color', 'transparent', 'important');
-                    originEl.style.setProperty('font-size', '0', 'important');
-                    
-                    if (originEl.parentNode !== customBtn) {
-                      customBtn.appendChild(originEl);
-                    }
-
                     if (key !== 'kakao') gridActiveCount++;
                   }
                 } else {
@@ -410,9 +432,15 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
+            // SNS 버튼 다이렉트 호출 이벤트 바인딩
+            ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
+              const btn = document.getElementById('a_sns_' + provider);
+              if (btn) btn.addEventListener('click', () => executeDirectSnsLogin(provider));
+            });
+
             const searchStr = window.location.search;
-            const returnUrl = new URLSearchParams(searchStr).get('returnUrl') || '';
-            if (searchStr.includes('noMemberOrder') || returnUrl.includes('order/list.html')) {
+            const returnUrlParam = new URLSearchParams(searchStr).get('returnUrl') || '';
+            if (searchStr.includes('noMemberOrder') || returnUrlParam.includes('order/list.html')) {
               switchMode('guest');
             } else {
               switchMode('login');
@@ -429,17 +457,21 @@ export default async function handler(req, res) {
           // ==========================================
           // [MODE B] 글로벌 드로어 (Global Login Drawer)
           // ==========================================
+          
+          // [Fix] 위시리스트/로그인 필수 액션 인터셉터 & 목적지 기억
           document.addEventListener('click', function(e) {
             const target = e.target.closest('a');
             if (!target) return;
             const href = target.getAttribute('href') || '';
-            const requireLoginPaths = ['/myshop/index.html', '/myshop/wish_list.html', '/member/modify.html'];
+            const requireLoginPaths = ['/myshop/index.html', '/myshop/wish_list.html', '/member/modify.html', '/order/basket.html'];
             const isRequireLogin = requireLoginPaths.some(path => href.includes(path));
+            
             const isLoggedOut = document.querySelector('.xans-layout-statelogoff') !== null || !document.querySelector('.xans-layout-statelogon');
             
             if (isRequireLogin && isLoggedOut) {
               e.preventDefault();
               e.stopPropagation();
+              intendedReturnUrl = href; // 목적지 기록!
               if (window.YkinasLogin && typeof window.YkinasLogin.open === 'function') {
                 window.YkinasLogin.open();
               }
@@ -564,16 +596,17 @@ export default async function handler(req, res) {
                       <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
                       
                       <div class="space-y-2 mb-6">
-                        <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity" style="display:none;">
+                        <!-- 카카오, 네이버, 구글 기본 노출 -->
+                        <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                           <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
                           카카오로 시작하기
                         </button>
                         
-                        <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2" style="display:none;">
-                          <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver" style="display:none;">
+                        <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2">
+                          <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver">
                             <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                           </button>
-                          <button type="button" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50" style="display:none;">
+                          <button type="button" id="btn_sns_google" class="sns-grid-btn bg-white border border-gray-200 text-gray-700 hover:bg-gray-50">
                             <svg class="w-4 h-4 mr-1.5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                             구글
                           </button>
@@ -671,6 +704,19 @@ export default async function handler(req, res) {
                  showDrawerLoader();
                  originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
                  originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
+                 
+                 // [Fix] 위시리스트 리다이렉트 대응 (드로어)
+                 const form = originWrapInner.querySelector('input[name="member_id"]').closest('form');
+                 if (form) {
+                   let retInput = form.querySelector('input[name="returnUrl"]');
+                   if (!retInput) {
+                     retInput = document.createElement('input');
+                     retInput.type = 'hidden';
+                     retInput.name = 'returnUrl';
+                     form.appendChild(retInput);
+                   }
+                   retInput.value = intendedReturnUrl;
+                 }
                  (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
                } else {
                  try {
@@ -700,45 +746,21 @@ export default async function handler(req, res) {
                          retInput.name = 'returnUrl';
                          form.appendChild(retInput);
                        }
-                       retInput.value = window.location.pathname + window.location.search;
+                       retInput.value = intendedReturnUrl;
                      }
                      ifBtn.click();
                    } else {
                      throw new Error("Iframe form not found");
                    }
                  } catch (e) {
-                   window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+                   window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(intendedReturnUrl);
                  }
                }
             });
 
-            // [해결] 드로어(Mode B) SNS 다이렉트 라우팅 (모바일 환경 팝업/Intent 차단 완벽 회피)
-            function executeDirectSnsLoginB(provider) {
-              try {
-                const rawUrl = window.location.pathname + window.location.search;
-                const safeReturnUrl = encodeURIComponent(decodeURIComponent(rawUrl));
-                const providerMap = { kakao: 'Kakao', naver: 'Naver', google: 'Google', facebook: 'Facebook', line: 'Line', apple: 'Apple', yahoojp: 'Yahoojp' };
-                const pName = providerMap[provider];
-                
-                const authUrl = '/Api/Member/Oauth2Client/' + pName + '/?returnUrl=' + safeReturnUrl;
-                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                
-                if (isMobile) {
-                  window.location.href = authUrl; // 모바일은 팝업 차단 회피를 위해 창 이동
-                } else {
-                  const snsPopup = window.open(authUrl, 'snsLoginPopup', 'width=500,height=600,scrollbars=yes');
-                  if (!snsPopup || snsPopup.closed || typeof snsPopup.closed === 'undefined') {
-                     window.location.href = authUrl;
-                  }
-                }
-              } catch (error) {
-                console.error('[YKINAS SNS Login Error]:', error);
-              }
-            }
-
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
-              if (btn) btn.addEventListener('click', () => executeDirectSnsLoginB(provider));
+              if (btn) btn.addEventListener('click', () => executeDirectSnsLogin(provider));
             });
 
             const syncRealtimeSnsVisibility = () => {
@@ -761,7 +783,7 @@ export default async function handler(req, res) {
                     if (isHidden) {
                       shadowBtn.style.display = 'none';
                     } else {
-                      shadowBtn.style.display = 'flex';
+                      shadowBtn.style.display = 'flex'; // 강제 flex 주입
                       if (key !== 'kakao') gridActiveCount++;
                     }
                   } else if (shadowBtn && !originEl) {
@@ -789,8 +811,11 @@ export default async function handler(req, res) {
                   } catch (e) {}
                 });
               }
-            }
+            };
+            
             syncRealtimeSnsVisibility();
+            let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
+            setTimeout(() => clearInterval(snsIntervalB), 3000);
           }
 
           if (document.readyState === 'loading') {
