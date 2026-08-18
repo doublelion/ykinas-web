@@ -56,7 +56,7 @@ export default async function handler(req, res) {
         if (window.self !== window.top || window.__YKINAS_SKIN_LOADED__) return;
         window.__YKINAS_SKIN_LOADED__ = true;
 
-        // [프론트엔드 기획 반영] 모바일 기기 감지: 모바일 접속 시 무조건 login.html로 라우팅
+        // [프론트엔드 최적화] 모바일 기기 감지
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
 
         let ykinasShadowRoot = null;
@@ -76,7 +76,7 @@ export default async function handler(req, res) {
         const isLoginPage = currentPath.includes('/member/login.html');
 
         // ==========================================
-        // [MODE A] 정규 회원 로그인 페이지 (Mobile Dedicated)
+        // [MODE A] 정식 로그인 페이지 (Mobile Dedicated)
         // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
@@ -110,7 +110,6 @@ export default async function handler(req, res) {
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
                 
-                /* [핵심] SNS 버튼 상대적 위치 고정 (오버레이 기준점) */
                 .sns-grid-btn { position: relative; display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; text-decoration: none; cursor: pointer; overflow: hidden; }
                 .sns-grid-btn:hover { opacity: 0.85; }
 
@@ -295,18 +294,16 @@ export default async function handler(req, res) {
               if (panel) panel.scrollTop = 0;
             };
 
-            // [기획 반영] 현재 URL의 파라미터를 보존하여 라우팅 충돌 방지
+            // URL 라우팅 파라미터 상태 관리
             const searchParams = new URLSearchParams(window.location.search);
             const currentReturnUrl = searchParams.get('returnUrl') || '';
 
-            // 비회원 주문조회 버튼 클릭 (returnUrl 유지 + noMemberOrder 꼬리표 추가)
             document.getElementById('a_btn_goto_guest').addEventListener('click', () => {
               showLoader();
               const targetReturnUrl = currentReturnUrl || '/myshop/order/list.html';
-              window.location.replace('/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent(targetReturnUrl));
+              window.location.replace('/member/login.html?noMemberOrder=1&returnUrl=' + encodeURIComponent(targetReturnUrl));
             });
 
-            // 회원 로그인 버튼 클릭 (noMemberOrder 제거 + returnUrl 유지)
             document.getElementById('a_btn_goto_login').addEventListener('click', () => {
               showLoader();
               const nextUrl = currentReturnUrl ? '/member/login.html?returnUrl=' + encodeURIComponent(currentReturnUrl) : '/member/login.html';
@@ -354,9 +351,10 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            // [프론트엔드 최적화] 크롬 팝업 차단 완벽 회피를 위한 물리적 오버레이 매핑 (DOM Node Migration)
+            // [기획 핵심] 카카오, 네이버, 구글은 displaynone 속성을 무시하고 무조건 강제 노출
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
+              const forceExpose = ['kakao', 'naver', 'google']; // 강제 노출 타겟
               let gridActiveCount = 0;
 
               snsProviders.forEach(key => {
@@ -365,21 +363,26 @@ export default async function handler(req, res) {
 
                 const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
                 
-                // 사용자가 layout에 심어둔 hidden 모듈이나 원본 wrap에서 순정 요소를 추적
-                let originEl = document.querySelector(className) || document.getElementById('origin_btn_' + key);
+                // layout.html 내의 hidden 영역도 탐색하여 순정 엘리먼트를 확실하게 찾음
+                let originEl = document.querySelector('#hidden-cafe24-login-module ' + className) 
+                            || document.querySelector(className) 
+                            || document.getElementById('origin_btn_' + key);
 
                 if (originEl) {
+                  const isForceExposed = forceExpose.includes(key);
                   const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
-                  if (isHidden) {
+                  
+                  // 강제 노출 대상이 아니면서, 카페24에서 숨김 처리한 경우만 숨김
+                  if (isHidden && !isForceExposed) {
                     customBtn.style.display = 'none';
                   } else {
                     customBtn.style.display = 'flex';
                     if (key !== 'kakao') gridActiveCount++;
 
-                    // [물리적 오버레이] 순정 카페24 버튼을 커스텀 버튼 위로 강제 이동 및 투명화 처리
-                    // 브라우저는 사용자가 커스텀 UI가 아닌 '카페24 순정 태그'를 직접 터치한 것으로 인식하여 차단을 해제함
+                    // [물리적 오버레이 강제 매핑]
+                    // 카페24의 자체 CSS(.displaynone)를 무력화하고 버튼에 실체가 생기도록 Inline 속성을 강제 주입
                     if (originEl.parentNode !== customBtn) {
-                      originEl.style.cssText = 'position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; opacity: 0 !important; z-index: 9999 !important; cursor: pointer !important; margin: 0 !important; padding: 0 !important; border: none !important; font-size: 0 !important;';
+                      originEl.style.cssText = 'position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; opacity: 0 !important; z-index: 9999 !important; cursor: pointer !important; margin: 0 !important; padding: 0 !important; border: none !important; font-size: 0 !important; display: block !important; visibility: visible !important; pointer-events: auto !important;';
                       customBtn.appendChild(originEl);
                     }
                   }
@@ -401,18 +404,18 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // 네이티브 클릭 시 로더 피드백 (이벤트 버블링 캡처)
+            // 네이티브 클릭 시 로더 피드백
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const customBtn = document.getElementById('a_sns_' + provider);
               if (customBtn) {
                 customBtn.addEventListener('click', () => {
                   showLoader();
-                  setTimeout(() => { hideLoader(); }, 2500); // 팝업 대기 중 먹통 방지
+                  setTimeout(() => { hideLoader(); }, 2500); 
                 });
               }
             });
 
-            // 초기 진입 시 쿼리 파라미터 상태에 따른 모드 결정
+            // 초기 로딩 시 모드 설정
             if (window.location.search.includes('noMemberOrder') || currentReturnUrl.includes('order/list.html')) {
               switchMode('guest');
             } else {
@@ -442,12 +445,10 @@ export default async function handler(req, res) {
               e.preventDefault();
               e.stopPropagation();
               
-              // [기획 반영] 모바일은 드로어 원천 차단 및 URL 리다이렉트
               if (isMobile) {
                 const rawUrl = window.location.pathname + window.location.search;
                 window.location.href = '/member/login.html?returnUrl=' + encodeURIComponent(rawUrl);
               } else {
-                // 데스크탑은 우아하게 드로어 오픈
                 if (window.YkinasLogin && typeof window.YkinasLogin.open === 'function') {
                   window.YkinasLogin.open();
                 }
@@ -730,24 +731,26 @@ export default async function handler(req, res) {
                }
             });
 
+            // [데스크탑 드로어 모드 강제 노출 로직 적용]
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
+              const forceExpose = ['kakao', 'naver', 'google'];
               
               const syncDisplay = (sourceDoc) => {
                 if (!sourceDoc) return;
                 let gridActiveCount = 0;
 
                 snsProviders.forEach(key => {
-                  let originEl = sourceDoc.querySelector('#origin_btn_' + key);
-                  if (!originEl) {
-                    const className = key === 'yahoojp' ? '.yahoojp' : '.btn' + key.charAt(0).toUpperCase() + key.slice(1);
-                    originEl = sourceDoc.querySelector(className);
-                  }
+                  let originEl = sourceDoc.querySelector('#hidden-cafe24-login-module .btn' + key.charAt(0).toUpperCase() + key.slice(1)) 
+                            || sourceDoc.querySelector('#origin_btn_' + key);
+                  if (key === 'yahoojp') originEl = sourceDoc.querySelector('#hidden-cafe24-login-module .yahoojp') || sourceDoc.querySelector('.yahoojp');
                   
                   const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
                   if (shadowBtn && originEl) {
+                    const isForceExposed = forceExpose.includes(key);
                     const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
-                    if (isHidden) {
+                    
+                    if (isHidden && !isForceExposed) {
                       shadowBtn.style.display = 'none';
                     } else {
                       shadowBtn.style.display = 'flex';
@@ -785,7 +788,6 @@ export default async function handler(req, res) {
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
 
-            // [데스크탑 드로어 전용] SNS 버튼 클릭 처리 (Desktop은 Chrome 팝업 차단 이슈 없음)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
