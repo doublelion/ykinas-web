@@ -242,12 +242,7 @@ export default async function handler(req, res) {
                             <div class="relative w-full">
                               <input type="password" id="a_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                               <label class="floating-label">비밀번호</label>
-                              <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors p-0.5">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                              </button>
+                              <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors p-0.5">👁</button>
                             </div>
                             <div class="flex items-center justify-between mt-2 mb-4">
                               <label class="flex items-center cursor-pointer group">
@@ -291,13 +286,7 @@ export default async function handler(req, res) {
                           <div class="relative w-full">
                             <input type="password" id="a_order_pw" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                             <label class="floating-label">주문 비밀번호</label>
-                            <!-- [프론트엔드] 게스트 모드 패스워드 토글 아이콘 디자인 SVG로 동일하게 통일 -->
-                            <button type="button" id="a_btn_toggle_order_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors p-0.5">
-                              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            </button>
+                            <button type="button" id="a_btn_toggle_order_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">👁</button>
                           </div>
                           <button type="button" id="a_btn_submit_guest" class="w-full py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors mt-4 rounded shadow-sm">주문 추적하기</button>
                         </div>
@@ -443,7 +432,7 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [핵심 해결] 디바이스별 Z-index 동적 할당 및 이벤트 바인딩
+            // [최적화 적용] Synthetic Click 회피 및 Trusted Event 직접 바인딩
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const customBtn = document.getElementById('a_sns_' + provider);
               if (customBtn) {
@@ -457,22 +446,20 @@ export default async function handler(req, res) {
                     return;
                   }
 
-                  // 1. 디바이스 분기 Z-index 할당: 데스크탑 GNB 겹침 현상 해결
+                  // 1. Z-index 뎁스 즉시 강하 (모바일 카페24 인페이지 팝업 가림 방지)
                   const panelWrapper = document.getElementById('standalone_panel_wrapper');
-                  if (panelWrapper) {
-                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                    // 모바일: 인앱 팝업(투명 iframe) 위로 띄우기 위해 10으로 강하
-                    // 데스크탑: 기본 사이트 GNB 레이어(보통 100~999) 보다 높게 유지하여 겹침 방지
-                    panelWrapper.style.zIndex = isMobile ? '10' : '99990';
-                  }
+                  if (panelWrapper) panelWrapper.style.zIndex = '10';
 
-                  // 2. 모바일 브라우저 팝업 차단 우회 및 즉각 실행
+                  // 2. 모바일 브라우저 팝업 차단(Window.open 방어) 우회
+                  // -> 강제 click() 대신 카페24의 onclick 속성(함수)을 추출하여 사용자의 터치 스택 안에서 즉시 실행
                   const onclickScript = originBtn.getAttribute('onclick');
                   if (onclickScript) {
                     try {
+                      // this 바인딩을 originBtn으로 맞춰 카페24 내부 오류 원천 차단
                       const execNative = new Function(onclickScript);
                       execNative.call(originBtn);
                     } catch(err) {
+                      console.warn('[Sign-It] Direct Execution Failed, fallback to click()', err);
                       originBtn.click();
                     }
                   } else if (originBtn.href && originBtn.href !== '#none' && originBtn.href !== 'javascript:void(0);') {
