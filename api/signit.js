@@ -146,7 +146,7 @@ export default async function handler(req, res) {
                 .custom-scrollbar-02::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
                 .bg-kakao { background-color: #FEE500; color: #191919; }
                 .bg-naver { background-color: #03C75A; color: #ffffff; }
-                .bg-google { background-color: #F8F9FA; color: #3C4043; border: 1px solid #DADCE0; }
+                .bg-google { background-color: #F8F9FA; color: #3C4043; border: 1px solid #DADCE0!important; }
                 .bg-facebook { background-color: #1877F2; color: #ffffff; }
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
@@ -623,7 +623,7 @@ export default async function handler(req, res) {
                 .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
                 .bg-kakao { background-color: #FEE500; color: #191919; }
                 .bg-naver { background-color: #03C75A; color: #ffffff; }
-                .bg-google { background-color: #F8F9FA; color: #3C4043; border: 1px solid #DADCE0; }
+                .bg-google { background-color: #F8F9FA; color: #3C4043; border: 1px solid #DADCE0!important; }
                 .bg-facebook { background-color: #1877F2; color: #ffffff; }
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
