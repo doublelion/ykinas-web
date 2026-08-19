@@ -129,14 +129,6 @@ export default async function handler(req, res) {
               tailwind.href = 'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css';
               document.head.appendChild(tailwind);
             }
-            
-            // [프론트엔드] Phosphor 폰트 아이콘 로드를 위한 CDN 주입 (안전망)
-            if (!document.getElementById('phosphor-icons')) {
-              const phosphor = document.createElement('script');
-              phosphor.id = 'phosphor-icons';
-              phosphor.src = 'https://unpkg.com/@phosphor-icons/web';
-              document.head.appendChild(phosphor);
-            }
 
             const fullScreenHTML = \`
               <style>
@@ -248,9 +240,10 @@ export default async function handler(req, res) {
                             <div class="relative w-full">
                               <input type="password" id="a_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                               <label class="floating-label">비밀번호</label>
-                              <!-- [디자인 개선] Phosphor 통합 아이콘 적용 (회원 로그인) -->
-                              <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2 text-gray-400 hover:text-black transition-colors">
-                                <i id="a_eye_icon" class="ph ph-eye-closed text-lg"></i>
+                              <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
+                                <svg id="a_eye_icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                                </svg>
                               </button>
                             </div>
                             <div class="flex items-center justify-between mt-2 mb-4">
@@ -294,9 +287,10 @@ export default async function handler(req, res) {
                           <div class="relative w-full">
                             <input type="password" id="a_order_pw" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                             <label class="floating-label">주문 비밀번호</label>
-                            <!-- [디자인 개선] Phosphor 통합 아이콘 적용 (비회원 주문) -->
-                            <button type="button" id="a_btn_toggle_order_pw" class="absolute right-0 top-2 text-gray-400 hover:text-black transition-colors">
-                              <i id="a_guest_eye_icon" class="ph ph-eye-closed text-lg"></i>
+                            <button type="button" id="a_btn_toggle_order_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
+                              <svg id="a_guest_eye_icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                              </svg>
                             </button>
                           </div>
                           <button type="button" id="a_btn_submit_guest" class="w-full py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors mt-4 rounded shadow-sm">주문 추적하기</button>
@@ -365,29 +359,31 @@ export default async function handler(req, res) {
               window.location.replace(nextUrl);
             });
 
-            // [기능 통합] 아이콘 클래스 토글 로직 병합 적용 (회원 로그인)
+            // [인라인 SVG 패스 정의] 눈 감음 / 눈뜸
+            const svgEyeClosed = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />';
+            const svgEyeOpen = '<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />';
+
             document.getElementById('a_btn_toggle_pw').addEventListener('click', () => {
               const pw = document.getElementById('a_pw');
-              const icon = document.getElementById('a_eye_icon');
+              const svgEl = document.getElementById('a_eye_icon');
               if (pw.type === 'password') {
                 pw.type = 'text';
-                icon.classList.replace('ph-eye-closed', 'ph-eye');
+                svgEl.innerHTML = svgEyeOpen;
               } else {
                 pw.type = 'password';
-                icon.classList.replace('ph-eye', 'ph-eye-closed');
+                svgEl.innerHTML = svgEyeClosed;
               }
             });
 
-            // [기능 통합] 아이콘 클래스 토글 로직 병합 적용 (비회원 주문)
             document.getElementById('a_btn_toggle_order_pw').addEventListener('click', () => {
               const opw = document.getElementById('a_order_pw');
-              const icon = document.getElementById('a_guest_eye_icon');
+              const svgEl = document.getElementById('a_guest_eye_icon');
               if (opw.type === 'password') {
                 opw.type = 'text';
-                icon.classList.replace('ph-eye-closed', 'ph-eye');
+                svgEl.innerHTML = svgEyeOpen;
               } else {
                 opw.type = 'password';
-                icon.classList.replace('ph-eye', 'ph-eye-closed');
+                svgEl.innerHTML = svgEyeClosed;
               }
             });
 
@@ -605,8 +601,6 @@ export default async function handler(req, res) {
 
             const fullScreenHTML = \`
               <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-              <!-- [프론트엔드] Shadow DOM 내부 Phosphor 스타일 시트 격리 주입 -->
-              <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
               <style>
                 :host { all: initial; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; }
                 * { box-sizing: border-box; }
@@ -712,9 +706,11 @@ export default async function handler(req, res) {
                           <div class="relative w-full">
                             <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                             <label class="floating-label">비밀번호</label>
-                            <!-- [디자인 개선] 드로어 영역 Phosphor 통합 아이콘 적용 -->
-                            <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2 text-gray-400 hover:text-black">
-                              <i id="s_eye_icon" class="ph ph-eye-closed text-lg"></i>
+                            <!-- [인라인 SVG 적용] 드로어 영역 비밀번호 토글 버튼 -->
+                            <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
+                              <svg id="s_eye_icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                              </svg>
                             </button>
                           </div>
                           <div class="flex items-center justify-between mt-2 mb-4">
@@ -772,16 +768,19 @@ export default async function handler(req, res) {
               });
             }
 
-            // [기능 통합] 드로어 영역 아이콘 클래스 토글 로직 병합
+            // [인라인 SVG 토글 핸들러 적용 (드로어 영역)]
+            const drawerSvgEyeClosed = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />';
+            const drawerSvgEyeOpen = '<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />';
+
             ykinasShadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
               const pw = ykinasShadowRoot.querySelector('#s_pw');
-              const icon = ykinasShadowRoot.querySelector('#s_eye_icon');
+              const svgEl = ykinasShadowRoot.querySelector('#s_eye_icon');
               if (pw.type === 'password') {
                 pw.type = 'text';
-                icon.classList.replace('ph-eye-closed', 'ph-eye');
+                svgEl.innerHTML = drawerSvgEyeOpen;
               } else {
                 pw.type = 'password';
-                icon.classList.replace('ph-eye', 'ph-eye-closed');
+                svgEl.innerHTML = drawerSvgEyeClosed;
               }
             });
 
