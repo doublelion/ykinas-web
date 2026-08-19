@@ -11,7 +11,6 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400');
-    // 최신 API 버전 유지
     res.setHeader('X-Cafe24-Api-Version', '2025-12-01');
 
     const clientReferer = req.headers['referer'] || '';
@@ -70,7 +69,6 @@ export default async function handler(req, res) {
           originalAlert(msg);
         };
 
-        // [프론트엔드] BFCache(뒤로가기) 및 윈도우 포커스 시 UI 상태 원상 복구 로직 추가
         const restoreUIState = () => {
           const panelWrapper = document.getElementById('standalone_panel_wrapper');
           if (panelWrapper) {
@@ -130,6 +128,14 @@ export default async function handler(req, res) {
               tailwind.rel = 'stylesheet';
               tailwind.href = 'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css';
               document.head.appendChild(tailwind);
+            }
+            
+            // [프론트엔드] Phosphor 폰트 아이콘 로드를 위한 CDN 주입 (안전망)
+            if (!document.getElementById('phosphor-icons')) {
+              const phosphor = document.createElement('script');
+              phosphor.id = 'phosphor-icons';
+              phosphor.src = 'https://unpkg.com/@phosphor-icons/web';
+              document.head.appendChild(phosphor);
             }
 
             const fullScreenHTML = \`
@@ -242,11 +248,9 @@ export default async function handler(req, res) {
                             <div class="relative w-full">
                               <input type="password" id="a_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                               <label class="floating-label">비밀번호</label>
-                              <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors p-0.5">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
+                              <!-- [디자인 개선] Phosphor 통합 아이콘 적용 (회원 로그인) -->
+                              <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2 text-gray-400 hover:text-black transition-colors">
+                                <i id="a_eye_icon" class="ph ph-eye-closed text-lg"></i>
                               </button>
                             </div>
                             <div class="flex items-center justify-between mt-2 mb-4">
@@ -272,7 +276,6 @@ export default async function handler(req, res) {
                         </fieldset>
                       </div>
 
-                      <!-- 비회원 주문조회 UI 생략(그대로 유지) -->
                       <div id="ui-guest-mode" class="mode-hidden fade-in">
                         <div class="mb-10 text-center">
                           <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2 mt-4">비회원 주문조회</h1>
@@ -291,12 +294,9 @@ export default async function handler(req, res) {
                           <div class="relative w-full">
                             <input type="password" id="a_order_pw" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                             <label class="floating-label">주문 비밀번호</label>
-                            <!-- [프론트엔드] 게스트 모드 패스워드 토글 아이콘 디자인 SVG로 동일하게 통일 -->
-                            <button type="button" id="a_btn_toggle_order_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors p-0.5">
-                              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
+                            <!-- [디자인 개선] Phosphor 통합 아이콘 적용 (비회원 주문) -->
+                            <button type="button" id="a_btn_toggle_order_pw" class="absolute right-0 top-2 text-gray-400 hover:text-black transition-colors">
+                              <i id="a_guest_eye_icon" class="ph ph-eye-closed text-lg"></i>
                             </button>
                           </div>
                           <button type="button" id="a_btn_submit_guest" class="w-full py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors mt-4 rounded shadow-sm">주문 추적하기</button>
@@ -365,13 +365,30 @@ export default async function handler(req, res) {
               window.location.replace(nextUrl);
             });
 
+            // [기능 통합] 아이콘 클래스 토글 로직 병합 적용 (회원 로그인)
             document.getElementById('a_btn_toggle_pw').addEventListener('click', () => {
               const pw = document.getElementById('a_pw');
-              pw.type = pw.type === 'password' ? 'text' : 'password';
+              const icon = document.getElementById('a_eye_icon');
+              if (pw.type === 'password') {
+                pw.type = 'text';
+                icon.classList.replace('ph-eye-closed', 'ph-eye');
+              } else {
+                pw.type = 'password';
+                icon.classList.replace('ph-eye', 'ph-eye-closed');
+              }
             });
+
+            // [기능 통합] 아이콘 클래스 토글 로직 병합 적용 (비회원 주문)
             document.getElementById('a_btn_toggle_order_pw').addEventListener('click', () => {
               const opw = document.getElementById('a_order_pw');
-              opw.type = opw.type === 'password' ? 'text' : 'password';
+              const icon = document.getElementById('a_guest_eye_icon');
+              if (opw.type === 'password') {
+                opw.type = 'text';
+                icon.classList.replace('ph-eye-closed', 'ph-eye');
+              } else {
+                opw.type = 'password';
+                icon.classList.replace('ph-eye', 'ph-eye-closed');
+              }
             });
 
             const submitLogin = () => {
@@ -443,7 +460,6 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [핵심 해결] 디바이스별 Z-index 동적 할당 및 이벤트 바인딩
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const customBtn = document.getElementById('a_sns_' + provider);
               if (customBtn) {
@@ -457,16 +473,12 @@ export default async function handler(req, res) {
                     return;
                   }
 
-                  // 1. 디바이스 분기 Z-index 할당: 데스크탑 GNB 겹침 현상 해결
                   const panelWrapper = document.getElementById('standalone_panel_wrapper');
                   if (panelWrapper) {
                     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                    // 모바일: 인앱 팝업(투명 iframe) 위로 띄우기 위해 10으로 강하
-                    // 데스크탑: 기본 사이트 GNB 레이어(보통 100~999) 보다 높게 유지하여 겹침 방지
                     panelWrapper.style.zIndex = isMobile ? '10' : '99990';
                   }
 
-                  // 2. 모바일 브라우저 팝업 차단 우회 및 즉각 실행
                   const onclickScript = originBtn.getAttribute('onclick');
                   if (onclickScript) {
                     try {
@@ -593,6 +605,8 @@ export default async function handler(req, res) {
 
             const fullScreenHTML = \`
               <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+              <!-- [프론트엔드] Shadow DOM 내부 Phosphor 스타일 시트 격리 주입 -->
+              <link rel="stylesheet" type="text/css" href="https://unpkg.com/@phosphor-icons/web@2.0.3/src/regular/style.css">
               <style>
                 :host { all: initial; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; }
                 * { box-sizing: border-box; }
@@ -621,7 +635,7 @@ export default async function handler(req, res) {
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
                 .bg-google:hover { background-color: #F1F3F4; opacity: 1; }
-                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; outline: none; cursor: pointer; }
+                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; border: none; outline: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-btn-primary { background-color: #111111; color: #ffffff; }
 
@@ -698,11 +712,9 @@ export default async function handler(req, res) {
                           <div class="relative w-full">
                             <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                             <label class="floating-label">비밀번호</label>
-                            <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
-                              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
+                            <!-- [디자인 개선] 드로어 영역 Phosphor 통합 아이콘 적용 -->
+                            <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2 text-gray-400 hover:text-black">
+                              <i id="s_eye_icon" class="ph ph-eye-closed text-lg"></i>
                             </button>
                           </div>
                           <div class="flex items-center justify-between mt-2 mb-4">
@@ -760,9 +772,17 @@ export default async function handler(req, res) {
               });
             }
 
+            // [기능 통합] 드로어 영역 아이콘 클래스 토글 로직 병합
             ykinasShadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
               const pw = ykinasShadowRoot.querySelector('#s_pw');
-              pw.type = pw.type === 'password' ? 'text' : 'password';
+              const icon = ykinasShadowRoot.querySelector('#s_eye_icon');
+              if (pw.type === 'password') {
+                pw.type = 'text';
+                icon.classList.replace('ph-eye-closed', 'ph-eye');
+              } else {
+                pw.type = 'password';
+                icon.classList.replace('ph-eye', 'ph-eye-closed');
+              }
             });
 
             ykinasShadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
@@ -865,7 +885,6 @@ export default async function handler(req, res) {
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
 
-            // [최적화 적용] 드로어 모드 SNS 리모컨 모드 (Synthetic Click 회피)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
@@ -875,10 +894,7 @@ export default async function handler(req, res) {
 
                   const originBtn = getNativeSnsButton(provider);
                   if (originBtn) {
-                    // 1. Z-index 충돌 방지: 네이티브 팝업 레이어를 위해 드로어와 딤 즉각 해제
                     window.YkinasLogin.close();
-
-                    // 2. 모바일 팝업 차단 우회 및 즉각 실행
                     const onclickScript = originBtn.getAttribute('onclick');
                     if (onclickScript) {
                       try {
