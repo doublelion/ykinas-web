@@ -40,7 +40,7 @@ export default async function handler(req, res) {
       {
         campaign_id: campaignId,
         sort_order: 0,
-        image_url: 'https://ecudemo388727.cafe24.com/web/upload/bannerit_preview_02.jpg',
+        image_url: 'https://ecudemo388727.cafe24.com/web/upload/bannerit_detail_01_1.webp',
         title: '개발 지식 ZERO! 스마트한 팝업 관리',
         subtitle: '파일 첨부하고 링크 넣으면 끝, 3초만에 완성됩니다.',
         cta_text: '배너잇 시작하기',
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
       {
         campaign_id: campaignId,
         sort_order: 1,
-        image_url: 'https://ecudemo388727.cafe24.com/web/upload/bannerit_detail_02_1.webp',
+        image_url: 'https://ecudemo388727.cafe24.com/web/upload/andrew_neel_cckf4tshauw_unsplash_1.webp',
         title: '저장 없이 바로 보는 실시간 프리뷰 ⚡️',
         subtitle: '내용을 입력하는 즉시 쇼핑몰 화면과 동일하게 렌더링됩니다.',
         cta_text: '기능 자세히 보기',
@@ -58,7 +58,7 @@ export default async function handler(req, res) {
       {
         campaign_id: campaignId,
         sort_order: 2,
-        image_url: 'https://ecudemo388727.cafe24.com/web/upload/bannerit_detail_01_1.webp',
+        image_url: 'https://ecudemo388727.cafe24.com/web/upload/mi-yeoun-jun-CoV2hw0St0c-unsplash.jpg',
         title: '단 1분 스크립트 주입으로 매출 극대화',
         subtitle: '모바일 환경에 완벽하게 맞춰진 팝업을 경험하세요.',
         cta_text: '평생 라이선스 구매',
