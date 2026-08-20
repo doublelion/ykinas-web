@@ -44,7 +44,7 @@ export default async function handler(req, res) {
         title: '개발 지식 ZERO! 스마트한 팝업 관리',
         subtitle: '파일 첨부하고 링크 넣으면 끝, 3초만에 완성됩니다.',
         cta_text: '배너잇 시작하기',
-        cta_link: 'https://admin.ykinas.com'
+        cta_link: '/board/product/list.html?board_no=4'
       },
       {
         campaign_id: campaignId,
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
         title: '저장 없이 바로 보는 실시간 프리뷰 ⚡️',
         subtitle: '내용을 입력하는 즉시 쇼핑몰 화면과 동일하게 렌더링됩니다.',
         cta_text: '기능 자세히 보기',
-        cta_link: '/product/list.html'
+        cta_link: '/product/list.html?cate_no=24'
       },
       {
         campaign_id: campaignId,
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
         title: '단 1분 스크립트 주입으로 매출 극대화',
         subtitle: '모바일 환경에 완벽하게 맞춰진 팝업을 경험하세요.',
         cta_text: '평생 라이선스 구매',
-        cta_link: '/product/detail.html'
+        cta_link: '/shopinfo/winter/project.html'
       }
     ];
 

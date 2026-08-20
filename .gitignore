@@ -35,3 +35,5 @@ yarn-error.log*
 # 빌드 결과물 제외 (CSS/MAP)
 src/**/*.css
 src/**/*.css.map
+
+api/inject.js

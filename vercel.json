@@ -13,13 +13,12 @@
     }
   ],
   "rewrites": [
-    
     {
       "source": "/templates/tpl-01/:path*",
       "destination": "/templates/tpl-01/:path*"
     },
     {
-      "source": "/:path*",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],
