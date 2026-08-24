@@ -7,7 +7,6 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    // 실시간 반영을 위한 캐시 무효화
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -57,78 +56,52 @@ export default async function handler(req, res) {
         window.__YKINAS_SKIN_LOADED__ = true;
 
         let ykinasShadowRoot = null;
-        
-        // [안전장치 1] 알림창이 뜰 때 즉시 로딩 해제
-        const originalAlert = window.alert;
-        window.alert = function(msg) {
+
+        const dismissAllLoaders = () => {
           const globalLoader = document.getElementById('ykinas-global-loader');
           if (globalLoader) globalLoader.style.display = 'none';
-
           if (ykinasShadowRoot) {
             const drawerLoader = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
             if (drawerLoader) drawerLoader.style.display = 'none';
           }
+        };
+
+        const originalAlert = window.alert;
+        window.alert = function(msg) {
+          dismissAllLoaders();
           originalAlert(msg);
         };
 
         const restoreUIState = () => {
           const panelWrapper = document.getElementById('standalone_panel_wrapper');
-          if (panelWrapper) {
-            panelWrapper.style.zIndex = '99999'; 
-          }
+          if (panelWrapper) panelWrapper.style.zIndex = '99999'; 
+          dismissAllLoaders();
         };
 
-        // [안전장치 2] 창 포커스 복귀 시 무조건 로딩 해제
-        window.addEventListener('pageshow', (e) => {
-          restoreUIState();
-          if (e.persisted) {
-            const loaderA = document.getElementById('ykinas-global-loader');
-            if (loaderA) loaderA.style.display = 'none';
-            if (ykinasShadowRoot) {
-              const loaderB = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
-              if (loaderB) loaderB.style.display = 'none';
-            }
-          }
-        });
-
-        window.addEventListener('focus', () => {
-          restoreUIState();
-          const loaderA = document.getElementById('ykinas-global-loader');
-          if (loaderA) loaderA.style.display = 'none';
-          if (ykinasShadowRoot) {
-            const loaderB = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
-            if (loaderB) loaderB.style.display = 'none';
-          }
-        });
+        window.addEventListener('pageshow', restoreUIState);
+        window.addEventListener('focus', restoreUIState);
 
         const currentPath = window.location.pathname;
         const isLoginPage = currentPath.includes('/member/login.html');
 
         function getNativeSnsButton(provider, doc) {
           if (!doc) doc = document;
-          const classMap = {
-            'kakao': ['.btnKakao', '#btnKakao', 'a[onclick*="kakao"]'],
-            'naver': ['.btnNaver', '#btnNaver', '#naver_id_login', 'a[onclick*="naver"]'],
-            'google': ['.btnGoogle', '#btnGoogle', 'a[onclick*="google"]'],
-            'facebook': ['.btnFacebook', '#btnFacebook', 'a[onclick*="facebook"]'],
-            'apple': ['.btnApple', '#btnApple', 'a[onclick*="apple"]'],
-            'line': ['.btnLine', '#btnLine', 'a[onclick*="line"]'],
-            'yahoojp': ['.yahoojp', '#yahoojp', 'a[onclick*="yahoojp"]']
+          const selectorMap = {
+            'kakao': ['.btnKakao', 'a[onclick*="kakao"]', 'a[onclick*="Kakao"]'],
+            'naver': ['.btnNaver', '#naver_id_login', 'a[onclick*="naver"]', 'a[onclick*="Naver"]'],
+            'google': ['.btnGoogle', 'a[onclick*="google"]', 'a[onclick*="Google"]'],
+            'facebook': ['.btnFacebook', 'a[onclick*="facebook"]', 'a[onclick*="Facebook"]'],
+            'apple': ['.btnApple', 'a[onclick*="apple"]', 'a[onclick*="Apple"]'],
+            'line': ['.btnLine', 'a[onclick*="line"]', 'a[onclick*="Line"]'],
+            'yahoojp': ['.yahoojp', 'a[onclick*="yahoojp"]', 'a[onclick*="Yahoo"]']
           };
-          const selectors = classMap[provider] || [];
-          selectors.unshift('#origin_btn_' + provider);
+          const selectors = selectorMap[provider] || [];
 
           try {
-            const wrap = doc.getElementById('cafe24-original-wrap') || doc.getElementById('hidden-cafe24-login-module');
-            if (wrap) {
-              for (let sel of selectors) {
-                const btn = wrap.querySelector(sel);
-                if (btn) return btn;
-              }
-            }
+            const root = doc.getElementById('cafe24-original-wrap') || doc;
             for (let sel of selectors) {
-              const btn = doc.querySelector(sel);
-              if (btn) return btn;
+              const el = root.querySelector(sel);
+              if (el) return el;
             }
           } catch(e) {}
           return null;
@@ -141,7 +114,7 @@ export default async function handler(req, res) {
           function renderFullScreenUI() {
             const originWrap = document.getElementById('cafe24-original-wrap');
             if (originWrap) {
-              originWrap.style.cssText = 'position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none;';
+              originWrap.style.cssText = 'position:fixed; left:-9999px; top:-9999px; width:1px; height:1px; opacity:0; pointer-events:none;';
             }
 
             if (!document.getElementById('ykinas-tailwind')) {
@@ -176,7 +149,7 @@ export default async function handler(req, res) {
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; border: none; outline: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-btn-primary { background-color: #111111; color: #ffffff; }
-                .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
+                .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
                 .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; }
@@ -366,21 +339,17 @@ export default async function handler(req, res) {
             const searchParams = new URLSearchParams(window.location.search);
             const currentReturnUrl = searchParams.get('returnUrl') || '';
 
-            // [핵심] 사이드바에서 SNS 클릭하여 넘어왔을 경우, 타이머 로딩 후 자동 클릭
             const triggerSns = searchParams.get('triggerSns');
             if (triggerSns) {
               window.history.replaceState({}, document.title, window.location.pathname + (currentReturnUrl ? '?returnUrl=' + encodeURIComponent(currentReturnUrl) : ''));
-              showLoader(); // 로딩 먼저 켜고
+              showLoader();
               setTimeout(() => {
                 const originBtn = getNativeSnsButton(triggerSns, document);
                 if (originBtn) {
                   originBtn.click();
-                  setTimeout(hideLoader, 2000); // 팝업 뜰 시간 벌어주고 스스로 꺼짐
-                } else {
-                  hideLoader();
-                  alert('해당 간편 로그인을 찾을 수 없습니다.');
                 }
-              }, 150);
+                setTimeout(hideLoader, 1500);
+              }, 300);
             }
 
             document.getElementById('a_btn_goto_guest').addEventListener('click', () => {
@@ -432,13 +401,13 @@ export default async function handler(req, res) {
                 if (iId) iId.value = idVal;
                 if (iPw) iPw.value = pwVal;
                 
-                const originBtn = document.getElementById('origin_btn_login') || wrap.querySelector('a[onclick*="login"]');
+                const originBtn = wrap.querySelector('.btnSubmit') || wrap.querySelector('a[onclick*="login"]');
                 if (originBtn) {
                   originBtn.click();
                 } else if (iId && iId.form) {
                   iId.form.submit();
                 }
-                setTimeout(hideLoader, 3000); // 무조건 3초 뒤 해제
+                setTimeout(hideLoader, 2500);
               }
             };
             document.getElementById('a_btn_submit_login').addEventListener('click', submitLogin);
@@ -459,16 +428,13 @@ export default async function handler(req, res) {
                 if(iId) iId.value = idVal;
                 if(iPw) iPw.value = pwVal;
 
-                const originBtn = document.getElementById('origin_btn_order_history') || wrap.querySelector('button[type="submit"]');
+                const originBtn = wrap.querySelector('.btnSubmitOrder') || wrap.querySelector('button[type="submit"]');
                 if (originBtn) {
                   originBtn.click();
                 } else if (iName && iName.form) {
                   iName.form.submit();
-                } else {
-                  hideLoader();
-                  alert("비회원 주문조회 폼을 찾을 수 없습니다.");
                 }
-                setTimeout(hideLoader, 3000); // 3초 뒤 무조건 해제
+                setTimeout(hideLoader, 2500);
               }
             };
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
@@ -483,11 +449,8 @@ export default async function handler(req, res) {
                 if (!customBtn) return;
 
                 const originEl = getNativeSnsButton(key, document);
-
                 if (originEl) {
-                  // [핵심 보완] 가장 안전한 클래스 문자열 검색 방식으로 교체 (버튼 사라짐 방지)
-                  const isHidden = (originEl.className || '').toString().indexOf('displaynone') !== -1;
-
+                  const isHidden = (originEl.className || '').toString().includes('displaynone');
                   if (isHidden) {
                     customBtn.style.display = 'none';
                   } else {
@@ -502,7 +465,6 @@ export default async function handler(req, res) {
               const gridContainer = document.getElementById('a_sns_grid_container');
               if (gridContainer) {
                 gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
-                
                 if (gridActiveCount === 1) {
                   gridContainer.classList.remove('grid-cols-2');
                   gridContainer.classList.add('grid-cols-1');
@@ -518,9 +480,8 @@ export default async function handler(req, res) {
             let snsIntervalA = setInterval(syncSnsA, 300);
             setTimeout(() => clearInterval(snsIntervalA), 3000);
             const observer = new MutationObserver(() => syncSnsA());
-            observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
+            observer.observe(document.body, { attributes: true, childList: true, subtree: true });
 
-            // [MODE A] 클릭 즉시 로딩 후 자동 닫힘 적용
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const customBtn = document.getElementById('a_sns_' + provider);
               if (customBtn) {
@@ -532,7 +493,7 @@ export default async function handler(req, res) {
                   if (originBtn) {
                     showLoader();
                     originBtn.click();
-                    setTimeout(hideLoader, 2500); // 무한 로딩 방지용 절대 타이머
+                    setTimeout(hideLoader, 2000);
                   } else {
                     alert('간편 로그인 연결에 실패했습니다.');
                   }
@@ -555,7 +516,7 @@ export default async function handler(req, res) {
 
         } else {
           // ==========================================
-          // [MODE B] 글로벌 드로어 (기기 공통 통합)
+          // [MODE B] 글로벌 드로어 (사이드바)
           // ==========================================
           document.addEventListener('click', function(e) {
             const target = e.target.closest('a');
@@ -626,19 +587,13 @@ export default async function handler(req, res) {
             const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
             const skinPrefix = skinMatch ? skinMatch[0] : '';
 
-            // ⚠️ 투명 iframe (ID/PW 로그인 용도 및 SNS 노출 동기화 용도)
             let proxyIframe = document.getElementById('ykinas_proxy_iframe');
             if (!proxyIframe) {
               proxyIframe = document.createElement('iframe');
               proxyIframe.id = 'ykinas_proxy_iframe';
               proxyIframe.src = skinPrefix + '/member/login.html';
-              proxyIframe.style.cssText = 'position:absolute; width:1px; height:1px; left:-9999px; opacity:0; pointer-events:none;';
+              proxyIframe.style.cssText = 'position:fixed; width:1px; height:1px; left:-9999px; top:-9999px; opacity:0; pointer-events:none;';
               document.body.appendChild(proxyIframe);
-            }
-
-            const originWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-            if (originWrap) {
-              originWrap.style.cssText = 'position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none;';
             }
 
             const host = document.createElement('div');
@@ -681,11 +636,10 @@ export default async function handler(req, res) {
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; border: none; outline: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-btn-primary { background-color: #111111; color: #ffffff; }
-                .ykinas-loader-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
+                .ykinas-loader-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
-                .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
-                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+                .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; }
               </style>
 
               <div id="global-login-drawer">
@@ -751,8 +705,7 @@ export default async function handler(req, res) {
                           <div class="relative w-full">
                             <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                             <label class="floating-label">비밀번호</label>
-                            <!-- [인라인 SVG 적용] 드로어 영역 비밀번호 토글 버튼 -->
-                            <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
+                            <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
                               <svg id="s_eye_icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
                               </svg>
@@ -768,17 +721,14 @@ export default async function handler(req, res) {
                         </div>
 
                         <div class="flex justify-center items-center space-x-4 mt-6 text-[11px] text-gray-400">
-                          <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
-                          <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
-                          <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black transition-colors">회원가입</a>
+                          <a href="/member/id/find_id.html" class="hover:text-black">아이디 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
+                          <a href="/member/passwd/find_passwd_info.html" class="hover:text-black">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
+                          <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black">회원가입</a>
                         </div>
 
                         <div class="mt-12 text-center border-t border-gray-100 pt-6 pb-6">
-                          <button type="button" id="btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors active:opacity-70">
-                            비회원으로 주문하셨나요?
-                          </button>
+                          <button type="button" id="btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4">비회원으로 주문하셨나요?</button>
                         </div>
-
                       </fieldset>
                     </div>
                   </div>
@@ -796,9 +746,7 @@ export default async function handler(req, res) {
               const allLinks = ykinasShadowRoot.querySelectorAll('a');
               allLinks.forEach(link => {
                 const href = link.getAttribute('href');
-                if (href && href.startsWith('/')) {
-                  link.setAttribute('href', skinPrefix + href);
-                }
+                if (href && href.startsWith('/')) link.setAttribute('href', skinPrefix + href);
               });
             }
 
@@ -813,76 +761,64 @@ export default async function handler(req, res) {
               });
             }
 
-            const drawerSvgEyeClosed = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />';
-            const drawerSvgEyeOpen = '<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />';
-
             ykinasShadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
               const pw = ykinasShadowRoot.querySelector('#s_pw');
               const svgEl = ykinasShadowRoot.querySelector('#s_eye_icon');
               if (pw.type === 'password') {
                 pw.type = 'text';
-                svgEl.innerHTML = drawerSvgEyeOpen;
+                svgEl.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />';
               } else {
                 pw.type = 'password';
-                svgEl.innerHTML = drawerSvgEyeClosed;
+                svgEl.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />';
               }
             });
 
             ykinasShadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
-               const idVal = ykinasShadowRoot.querySelector('#s_id').value.trim();
-               const pwVal = ykinasShadowRoot.querySelector('#s_pw').value.trim();
-               if (!idVal || !pwVal) { 
-                 alert("아이디와 비밀번호를 모두 입력해주세요."); 
-                 return; 
-               }
+              const idVal = ykinasShadowRoot.querySelector('#s_id').value.trim();
+              const pwVal = ykinasShadowRoot.querySelector('#s_pw').value.trim();
+              if (!idVal || !pwVal) return alert("아이디와 비밀번호를 모두 입력해주세요.");
 
-               const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-               if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
-                 showDrawerLoader();
-                 originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
-                 originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
-                 (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
-               } else {
-                 try {
-                   showDrawerLoader();
-                   const iframe = document.getElementById('ykinas_proxy_iframe');
-                   const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+              showDrawerLoader();
+              try {
+                const iframe = document.getElementById('ykinas_proxy_iframe');
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
 
-                   iframe.contentWindow.alert = function(msg) {
-                     window.alert(msg);
-                   };
+                const ifId = iframeDoc.querySelector('input[name="member_id"]');
+                const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
+                const ifBtn = iframeDoc.querySelector('.btnSubmit') || iframeDoc.querySelector('a[onclick*="login"]');
 
-                   const ifId = iframeDoc.querySelector('input[name="member_id"]');
-                   const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
-                   const ifBtn = iframeDoc.getElementById('origin_btn_login');
+                if (ifId && ifPw) {
+                  ifId.value = idVal;
+                  ifPw.value = pwVal;
 
-                   if (ifId && ifPw && ifBtn) {
-                     ifId.value = idVal;
-                     ifPw.value = pwVal;
+                  const form = ifId.closest('form');
+                  if (form) {
+                    form.target = "_parent";
+                    let retInput = form.querySelector('input[name="returnUrl"]');
+                    if (!retInput) {
+                      retInput = iframeDoc.createElement('input');
+                      retInput.type = 'hidden';
+                      retInput.name = 'returnUrl';
+                      form.appendChild(retInput);
+                    }
+                    retInput.value = window.location.pathname + window.location.search;
+                  }
 
-                     const form = ifId.closest('form');
-                     if (form) {
-                       form.target = "_parent"; 
-                       let retInput = form.querySelector('input[name="returnUrl"]');
-                       if (!retInput) {
-                         retInput = iframeDoc.createElement('input');
-                         retInput.type = 'hidden';
-                         retInput.name = 'returnUrl';
-                         form.appendChild(retInput);
-                       }
-                       retInput.value = window.location.pathname + window.location.search;
-                     }
-                     ifBtn.click();
-                   } else {
-                     throw new Error("Iframe form not found");
-                   }
-                 } catch (e) {
-                   window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
-                 }
-               }
+                  if (ifBtn) {
+                    ifBtn.click();
+                  } else if (form) {
+                    form.submit();
+                  }
+                  setTimeout(hideDrawerLoader, 2500);
+                } else {
+                  throw new Error("Form not ready");
+                }
+              } catch(e) {
+                hideDrawerLoader();
+                window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+              }
             });
 
-            // [핵심 개선] 버튼은 다시 iframe에서 찾고, SecurityError는 안전하게 무시
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               let iframeDoc = null;
@@ -893,7 +829,6 @@ export default async function handler(req, res) {
                   iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
                 }
               } catch(e) {
-                // 클릭 후 카카오로 넘어가서 SecurityError가 발생하면 쿨하게 렌더링 중지 (무시)
                 return;
               }
 
@@ -904,10 +839,9 @@ export default async function handler(req, res) {
                 const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
                 if (!shadowBtn) return;
 
-                // 고객님 말씀대로 반드시 iframeDoc에서 찾아야 합니다!
                 const originEl = getNativeSnsButton(key, iframeDoc);
                 if (originEl) {
-                  const isHidden = (originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1) || (originEl.style && originEl.style.display === 'none');
+                  const isHidden = (originEl.className || '').toString().includes('displaynone');
                   if (isHidden) {
                     shadowBtn.style.display = 'none';
                   } else {
@@ -936,9 +870,8 @@ export default async function handler(req, res) {
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
             const observer = new MutationObserver(() => syncRealtimeSnsVisibility());
-            observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
+            observer.observe(document.body, { attributes: true, childList: true, subtree: true });
 
-            // [MODE B] 사이드바 클릭 이벤트 - 갇힘 및 먹통 방지
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
@@ -946,33 +879,9 @@ export default async function handler(req, res) {
                   e.preventDefault();
                   e.stopPropagation();
 
-                  try {
-                    const iframeNode = document.getElementById('ykinas_proxy_iframe');
-                    const iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
-                    const originBtn = getNativeSnsButton(provider, iframeDoc);
-                    
-                    if (originBtn) {
-                      window.YkinasLogin.close();
-                      
-                      const onclickScript = originBtn.getAttribute('onclick');
-                      const href = originBtn.getAttribute('href');
-
-                      // 💡 핵심: iframe 안에서 클릭하지 말고, 함수를 훔쳐와서 부모창(window)에서 직접 실행합니다!
-                      if (onclickScript && !onclickScript.includes('{$')) {
-                        const execFn = new Function(onclickScript);
-                        execFn.call(window);
-                      } else if (href && href !== '#none' && !href.startsWith('javascript:')) {
-                        window.location.href = href;
-                      } else {
-                        // 최후의 수단
-                        originBtn.click();
-                      }
-                    } else {
-                      window.location.href = skinPrefix + '/member/login.html';
-                    }
-                  } catch(err) {
-                    window.location.href = skinPrefix + '/member/login.html';
-                  }
+                  showDrawerLoader();
+                  const currentUrl = window.location.pathname + window.location.search;
+                  window.location.href = skinPrefix + '/member/login.html?triggerSns=' + provider + '&returnUrl=' + encodeURIComponent(currentUrl);
                 });
               }
             });
