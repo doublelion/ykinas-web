@@ -446,6 +446,14 @@ export default async function handler(req, res) {
               const gridContainer = document.getElementById('a_sns_grid_container');
               if (gridContainer) {
                 gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
+                
+                if (gridActiveCount === 1) {
+                  gridContainer.classList.remove('grid-cols-2');
+                  gridContainer.classList.add('grid-cols-1');
+                } else if (gridActiveCount > 1) {
+                  gridContainer.classList.remove('grid-cols-1');
+                  gridContainer.classList.add('grid-cols-2');
+                }
               }
             };
 
@@ -866,6 +874,15 @@ export default async function handler(req, res) {
                 const gridContainer = ykinasShadowRoot.querySelector('#b_sns_grid_container');
                 if (gridContainer) {
                   gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
+                  
+                  // 💡 추가된 부분: 활성화된 개수가 1개면 풀와이드(1열), 그 이상이면 2열로 동적 변경
+                  if (gridActiveCount === 1) {
+                    gridContainer.classList.remove('grid-cols-2');
+                    gridContainer.classList.add('grid-cols-1');
+                  } else if (gridActiveCount > 1) {
+                    gridContainer.classList.remove('grid-cols-1');
+                    gridContainer.classList.add('grid-cols-2');
+                  }
                 }
               };
 
