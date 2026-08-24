@@ -134,6 +134,11 @@ export default async function handler(req, res) {
         // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
+          // 기존 로그인 폼 강제 하이드 처리 (고객 실수 방어)
+            const fallbackOriginModule = document.querySelector('.xans-member-login');
+            if (fallbackOriginModule && !document.getElementById('cafe24-original-wrap')) {
+              fallbackOriginModule.style.cssText = 'position: absolute; left: -9999px; opacity: 0; pointer-events: none;';
+            }
             const originWrap = document.getElementById('cafe24-original-wrap');
             if (originWrap) {
               originWrap.style.cssText = 'position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none;';
@@ -404,35 +409,97 @@ export default async function handler(req, res) {
               }
             });
 
+            // ===================================================================
+            // [HOTFIX] 1. 회원 로그인 서브밋 로직 (방어 코드 추가)
+            // ===================================================================
             const submitLogin = () => {
               const idVal = document.getElementById('a_id').value.trim();
               const pwVal = document.getElementById('a_pw').value.trim();
               if (!idVal || !pwVal) return alert("아이디와 비밀번호를 모두 입력해주세요.");
-              const wrap = document.getElementById('cafe24-original-wrap');
+
+              // 타겟 랩퍼 탐색 (커스텀 ID 우선, 없으면 카페24 기본 모듈 클래스 탐색)
+              const wrap = document.getElementById('cafe24-original-wrap') || 
+                           document.getElementById('hidden-cafe24-login-module') || 
+                           document.querySelector('.xans-member-login');
+
               if (wrap) {
                 showLoader();
-                wrap.querySelector('input[name="member_id"]').value = idVal;
-                wrap.querySelector('input[name="member_passwd"]').value = pwVal;
-                document.getElementById('origin_btn_login')?.click();
+                
+                const idInput = wrap.querySelector('input[name="member_id"]');
+                const pwInput = wrap.querySelector('input[name="member_passwd"]');
+                
+                if (idInput) idInput.value = idVal;
+                if (pwInput) pwInput.value = pwVal;
+
+                // 로그인 버튼 탐색 (커스텀 ID -> 기본 a태그/button -> submit 폼 강제 실행)
+                const loginBtn = document.getElementById('origin_btn_login') || 
+                                 document.getElementById('hidden_btn_login') || 
+                                 wrap.querySelector('a[onclick*="login"], button[onclick*="login"], input[type="image"]');
+
+                if (loginBtn) {
+                  loginBtn.click();
+                } else {
+                  // 최후의 수단: 버튼이 아예 없다면 폼 자체를 submit
+                  const form = idInput ? idInput.closest('form') : null;
+                  if (form) form.submit();
+                  else {
+                     hideLoader();
+                     alert('로그인 폼을 전송할 수 없습니다. 스킨 구조를 확인해주세요.');
+                  }
+                }
+              } else {
+                alert("로그인 모듈을 찾을 수 없습니다. 관리자에게 문의하세요.");
               }
             };
+            
             document.getElementById('a_btn_submit_login').addEventListener('click', submitLogin);
             document.getElementById('a_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitLogin(); });
 
+
+            // ===================================================================
+            // [HOTFIX] 2. 비회원 주문조회 서브밋 로직 (방어 코드 추가)
+            // ===================================================================
             const submitGuest = () => {
               const nameVal = document.getElementById('a_order_name').value.trim();
               const idVal = document.getElementById('a_order_id').value.trim();
               const pwVal = document.getElementById('a_order_pw').value.trim();
+              
               if (!nameVal || !idVal || !pwVal) return alert("주문자 정보를 모두 입력해주세요.");
-              const wrap = document.getElementById('cafe24-original-wrap');
+              
+              // 타겟 랩퍼 탐색
+              const wrap = document.getElementById('cafe24-original-wrap') || 
+                           document.querySelector('.xans-myshop-orderhistorynologin');
+
               if (wrap) {
                 showLoader();
-                wrap.querySelector('input[name="order_name"]').value = nameVal;
-                wrap.querySelector('input[name="order_id"]').value = idVal;
-                wrap.querySelector('input[name="order_password"]').value = pwVal;
-                document.getElementById('origin_btn_order_history')?.click();
+                const nameInput = wrap.querySelector('input[name="order_name"]');
+                const idInput = wrap.querySelector('input[name="order_id"]');
+                const pwInput = wrap.querySelector('input[name="order_password"]');
+
+                if (nameInput) nameInput.value = nameVal;
+                if (idInput) idInput.value = idVal;
+                if (pwInput) pwInput.value = pwVal;
+
+                // 비회원 확인 버튼 탐색
+                const guestBtn = document.getElementById('origin_btn_order_history') || 
+                                 wrap.querySelector('a[onclick*="OrderHistory"], button[type="submit"], input[type="image"]');
+
+                if (guestBtn) {
+                  guestBtn.click();
+                } else {
+                  // 최후의 수단
+                  const form = nameInput ? nameInput.closest('form') : null;
+                  if (form) form.submit();
+                  else {
+                     hideLoader();
+                     alert('비회원 폼을 전송할 수 없습니다.');
+                  }
+                }
+              } else {
+                alert("비회원 주문조회 모듈을 찾을 수 없습니다.");
               }
             };
+            
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
