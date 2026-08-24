@@ -7,7 +7,6 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    // [백엔드 최적화] 실시간 반영을 위해 캐시 무효화
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -93,7 +92,6 @@ export default async function handler(req, res) {
         const currentPath = window.location.pathname;
         const isLoginPage = currentPath.includes('/member/login.html');
 
-        // [핵심 개선] 카페24의 어떤 버튼 형식이든 찾아내는 강력한 탐색기
         function getNativeSnsButton(provider, doc = document) {
           const classMap = {
             'kakao': ['.btnKakao', '#btnKakao', 'a[onclick*="kakao"]'],
@@ -122,9 +120,6 @@ export default async function handler(req, res) {
           return null;
         }
 
-        // ==========================================
-        // [MODE A] 정식 로그인 페이지 전용 (login.html)
-        // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
             const originWrap = document.getElementById('cafe24-original-wrap');
@@ -943,3 +938,4 @@ export default async function handler(req, res) {
     return res.status(500).send('/* Sign-It Initialization error */');
   }
 }
+
