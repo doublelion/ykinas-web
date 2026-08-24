@@ -919,7 +919,7 @@ export default async function handler(req, res) {
 
               const syncDisplay = (sourceDoc) => {
                 if (!sourceDoc) return;
-                let gridActiveCount = 0;
+                const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
 
                 snsProviders.forEach(key => {
                   const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
@@ -928,21 +928,11 @@ export default async function handler(req, res) {
                   const originEl = getNativeSnsButton(key);
                   if (originEl) {
                     const isHidden = originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1;
-                    if (isHidden) {
-                      shadowBtn.style.display = 'none';
-                    } else {
-                      shadowBtn.style.display = 'flex';
-                      if (key !== 'kakao') gridActiveCount++;
-                    }
+                    shadowBtn.style.display = isHidden ? 'none' : 'flex';
                   } else {
                     shadowBtn.style.display = 'none';
                   }
                 });
-
-                const gridContainer = ykinasShadowRoot.querySelector('#b_sns_grid_container');
-                if (gridContainer) {
-                  gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
-                }
               };
 
               const iframeNode = document.getElementById('ykinas_proxy_iframe');
