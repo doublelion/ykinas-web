@@ -57,6 +57,8 @@ export default async function handler(req, res) {
         window.__YKINAS_SKIN_LOADED__ = true;
 
         let ykinasShadowRoot = null;
+        
+        // [안전장치 1] 알림창이 뜰 때 즉시 로딩 해제
         const originalAlert = window.alert;
         window.alert = function(msg) {
           const globalLoader = document.getElementById('ykinas-global-loader');
@@ -76,6 +78,7 @@ export default async function handler(req, res) {
           }
         };
 
+        // [안전장치 2] 창 포커스 복귀 시 무조건 로딩 해제
         window.addEventListener('pageshow', (e) => {
           restoreUIState();
           if (e.persisted) {
@@ -172,7 +175,7 @@ export default async function handler(req, res) {
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; border: none; outline: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
-                .bg-google:hover { background-color: #F1F3F4; opacity: 1; } 
+                .bg-btn-primary { background-color: #111111; color: #ffffff; }
                 .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
@@ -252,42 +255,69 @@ export default async function handler(req, res) {
 
                           <div class="login space-y-4 mt-5">
                             <div class="relative w-full">
-                              <input type="text" id="s_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                              <input type="text" id="a_id" placeholder=" " required autocomplete="username" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
                               <label class="floating-label">아이디</label>
                             </div>
                             <div class="relative w-full">
-                              <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
+                              <input type="password" id="a_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                               <label class="floating-label">비밀번호</label>
-                              <!-- [인라인 SVG 적용] 드로어 영역 비밀번호 토글 버튼 -->
-                              <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
-                                <svg id="s_eye_icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                              <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
+                                <svg id="a_eye_icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                   <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
                                 </svg>
                               </button>
                             </div>
                             <div class="flex items-center justify-between mt-2 mb-4">
                               <label class="flex items-center cursor-pointer group">
-                                <input type="checkbox" id="s_save_id" class="w-3.5 h-3.5 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
+                                <input type="checkbox" id="a_save_id" class="w-3.5 h-3.5 text-black border-gray-300 rounded focus:ring-black cursor-pointer" checked>
                                 <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
                               </label>
                             </div>
-                            <button type="button" id="btn_submit_login" class="w-full py-3.5 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded mt-4">로그인</button>
+                            <button type="button" id="a_btn_submit_login" class="w-full py-3.5 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded mt-4">로그인</button>
                           </div>
 
                           <div class="flex justify-center items-center space-x-4 mt-6 text-[11px] text-gray-400">
-                            <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
-                            <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
-                            <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black transition-colors">회원가입</a>
+                            <a href="/member/id/find_id.html" class="hover:text-black">아이디 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
+                            <a href="/member/passwd/find_passwd_info.html" class="hover:text-black">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
+                            <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black">회원가입</a>
                           </div>
 
                           <div class="mt-12 text-center border-t border-gray-100 pt-6 pb-6">
-                            <button type="button" id="btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors active:opacity-70">
-                              비회원으로 주문하셨나요?
-                            </button>
+                            <button type="button" id="a_btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4">비회원으로 주문하셨나요?</button>
                           </div>
-
                         </fieldset>
                       </div>
+
+                      <div id="ui-guest-mode" class="mode-hidden fade-in">
+                        <div class="mb-10 text-center">
+                          <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2 mt-4">비회원 주문조회</h1>
+                          <p class="text-sm text-gray-500">주문 시 입력하신 정보를 입력해 주세요.</p>
+                        </div>
+                        <div class="space-y-6 mt-6">
+                          <div class="relative w-full">
+                            <input type="text" id="a_order_name" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                            <label class="floating-label">주문자명</label>
+                          </div>
+                          <div class="relative w-full">
+                            <input type="text" id="a_order_id" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
+                            <label class="floating-label">주문번호 (하이픈 포함)</label>
+                          </div>
+                          <div class="relative w-full">
+                            <input type="password" id="a_order_pw" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
+                            <label class="floating-label">주문 비밀번호</label>
+                            <button type="button" id="a_btn_toggle_order_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
+                              <svg id="a_guest_eye_icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                              </svg>
+                            </button>
+                          </div>
+                          <button type="button" id="a_btn_submit_guest" class="w-full py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors mt-4 rounded shadow-sm">주문 추적하기</button>
+                        </div>
+                        <div class="mt-12 text-center border-t border-gray-100 pt-6">
+                          <button type="button" id="a_btn_goto_login" class="text-xs text-gray-400 hover:text-black underline underline-offset-4">회원 로그인으로 돌아가기</button>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
                 </div>
@@ -397,9 +427,18 @@ export default async function handler(req, res) {
               const wrap = document.getElementById('cafe24-original-wrap');
               if (wrap) {
                 showLoader();
-                wrap.querySelector('input[name="member_id"]').value = idVal;
-                wrap.querySelector('input[name="member_passwd"]').value = pwVal;
-                document.getElementById('origin_btn_login')?.click();
+                const iId = wrap.querySelector('input[name="member_id"]');
+                const iPw = wrap.querySelector('input[name="member_passwd"]');
+                if (iId) iId.value = idVal;
+                if (iPw) iPw.value = pwVal;
+                
+                const originBtn = document.getElementById('origin_btn_login') || wrap.querySelector('a[onclick*="login"]');
+                if (originBtn) {
+                  originBtn.click();
+                } else if (iId && iId.form) {
+                  iId.form.submit();
+                }
+                setTimeout(hideLoader, 3000); // 무조건 3초 뒤 해제
               }
             };
             document.getElementById('a_btn_submit_login').addEventListener('click', submitLogin);
@@ -413,10 +452,23 @@ export default async function handler(req, res) {
               const wrap = document.getElementById('cafe24-original-wrap');
               if (wrap) {
                 showLoader();
-                wrap.querySelector('input[name="order_name"]').value = nameVal;
-                wrap.querySelector('input[name="order_id"]').value = idVal;
-                wrap.querySelector('input[name="order_password"]').value = pwVal;
-                document.getElementById('origin_btn_order_history')?.click();
+                const iName = wrap.querySelector('input[name="order_name"]');
+                const iId = wrap.querySelector('input[name="order_id"]');
+                const iPw = wrap.querySelector('input[name="order_password"]');
+                if(iName) iName.value = nameVal;
+                if(iId) iId.value = idVal;
+                if(iPw) iPw.value = pwVal;
+
+                const originBtn = document.getElementById('origin_btn_order_history') || wrap.querySelector('button[type="submit"]');
+                if (originBtn) {
+                  originBtn.click();
+                } else if (iName && iName.form) {
+                  iName.form.submit();
+                } else {
+                  hideLoader();
+                  alert("비회원 주문조회 폼을 찾을 수 없습니다.");
+                }
+                setTimeout(hideLoader, 3000); // 3초 뒤 무조건 해제
               }
             };
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
@@ -433,7 +485,8 @@ export default async function handler(req, res) {
                 const originEl = getNativeSnsButton(key, document);
 
                 if (originEl) {
-                  const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
+                  // [핵심 보완] 가장 안전한 클래스 문자열 검색 방식으로 교체 (버튼 사라짐 방지)
+                  const isHidden = (originEl.className || '').toString().indexOf('displaynone') !== -1;
 
                   if (isHidden) {
                     customBtn.style.display = 'none';
@@ -467,7 +520,7 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [MODE A] 클릭 즉시 로딩, 2초 뒤 자동 종료 (UX 스무스 로딩)
+            // [MODE A] 클릭 즉시 로딩 후 자동 닫힘 적용
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const customBtn = document.getElementById('a_sns_' + provider);
               if (customBtn) {
@@ -479,9 +532,7 @@ export default async function handler(req, res) {
                   if (originBtn) {
                     showLoader();
                     originBtn.click();
-                    setTimeout(() => {
-                      hideLoader();
-                    }, 2000);
+                    setTimeout(hideLoader, 2500); // 무한 로딩 방지용 절대 타이머
                   } else {
                     alert('간편 로그인 연결에 실패했습니다.');
                   }
@@ -575,6 +626,7 @@ export default async function handler(req, res) {
             const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
             const skinPrefix = skinMatch ? skinMatch[0] : '';
 
+            // ⚠️ 투명 iframe (ID/PW 로그인 용도 및 SNS 노출 동기화 용도)
             let proxyIframe = document.getElementById('ykinas_proxy_iframe');
             if (!proxyIframe) {
               proxyIframe = document.createElement('iframe');
@@ -582,6 +634,11 @@ export default async function handler(req, res) {
               proxyIframe.src = skinPrefix + '/member/login.html';
               proxyIframe.style.cssText = 'position:absolute; width:1px; height:1px; left:-9999px; opacity:0; pointer-events:none;';
               document.body.appendChild(proxyIframe);
+            }
+
+            const originWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
+            if (originWrap) {
+              originWrap.style.cssText = 'position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none;';
             }
 
             const host = document.createElement('div');
@@ -752,7 +809,7 @@ export default async function handler(req, res) {
             if (btnGotoGuest) {
               btnGotoGuest.addEventListener('click', function() {
                 showDrawerLoader();
-                window.location.href = '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
+                window.location.href = '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
               });
             }
 
@@ -825,6 +882,7 @@ export default async function handler(req, res) {
                }
             });
 
+            // [핵심 개선] 버튼은 다시 iframe에서 찾고, SecurityError는 안전하게 무시
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               let iframeDoc = null;
@@ -835,6 +893,7 @@ export default async function handler(req, res) {
                   iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
                 }
               } catch(e) {
+                // 클릭 후 카카오로 넘어가서 SecurityError가 발생하면 쿨하게 렌더링 중지 (무시)
                 return;
               }
 
@@ -845,9 +904,10 @@ export default async function handler(req, res) {
                 const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
                 if (!shadowBtn) return;
 
+                // 고객님 말씀대로 반드시 iframeDoc에서 찾아야 합니다!
                 const originEl = getNativeSnsButton(key, iframeDoc);
                 if (originEl) {
-                  const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
+                  const isHidden = (originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1) || (originEl.style && originEl.style.display === 'none');
                   if (isHidden) {
                     shadowBtn.style.display = 'none';
                   } else {
@@ -878,7 +938,7 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncRealtimeSnsVisibility());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [MODE B] 패스스루 클릭 방식 적용
+            // [MODE B] 사이드바 클릭 이벤트 - 갇힘 및 먹통 방지
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
@@ -886,9 +946,33 @@ export default async function handler(req, res) {
                   e.preventDefault();
                   e.stopPropagation();
 
-                  showDrawerLoader();
-                  const currentUrl = window.location.pathname + window.location.search;
-                  window.location.href = skinPrefix + '/member/login.html?triggerSns=' + provider + '&returnUrl=' + encodeURIComponent(currentUrl);
+                  try {
+                    const iframeNode = document.getElementById('ykinas_proxy_iframe');
+                    const iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
+                    const originBtn = getNativeSnsButton(provider, iframeDoc);
+                    
+                    if (originBtn) {
+                      window.YkinasLogin.close();
+                      
+                      const onclickScript = originBtn.getAttribute('onclick');
+                      const href = originBtn.getAttribute('href');
+
+                      // 💡 핵심: iframe 안에서 클릭하지 말고, 함수를 훔쳐와서 부모창(window)에서 직접 실행합니다!
+                      if (onclickScript && !onclickScript.includes('{$')) {
+                        const execFn = new Function(onclickScript);
+                        execFn.call(window);
+                      } else if (href && href !== '#none' && !href.startsWith('javascript:')) {
+                        window.location.href = href;
+                      } else {
+                        // 최후의 수단
+                        originBtn.click();
+                      }
+                    } else {
+                      window.location.href = skinPrefix + '/member/login.html';
+                    }
+                  } catch(err) {
+                    window.location.href = skinPrefix + '/member/login.html';
+                  }
                 });
               }
             });
