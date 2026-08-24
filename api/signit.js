@@ -7,10 +7,10 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    // [백엔드 최적화] 글로벌 Edge CDN 캐싱
+    // [백엔드 최적화] 실시간 반영을 위해 캐시 무효화 (문제 해결 시까지 유지 권장)
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('X-Cafe24-Api-Version', '2025-12-01');
 
     const clientReferer = req.headers['referer'] || '';
@@ -93,15 +93,33 @@ export default async function handler(req, res) {
         const currentPath = window.location.pathname;
         const isLoginPage = currentPath.includes('/member/login.html');
 
-        // 기존 함수를 아래 코드로 통째로 교체하세요. (파라미터 doc = document 추가됨)
+        // [핵심 개선] 카페24의 어떤 버튼 형식이든 찾아내는 강력한 탐색기
         function getNativeSnsButton(provider, doc = document) {
-          const targetClass = provider === 'yahoojp' ? '.yahoojp' : '.btn' + provider.charAt(0).toUpperCase() + provider.slice(1);
+          const classMap = {
+            'kakao': ['.btnKakao', '#btnKakao', 'a[onclick*="kakao"]'],
+            'naver': ['.btnNaver', '#btnNaver', '#naver_id_login', 'a[onclick*="naver"]'],
+            'google': ['.btnGoogle', '#btnGoogle', 'a[onclick*="google"]'],
+            'facebook': ['.btnFacebook', '#btnFacebook', 'a[onclick*="facebook"]'],
+            'apple': ['.btnApple', '#btnApple', 'a[onclick*="apple"]'],
+            'line': ['.btnLine', '#btnLine', 'a[onclick*="line"]'],
+            'yahoojp': ['.yahoojp', '#yahoojp', 'a[onclick*="yahoojp"]']
+          };
+          const selectors = classMap[provider] || [];
+          selectors.push('#origin_btn_' + provider);
+
           const originalWrap = doc.getElementById('cafe24-original-wrap');
           if (originalWrap) {
-            const btn = originalWrap.querySelector(targetClass) || originalWrap.querySelector('#origin_btn_' + provider);
+            for (let sel of selectors) {
+              const btn = originalWrap.querySelector(sel);
+              if (btn) return btn;
+            }
+          }
+          
+          for (let sel of selectors) {
+            const btn = doc.querySelector(sel);
             if (btn) return btn;
           }
-          return doc.querySelector(targetClass) || doc.getElementById('origin_btn_' + provider);
+          return null;
         }
 
         // ==========================================
@@ -351,7 +369,6 @@ export default async function handler(req, res) {
               window.location.replace(nextUrl);
             });
 
-            // [인라인 SVG 패스 정의] 눈 감음 / 눈뜸
             const svgEyeClosed = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />';
             const svgEyeOpen = '<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />';
 
@@ -456,6 +473,7 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
+            // [MODE A] 단순화된 클릭 이벤트
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const customBtn = document.getElementById('a_sns_' + provider);
               if (customBtn) {
@@ -464,29 +482,10 @@ export default async function handler(req, res) {
                   e.stopPropagation();
 
                   const originBtn = getNativeSnsButton(provider);
-                  if (!originBtn) {
-                    alert('간편 로그인 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
-                    return;
-                  }
-
-                  const panelWrapper = document.getElementById('standalone_panel_wrapper');
-                  if (panelWrapper) {
-                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-                    panelWrapper.style.zIndex = isMobile ? '10' : '99990';
-                  }
-
-                  const onclickScript = originBtn.getAttribute('onclick');
-                  if (onclickScript) {
-                    try {
-                      const execNative = new Function(onclickScript);
-                      execNative.call(originBtn);
-                    } catch(err) {
-                      originBtn.click();
-                    }
-                  } else if (originBtn.href && originBtn.href !== '#none' && originBtn.href !== 'javascript:void(0);') {
-                    window.location.href = originBtn.href;
-                  } else {
+                  if (originBtn) {
                     originBtn.click();
+                  } else {
+                    alert('간편 로그인 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
                   }
                 });
               }
@@ -584,6 +583,18 @@ export default async function handler(req, res) {
               proxyIframe.id = 'ykinas_proxy_iframe';
               proxyIframe.src = skinPrefix + '/member/login.html';
               proxyIframe.style.cssText = 'position:absolute; width:1px; height:1px; left:-9999px; opacity:0; pointer-events:none;';
+              
+              // [핵심 로직] iframe 내에서 발생하는 전환을 부모창으로 리디렉트
+              proxyIframe.onload = function() {
+                try {
+                  const idoc = proxyIframe.contentDocument || proxyIframe.contentWindow.document;
+                  const base = idoc.createElement('base');
+                  base.target = '_parent';
+                  idoc.head.appendChild(base);
+                  idoc.querySelectorAll('form').forEach(f => f.target = '_parent');
+                } catch(e) {}
+              };
+              
               document.body.appendChild(proxyIframe);
             }
 
@@ -768,7 +779,6 @@ export default async function handler(req, res) {
               });
             }
 
-            // [인라인 SVG 토글 핸들러 적용 (드로어 영역)]
             const drawerSvgEyeClosed = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />';
             const drawerSvgEyeOpen = '<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />';
 
@@ -867,7 +877,6 @@ export default async function handler(req, res) {
                 if (gridContainer) {
                   gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
                   
-                  // 💡 추가된 부분: 활성화된 개수가 1개면 풀와이드(1열), 그 이상이면 2열로 동적 변경
                   if (gridActiveCount === 1) {
                     gridContainer.classList.remove('grid-cols-2');
                     gridContainer.classList.add('grid-cols-1');
@@ -893,6 +902,7 @@ export default async function handler(req, res) {
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
 
+            // [MODE B] 단순화된 클릭 이벤트
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
@@ -903,21 +913,10 @@ export default async function handler(req, res) {
                   const iframeNode = document.getElementById('ykinas_proxy_iframe');
                   const iframeDoc = iframeNode ? (iframeNode.contentDocument || iframeNode.contentWindow.document) : document;
                   const originBtn = getNativeSnsButton(provider, iframeDoc);
+                  
                   if (originBtn) {
                     window.YkinasLogin.close();
-                    const onclickScript = originBtn.getAttribute('onclick');
-                    if (onclickScript) {
-                      try {
-                        const execNative = new Function(onclickScript);
-                        execNative.call(originBtn);
-                      } catch (err) {
-                        originBtn.click();
-                      }
-                    } else if (originBtn.href && originBtn.href !== '#none' && originBtn.href !== 'javascript:void(0);') {
-                      window.location.href = originBtn.href;
-                    } else {
-                      originBtn.click();
-                    }
+                    originBtn.click(); // iframe 안에 갇히지 않고 부모창이 직접 전환됨!
                   } else {
                     alert('간편 로그인 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
                   }
