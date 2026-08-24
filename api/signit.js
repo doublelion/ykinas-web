@@ -220,31 +220,31 @@ export default async function handler(req, res) {
                             <p class="text-sm text-gray-500">SNS 간편 로그인 또는 아이디로 접속하세요.</p>
                           </div>
 
-                          <!-- [HOTFIX] 모바일 퍼스트 Flexbox 구조 적용 및 초기 숨김 처리 -->
+                          <!-- [HOTFIX] 글자 깨짐 방지를 위한 궁극의 Flex-Auto 반응형 구조 -->
                           <div class="wrap_sns_log flex flex-col sm:flex-row flex-wrap gap-2 mb-6">
-                            <button type="button" id="a_sns_kakao" class="sns-grid-btn w-full sm:flex-1 bg-kakao py-3 text-sm font-semibold rounded">
+                            <button type="button" id="a_sns_kakao" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-kakao py-3 text-sm font-semibold rounded whitespace-nowrap hover:opacity-90 transition-opacity">
                               <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
                               카카오로 시작하기
                             </button>
-                            <button type="button" id="a_sns_naver" class="sns-grid-btn w-full sm:flex-1 bg-naver border-none py-3 text-sm font-semibold rounded" style="display:none;">
+                            <button type="button" id="a_sns_naver" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-naver border-none py-3 text-sm font-semibold rounded whitespace-nowrap" style="display:none;">
                               <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                             </button>
-                            <button type="button" id="a_sns_google" class="sns-grid-btn w-full sm:flex-1 bg-google py-3 text-sm font-semibold rounded border border-gray-300" style="display:none;">
+                            <button type="button" id="a_sns_google" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-white border border-gray-300 text-gray-600 py-3 text-sm font-semibold rounded whitespace-nowrap hover:bg-gray-50" style="display:none;">
                               <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                               구글
                             </button>
-                            <button type="button" id="a_sns_apple" class="sns-grid-btn w-full sm:flex-1 bg-apple border-none py-3 text-sm font-semibold rounded" style="display:none;">
+                            <button type="button" id="a_sns_apple" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-apple border-none py-3 text-sm font-semibold rounded whitespace-nowrap" style="display:none;">
                               <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
                               Apple
                             </button>
-                            <button type="button" id="a_sns_facebook" class="sns-grid-btn w-full sm:flex-1 bg-facebook border-none py-3 text-sm font-semibold rounded" style="display:none;">
+                            <button type="button" id="a_sns_facebook" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-facebook border-none py-3 text-sm font-semibold rounded whitespace-nowrap" style="display:none;">
                               <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
                               Facebook
                             </button>
-                            <button type="button" id="a_sns_line" class="sns-grid-btn w-full sm:flex-1 bg-line border-none py-3 text-sm font-semibold rounded" style="display:none;">
+                            <button type="button" id="a_sns_line" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-line border-none py-3 text-sm font-semibold rounded whitespace-nowrap" style="display:none;">
                               <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
                             </button>
-                            <button type="button" id="a_sns_yahoojp" class="sns-grid-btn w-full sm:flex-1 bg-yahoojp border-none py-3 text-sm font-semibold rounded" style="display:none;">
+                            <button type="button" id="a_sns_yahoojp" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-yahoojp border-none py-3 text-sm font-semibold rounded whitespace-nowrap" style="display:none;">
                               <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
                             </button>
                           </div>
@@ -491,7 +491,6 @@ export default async function handler(req, res) {
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
             document.getElementById('a_order_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitGuest(); });
 
-            // [HOTFIX] 더욱 강력해진 SNS 숨김/노출 동기화 로직
             const syncSnsA = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
 
@@ -502,7 +501,6 @@ export default async function handler(req, res) {
                 const originEl = getNativeSnsButton(key);
 
                 if (originEl) {
-                  // 클래스 뿐만 아니라, 인라인 스타일로 숨겨진 경우까지 모두 잡아냅니다.
                   const isHidden = (originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1) || 
                                    (originEl.style && originEl.style.display === 'none');
                   
@@ -725,31 +723,31 @@ export default async function handler(req, res) {
                         <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
                         <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
 
-                        <!-- [HOTFIX] 모바일 퍼스트 Flexbox 구조 적용 및 초기 숨김 처리 -->
+                        <!-- [HOTFIX] 글자 깨짐 방지를 위한 궁극의 Flex-Auto 반응형 구조 -->
                         <div class="wrap_sns_log flex flex-col sm:flex-row flex-wrap gap-2 mb-6">
-                            <button type="button" id="btn_sns_kakao" class="sns-grid-btn w-full sm:flex-1 bg-kakao py-3 text-sm font-semibold rounded hover:opacity-90 transition-opacity">
+                            <button type="button" id="btn_sns_kakao" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-kakao py-3 text-sm font-semibold rounded whitespace-nowrap hover:opacity-90 transition-opacity">
                               <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
                               카카오로 시작하기
                             </button>
-                            <button type="button" id="btn_sns_naver" class="sns-grid-btn w-full sm:flex-1 bg-naver border-none py-3 text-sm font-semibold rounded" style="display:none;">
+                            <button type="button" id="btn_sns_naver" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-naver border-none py-3 text-sm font-semibold rounded whitespace-nowrap" style="display:none;">
                               <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                             </button>
-                            <button type="button" id="btn_sns_google" class="sns-grid-btn w-full sm:flex-1 bg-white border border-gray-300 text-gray-600 py-3 text-sm font-semibold rounded hover:bg-gray-50" style="display:none;">
+                            <button type="button" id="btn_sns_google" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-white border border-gray-300 text-gray-600 py-3 text-sm font-semibold rounded whitespace-nowrap hover:bg-gray-50" style="display:none;">
                               <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                               구글
                             </button>
-                            <button type="button" id="btn_sns_apple" class="sns-grid-btn w-full sm:flex-1 bg-apple border-none py-3 text-sm font-semibold rounded" style="display:none;">
+                            <button type="button" id="btn_sns_apple" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-apple border-none py-3 text-sm font-semibold rounded whitespace-nowrap" style="display:none;">
                               <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
                               Apple
                             </button>
-                            <button type="button" id="btn_sns_facebook" class="sns-grid-btn w-full sm:flex-1 bg-facebook border-none py-3 text-sm font-semibold rounded" style="display:none;">
+                            <button type="button" id="btn_sns_facebook" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-facebook border-none py-3 text-sm font-semibold rounded whitespace-nowrap" style="display:none;">
                               <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
                               Facebook
                             </button>
-                            <button type="button" id="btn_sns_line" class="sns-grid-btn w-full sm:flex-1 bg-line border-none py-3 text-sm font-semibold rounded" style="display:none;">
+                            <button type="button" id="btn_sns_line" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-line border-none py-3 text-sm font-semibold rounded whitespace-nowrap" style="display:none;">
                               <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
                             </button>
-                            <button type="button" id="btn_sns_yahoojp" class="sns-grid-btn w-full sm:flex-1 bg-yahoojp border-none py-3 text-sm font-semibold rounded" style="display:none;">
+                            <button type="button" id="btn_sns_yahoojp" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-yahoojp border-none py-3 text-sm font-semibold rounded whitespace-nowrap" style="display:none;">
                               <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
                             </button>
                         </div>
@@ -897,7 +895,6 @@ export default async function handler(req, res) {
                }
             });
 
-            // [HOTFIX] 더욱 강력해진 SNS 숨김/노출 동기화 로직
             const syncRealtimeSnsVisibility = () => {
               const syncDisplay = (sourceDoc) => {
                 if (!sourceDoc) return;
@@ -909,7 +906,6 @@ export default async function handler(req, res) {
 
                   const originEl = getNativeSnsButton(key);
                   if (originEl) {
-                    // 클래스 뿐만 아니라, 인라인 스타일로 숨겨진 경우까지 모두 잡아냅니다.
                     const isHidden = (originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1) || 
                                      (originEl.style && originEl.style.display === 'none');
                                      
