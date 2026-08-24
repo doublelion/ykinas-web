@@ -846,16 +846,30 @@ export default async function handler(req, res) {
             });
 
             // [핵심 개선] iframe 접근을 완전히 차단하고 부모창(document)의 상태만 읽어 SecurityError 방지
+            // [핵심 개선] 버튼은 다시 iframe에서 찾고, SecurityError는 안전하게 무시
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
+              let iframeDoc = null;
+
+              try {
+                const iframeNode = document.getElementById('ykinas_proxy_iframe');
+                if (iframeNode) {
+                  iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
+                }
+              } catch(e) {
+                // 클릭 후 카카오로 넘어가서 SecurityError가 발생하면 쿨하게 렌더링 중지 (무시)
+                return;
+              }
+
+              if (!iframeDoc) return;
               let gridActiveCount = 0;
 
               snsProviders.forEach(key => {
                 const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
                 if (!shadowBtn) return;
 
-                // 부모창(document)에서만 버튼을 찾습니다.
-                const originEl = getNativeSnsButton(key, document);
+                // 고객님 말씀대로 반드시 iframeDoc에서 찾아야 합니다!
+                const originEl = getNativeSnsButton(key, iframeDoc);
                 if (originEl) {
                   const isHidden = (originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1) || (originEl.style && originEl.style.display === 'none');
                   if (isHidden) {
@@ -872,7 +886,6 @@ export default async function handler(req, res) {
               const gridContainer = ykinasShadowRoot.querySelector('#b_sns_grid_container');
               if (gridContainer) {
                 gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
-                
                 if (gridActiveCount === 1) {
                   gridContainer.classList.remove('grid-cols-2');
                   gridContainer.classList.add('grid-cols-1');
@@ -897,26 +910,32 @@ export default async function handler(req, res) {
                   e.preventDefault();
                   e.stopPropagation();
 
-                  // 부모창(document)의 버튼을 찾아 부모창에서 직접 실행시킵니다.
-                  const originBtn = getNativeSnsButton(provider, document);
-                  
-                  if (originBtn) {
-                    window.YkinasLogin.close();
-                    const onclickScript = originBtn.getAttribute('onclick');
-                    if (onclickScript) {
-                      try {
-                        const execNative = new Function(onclickScript);
-                        execNative.call(originBtn);
-                      } catch(err) {
+                  try {
+                    const iframeNode = document.getElementById('ykinas_proxy_iframe');
+                    const iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
+                    const originBtn = getNativeSnsButton(provider, iframeDoc);
+                    
+                    if (originBtn) {
+                      window.YkinasLogin.close();
+                      
+                      const onclickScript = originBtn.getAttribute('onclick');
+                      const href = originBtn.getAttribute('href');
+
+                      // 💡 핵심: iframe 안에서 클릭하지 말고, 함수를 훔쳐와서 부모창(window)에서 직접 실행합니다!
+                      if (onclickScript && !onclickScript.includes('{$')) {
+                        const execFn = new Function(onclickScript);
+                        execFn.call(window);
+                      } else if (href && href !== '#none' && !href.startsWith('javascript:')) {
+                        window.location.href = href;
+                      } else {
+                        // 최후의 수단
                         originBtn.click();
                       }
-                    } else if (originBtn.href && originBtn.href !== '#none' && !originBtn.href.startsWith('javascript:')) {
-                      window.location.href = originBtn.href;
                     } else {
-                      originBtn.click();
+                      window.location.href = skinPrefix + '/member/login.html';
                     }
-                  } else {
-                    alert('간편 로그인 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
+                  } catch(err) {
+                    window.location.href = skinPrefix + '/member/login.html';
                   }
                 });
               }
