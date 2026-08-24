@@ -11,7 +11,8 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400');
-    res.setHeader('X-Cafe24-Api-Version', '2025-12-01');
+    // [규칙 준수] API 버전 2026-03-01 적용
+    res.setHeader('X-Cafe24-Api-Version', '2026-03-01');
 
     const clientReferer = req.headers['referer'] || '';
     const clientMallId = req.query.mall_id;
@@ -49,6 +50,7 @@ export default async function handler(req, res) {
       return sendDisabledScript('Domain mismatch.');
     }
 
+    // 서버 측 리터럴 안에 클라이언트 변수를 넣을 때는 반드시 \${} 형태로 이스케이프 처리
     const injectedScript = `
       (function() {
         'use strict';
@@ -104,14 +106,11 @@ export default async function handler(req, res) {
               const iframeDoc = iframe.contentWindow.document;
               btn = iframeDoc.querySelector(targetClass) || iframeDoc.getElementById('origin_btn_' + provider);
               
-              // displaynone이 할당되지 않은 '유효한' 버튼일 경우 즉시 반환
               if (btn && btn.className && typeof btn.className === 'string' && btn.className.indexOf('displaynone') === -1) {
                 return btn;
               }
             }
-          } catch (e) {
-            // DOM 접근 권한 충돌(Cross-Origin) 또는 아직 로드되지 않은 상태일 경우 무시하고 다음 단계 진행
-          }
+          } catch (e) {}
 
           // 2. 현재 Document 탐색 (Fallback)
           const originalWrap = document.getElementById('cafe24-original-wrap');
@@ -162,6 +161,7 @@ export default async function handler(req, res) {
             const customMainTitle = config.mainTitle || 'Breathtaking<br>Clarity.';
             const customDescription = config.description || '지금 가입하시고 첫 구매 혜택과 프라이빗 컬렉션 소식을 가장 먼저 받아보세요.';
 
+            // 백엔드 크래시 방지: \${변수명} 으로 이스케이프 처리 완료
             const fullScreenHTML = \`
               <style>
                 .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; }
@@ -200,15 +200,15 @@ export default async function handler(req, res) {
 
               <div id="standalone_panel_wrapper" class="fixed inset-0 z-[99999] flex bg-[#faf9f8] overflow-hidden fade-in" style="font-family: 'Pretendard', 'Noto Sans KR', sans-serif;">
                 <div class="hidden lg:block lg:w-7/12 relative bg-gray-900">
-                  <img src="${customHeroImage}" alt="Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
+                  <img src="\${customHeroImage}" alt="Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
                   <div class="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
                   <button type="button" id="a_btn_back_shop" class="absolute top-10 left-10 !bg-transparent text-white hover:opacity-70 transition-opacity flex items-center gap-2 z-10 cursor-pointer">
                     <span class="text-xs tracking-widest uppercase font-medium">← Back to Shop</span>
                   </button>
                   <div class="absolute bottom-20 left-16 text-white max-w-lg">
-                    <span class="text-xs uppercase tracking-[0.3em] opacity-80 mb-2 block font-sans">${customSubTitle}</span>
-                    <h2 class="text-5xl font-serif tracking-wide mb-4 leading-tight">${customMainTitle}</h2>
-                    <p class="text-sm tracking-wide font-light opacity-80 leading-relaxed">${customDescription}</p>
+                    <span class="text-xs uppercase tracking-[0.3em] opacity-80 mb-2 block font-sans">\${customSubTitle}</span>
+                    <h2 class="text-5xl font-serif tracking-wide mb-4 leading-tight">\${customMainTitle}</h2>
+                    <p class="text-sm tracking-wide font-light opacity-80 leading-relaxed">\${customDescription}</p>
                   </div>
                 </div>
 
@@ -391,7 +391,6 @@ export default async function handler(req, res) {
               window.location.replace(nextUrl);
             });
 
-            // [인라인 SVG 패스 정의] 눈 감음 / 눈뜸
             const svgEyeClosed = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />';
             const svgEyeOpen = '<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />';
 
@@ -419,15 +418,11 @@ export default async function handler(req, res) {
               }
             });
 
-            // ===================================================================
-            // [HOTFIX] 1. 회원 로그인 서브밋 로직 (방어 코드 추가)
-            // ===================================================================
             const submitLogin = () => {
               const idVal = document.getElementById('a_id').value.trim();
               const pwVal = document.getElementById('a_pw').value.trim();
               if (!idVal || !pwVal) return alert("아이디와 비밀번호를 모두 입력해주세요.");
 
-              // 타겟 랩퍼 탐색 (커스텀 ID 우선, 없으면 카페24 기본 모듈 클래스 탐색)
               const wrap = document.getElementById('cafe24-original-wrap') || 
                            document.getElementById('hidden-cafe24-login-module') || 
                            document.querySelector('.xans-member-login');
@@ -441,7 +436,6 @@ export default async function handler(req, res) {
                 if (idInput) idInput.value = idVal;
                 if (pwInput) pwInput.value = pwVal;
 
-                // 로그인 버튼 탐색 (커스텀 ID -> 기본 a태그/button -> submit 폼 강제 실행)
                 const loginBtn = document.getElementById('origin_btn_login') || 
                                  document.getElementById('hidden_btn_login') || 
                                  wrap.querySelector('a[onclick*="login"], button[onclick*="login"], input[type="image"]');
@@ -449,7 +443,6 @@ export default async function handler(req, res) {
                 if (loginBtn) {
                   loginBtn.click();
                 } else {
-                  // 최후의 수단: 버튼이 아예 없다면 폼 자체를 submit
                   const form = idInput ? idInput.closest('form') : null;
                   if (form) form.submit();
                   else {
@@ -466,9 +459,6 @@ export default async function handler(req, res) {
             document.getElementById('a_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitLogin(); });
 
 
-            // ===================================================================
-            // [HOTFIX] 2. 비회원 주문조회 서브밋 로직 (방어 코드 추가)
-            // ===================================================================
             const submitGuest = () => {
               const nameVal = document.getElementById('a_order_name').value.trim();
               const idVal = document.getElementById('a_order_id').value.trim();
@@ -476,7 +466,6 @@ export default async function handler(req, res) {
               
               if (!nameVal || !idVal || !pwVal) return alert("주문자 정보를 모두 입력해주세요.");
               
-              // 타겟 랩퍼 탐색
               const wrap = document.getElementById('cafe24-original-wrap') || 
                            document.querySelector('.xans-myshop-orderhistorynologin');
 
@@ -490,14 +479,12 @@ export default async function handler(req, res) {
                 if (idInput) idInput.value = idVal;
                 if (pwInput) pwInput.value = pwVal;
 
-                // 비회원 확인 버튼 탐색
                 const guestBtn = document.getElementById('origin_btn_order_history') || 
                                  wrap.querySelector('a[onclick*="OrderHistory"], button[type="submit"], input[type="image"]');
 
                 if (guestBtn) {
                   guestBtn.click();
                 } else {
-                  // 최후의 수단
                   const form = nameInput ? nameInput.closest('form') : null;
                   if (form) form.submit();
                   else {
@@ -800,7 +787,6 @@ export default async function handler(req, res) {
                           <div class="relative w-full">
                             <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                             <label class="floating-label">비밀번호</label>
-                            <!-- [인라인 SVG 적용] 드로어 영역 비밀번호 토글 버튼 -->
                             <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
                               <svg id="s_eye_icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
@@ -862,7 +848,6 @@ export default async function handler(req, res) {
               });
             }
 
-            // [인라인 SVG 토글 핸들러 적용 (드로어 영역)]
             const drawerSvgEyeClosed = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />';
             const drawerSvgEyeOpen = '<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />';
 
