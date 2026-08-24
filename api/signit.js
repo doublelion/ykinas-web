@@ -7,7 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    // [백엔드 최적화] 실시간 반영을 위해 캐시 무효화 (문제 해결 시까지 유지 권장)
+    // [백엔드 최적화] 실시간 반영을 위해 캐시 무효화
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -439,7 +439,7 @@ export default async function handler(req, res) {
                 const originEl = getNativeSnsButton(key);
 
                 if (originEl) {
-                  const isHidden = originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1;
+                  const isHidden = (originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1) || (originEl.style && originEl.style.display === 'none');
 
                   if (isHidden) {
                     customBtn.style.display = 'none';
@@ -473,7 +473,7 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [MODE A] 단순화된 클릭 이벤트
+            // [MODE A] 단순화된 부모창 클릭 이벤트
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const customBtn = document.getElementById('a_sns_' + provider);
               if (customBtn) {
@@ -481,9 +481,22 @@ export default async function handler(req, res) {
                   e.preventDefault();
                   e.stopPropagation();
 
-                  const originBtn = getNativeSnsButton(provider);
+                  const originBtn = getNativeSnsButton(provider, document);
+                  
                   if (originBtn) {
-                    originBtn.click();
+                    const onclickScript = originBtn.getAttribute('onclick');
+                    if (onclickScript) {
+                      try {
+                        const execNative = new Function(onclickScript);
+                        execNative.call(originBtn);
+                      } catch(err) {
+                        originBtn.click();
+                      }
+                    } else if (originBtn.href && originBtn.href !== '#none' && !originBtn.href.startsWith('javascript:')) {
+                      window.location.href = originBtn.href;
+                    } else {
+                      originBtn.click();
+                    }
                   } else {
                     alert('간편 로그인 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
                   }
@@ -577,24 +590,13 @@ export default async function handler(req, res) {
             const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
             const skinPrefix = skinMatch ? skinMatch[0] : '';
 
+            // ⚠️ 여기서 투명 iframe은 더 이상 SNS 클릭용이 아니라 ID/PW 로그인 제출용으로만 쓰입니다.
             let proxyIframe = document.getElementById('ykinas_proxy_iframe');
             if (!proxyIframe) {
               proxyIframe = document.createElement('iframe');
               proxyIframe.id = 'ykinas_proxy_iframe';
               proxyIframe.src = skinPrefix + '/member/login.html';
               proxyIframe.style.cssText = 'position:absolute; width:1px; height:1px; left:-9999px; opacity:0; pointer-events:none;';
-              
-              // [핵심 로직] iframe 내에서 발생하는 전환을 부모창으로 리디렉트
-              proxyIframe.onload = function() {
-                try {
-                  const idoc = proxyIframe.contentDocument || proxyIframe.contentWindow.document;
-                  const base = idoc.createElement('base');
-                  base.target = '_parent';
-                  idoc.head.appendChild(base);
-                  idoc.querySelectorAll('form').forEach(f => f.target = '_parent');
-                } catch(e) {}
-              };
-              
               document.body.appendChild(proxyIframe);
             }
 
@@ -848,61 +850,51 @@ export default async function handler(req, res) {
                }
             });
 
+            // [핵심 개선] iframe 접근을 완전히 차단하고 부모창(document)의 상태만 읽어 SecurityError 방지
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
+              let gridActiveCount = 0;
 
-              const syncDisplay = (sourceDoc) => {
-                if (!sourceDoc) return;
-                let gridActiveCount = 0;
+              snsProviders.forEach(key => {
+                const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
+                if (!shadowBtn) return;
 
-                snsProviders.forEach(key => {
-                  const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
-                  if (!shadowBtn) return;
-
-                  const originEl = getNativeSnsButton(key, sourceDoc);
-                  if (originEl) {
-                    const isHidden = originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1;
-                    if (isHidden) {
-                      shadowBtn.style.display = 'none';
-                    } else {
-                      shadowBtn.style.display = 'flex';
-                      if (key !== 'kakao') gridActiveCount++;
-                    }
-                  } else {
+                // 부모창(document)에서만 버튼을 찾습니다.
+                const originEl = getNativeSnsButton(key, document);
+                if (originEl) {
+                  const isHidden = (originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1) || (originEl.style && originEl.style.display === 'none');
+                  if (isHidden) {
                     shadowBtn.style.display = 'none';
+                  } else {
+                    shadowBtn.style.display = 'flex';
+                    if (key !== 'kakao') gridActiveCount++;
                   }
-                });
-
-                const gridContainer = ykinasShadowRoot.querySelector('#b_sns_grid_container');
-                if (gridContainer) {
-                  gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
-                  
-                  if (gridActiveCount === 1) {
-                    gridContainer.classList.remove('grid-cols-2');
-                    gridContainer.classList.add('grid-cols-1');
-                  } else if (gridActiveCount > 1) {
-                    gridContainer.classList.remove('grid-cols-1');
-                    gridContainer.classList.add('grid-cols-2');
-                  }
+                } else {
+                  shadowBtn.style.display = 'none';
                 }
-              };
+              });
 
-              const iframeNode = document.getElementById('ykinas_proxy_iframe');
-              if (iframeNode) {
-                try {
-                  const iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
-                  syncDisplay(iframeDoc);
-                } catch(e) {}
-              } else {
-                syncDisplay(document);
+              const gridContainer = ykinasShadowRoot.querySelector('#b_sns_grid_container');
+              if (gridContainer) {
+                gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
+                
+                if (gridActiveCount === 1) {
+                  gridContainer.classList.remove('grid-cols-2');
+                  gridContainer.classList.add('grid-cols-1');
+                } else if (gridActiveCount > 1) {
+                  gridContainer.classList.remove('grid-cols-1');
+                  gridContainer.classList.add('grid-cols-2');
+                }
               }
             };
 
             syncRealtimeSnsVisibility();
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
+            const observer = new MutationObserver(() => syncRealtimeSnsVisibility());
+            observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [MODE B] 단순화된 클릭 이벤트
+            // [MODE B] 단순화된 부모창 클릭 이벤트
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
@@ -910,13 +902,24 @@ export default async function handler(req, res) {
                   e.preventDefault();
                   e.stopPropagation();
 
-                  const iframeNode = document.getElementById('ykinas_proxy_iframe');
-                  const iframeDoc = iframeNode ? (iframeNode.contentDocument || iframeNode.contentWindow.document) : document;
-                  const originBtn = getNativeSnsButton(provider, iframeDoc);
+                  // 부모창(document)의 버튼을 찾아 부모창에서 직접 실행시킵니다.
+                  const originBtn = getNativeSnsButton(provider, document);
                   
                   if (originBtn) {
                     window.YkinasLogin.close();
-                    originBtn.click(); // iframe 안에 갇히지 않고 부모창이 직접 전환됨!
+                    const onclickScript = originBtn.getAttribute('onclick');
+                    if (onclickScript) {
+                      try {
+                        const execNative = new Function(onclickScript);
+                        execNative.call(originBtn);
+                      } catch(err) {
+                        originBtn.click();
+                      }
+                    } else if (originBtn.href && originBtn.href !== '#none' && !originBtn.href.startsWith('javascript:')) {
+                      window.location.href = originBtn.href;
+                    } else {
+                      originBtn.click();
+                    }
                   } else {
                     alert('간편 로그인 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
                   }
