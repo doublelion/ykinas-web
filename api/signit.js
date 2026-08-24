@@ -161,7 +161,6 @@ export default async function handler(req, res) {
             const customMainTitle = config.mainTitle || 'Breathtaking<br>Clarity.';
             const customDescription = config.description || '지금 가입하시고 첫 구매 혜택과 프라이빗 컬렉션 소식을 가장 먼저 받아보세요.';
 
-            // 백엔드 크래시 방지: \${변수명} 으로 이스케이프 처리 완료
             const fullScreenHTML = \`
               <style>
                 .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; }
@@ -200,7 +199,10 @@ export default async function handler(req, res) {
 
               <div id="standalone_panel_wrapper" class="fixed inset-0 z-[99999] flex bg-[#faf9f8] overflow-hidden fade-in" style="font-family: 'Pretendard', 'Noto Sans KR', sans-serif;">
                 <div class="hidden lg:block lg:w-7/12 relative bg-gray-900">
-                  <img src="\${customHeroImage}" alt="Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
+                  
+                  <!-- [수정됨] onerror 발생 시 외부 URL 호출을 없애고, 투명도 0으로 처리하여 에러 없이 배경색 노출 -->
+                  <img src="\${customHeroImage}" alt="Editorial" class="w-full h-full object-cover opacity-90 transition-opacity duration-300" onerror="this.onerror=null; this.style.opacity='0';" />
+                  
                   <div class="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
                   <button type="button" id="a_btn_back_shop" class="absolute top-10 left-10 !bg-transparent text-white hover:opacity-70 transition-opacity flex items-center gap-2 z-10 cursor-pointer">
                     <span class="text-xs tracking-widest uppercase font-medium">← Back to Shop</span>
@@ -211,7 +213,6 @@ export default async function handler(req, res) {
                     <p class="text-sm tracking-wide font-light opacity-80 leading-relaxed">\${customDescription}</p>
                   </div>
                 </div>
-
                 <div class="w-full lg:w-5/12 bg-white shadow-2xl z-10 flex flex-col relative custom-scrollbar-02 overflow-y-auto" id="standalone_panel">
                   <button type="button" id="a_btn_close" class="absolute top-6 right-6 p-2 text-gray-400 !bg-transparent hover:bg-gray-100 hover:text-black rounded-full transition-colors z-[100] text-xl">✕</button>
 
