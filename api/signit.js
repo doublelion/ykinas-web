@@ -7,9 +7,10 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
+    // [백엔드 최적화] 글로벌 Edge CDN 캐싱
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400');
     res.setHeader('X-Cafe24-Api-Version', '2025-12-01');
 
     const clientReferer = req.headers['referer'] || '';
@@ -56,65 +57,86 @@ export default async function handler(req, res) {
         window.__YKINAS_SKIN_LOADED__ = true;
 
         let ykinasShadowRoot = null;
-
-        const dismissAllLoaders = () => {
+        const originalAlert = window.alert;
+        window.alert = function(msg) {
           const globalLoader = document.getElementById('ykinas-global-loader');
           if (globalLoader) globalLoader.style.display = 'none';
+
           if (ykinasShadowRoot) {
             const drawerLoader = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
             if (drawerLoader) drawerLoader.style.display = 'none';
           }
-        };
-
-        const originalAlert = window.alert;
-        window.alert = function(msg) {
-          dismissAllLoaders();
           originalAlert(msg);
         };
 
         const restoreUIState = () => {
           const panelWrapper = document.getElementById('standalone_panel_wrapper');
-          if (panelWrapper) panelWrapper.style.zIndex = '99999'; 
-          dismissAllLoaders();
+          if (panelWrapper) {
+            panelWrapper.style.zIndex = '99999'; 
+          }
         };
 
-        window.addEventListener('pageshow', restoreUIState);
+        window.addEventListener('pageshow', (e) => {
+          restoreUIState();
+          if (e.persisted) {
+            const loaderA = document.getElementById('ykinas-global-loader');
+            if (loaderA) loaderA.style.display = 'none';
+            if (ykinasShadowRoot) {
+              const loaderB = ykinasShadowRoot.querySelector('#ykinas-drawer-loader');
+              if (loaderB) loaderB.style.display = 'none';
+            }
+          }
+        });
+
         window.addEventListener('focus', restoreUIState);
 
         const currentPath = window.location.pathname;
         const isLoginPage = currentPath.includes('/member/login.html');
 
-        function getNativeSnsButton(provider, doc) {
-          if (!doc) doc = document;
-          const selectorMap = {
-            'kakao': ['.btnKakao', 'a[onclick*="kakao"]', 'a[onclick*="Kakao"]'],
-            'naver': ['.btnNaver', '#naver_id_login', 'a[onclick*="naver"]', 'a[onclick*="Naver"]'],
-            'google': ['.btnGoogle', 'a[onclick*="google"]', 'a[onclick*="Google"]'],
-            'facebook': ['.btnFacebook', 'a[onclick*="facebook"]', 'a[onclick*="Facebook"]'],
-            'apple': ['.btnApple', 'a[onclick*="apple"]', 'a[onclick*="Apple"]'],
-            'line': ['.btnLine', 'a[onclick*="line"]', 'a[onclick*="Line"]'],
-            'yahoojp': ['.yahoojp', 'a[onclick*="yahoojp"]', 'a[onclick*="Yahoo"]']
-          };
-          const selectors = selectorMap[provider] || [];
+        function getNativeSnsButton(provider) {
+          const targetClass = provider === 'yahoojp' ? '.yahoojp' : '.btn' + provider.charAt(0).toUpperCase() + provider.slice(1);
+          let btn = null;
 
+          // [방어 코드] 1. 프록시 iframe 내부 문서 우선 탐색 (정상 렌더링된 버튼 확보)
           try {
-            const root = doc.getElementById('cafe24-original-wrap') || doc;
-            for (let sel of selectors) {
-              const el = root.querySelector(sel);
-              if (el) return el;
+            const iframe = document.getElementById('ykinas_proxy_iframe');
+            if (iframe && iframe.contentWindow && iframe.contentWindow.document) {
+              const iframeDoc = iframe.contentWindow.document;
+              btn = iframeDoc.querySelector(targetClass) || iframeDoc.getElementById('origin_btn_' + provider);
+              
+              // displaynone이 할당되지 않은 '유효한' 버튼일 경우 즉시 반환
+              if (btn && btn.className && typeof btn.className === 'string' && btn.className.indexOf('displaynone') === -1) {
+                return btn;
+              }
             }
-          } catch(e) {}
-          return null;
+          } catch (e) {
+            // DOM 접근 권한 충돌(Cross-Origin) 또는 아직 로드되지 않은 상태일 경우 무시하고 다음 단계 진행
+          }
+
+          // 2. 현재 Document 탐색 (Fallback)
+          const originalWrap = document.getElementById('cafe24-original-wrap');
+          if (originalWrap) {
+            btn = originalWrap.querySelector(targetClass) || originalWrap.querySelector('#origin_btn_' + provider);
+            if (btn) return btn;
+          }
+
+          const hiddenModule = document.getElementById('hidden-cafe24-login-module');
+          if (hiddenModule) {
+            btn = hiddenModule.querySelector(targetClass) || hiddenModule.querySelector('#origin_btn_' + provider);
+            if (btn) return btn;
+          }
+
+          return document.querySelector(targetClass) || document.getElementById('origin_btn_' + provider);
         }
 
         // ==========================================
-        // [MODE A] 정식 로그인 페이지 (login.html)
+        // [MODE A] 정식 로그인 페이지 전용 (login.html)
         // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
             const originWrap = document.getElementById('cafe24-original-wrap');
             if (originWrap) {
-              originWrap.style.cssText = 'position:fixed; left:-9999px; top:-9999px; width:1px; height:1px; opacity:0; pointer-events:none;';
+              originWrap.style.cssText = 'position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none;';
             }
 
             if (!document.getElementById('ykinas-tailwind')) {
@@ -133,7 +155,7 @@ export default async function handler(req, res) {
                   .minimal-input { height: 40px !important; font-size: 16px !important; padding-top: 0 !important; padding-bottom: 0 !important; }
                 }
                 .floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
-                .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
+                .minimal-input:focus~.floating-label, .minimal-input:not(:placeholder-shown)~.floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
                 .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
                 .mode-hidden { display: none !important; }
@@ -146,13 +168,14 @@ export default async function handler(req, res) {
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; border: none; outline: none; cursor: pointer; }
+                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease, background-color 0.2s ease; width: 100%; outline: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
-                .bg-btn-primary { background-color: #111111; color: #ffffff; }
-                .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; }
+                .bg-google:hover { background-color: #F1F3F4; opacity: 1; } 
+                .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
-                .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; }
+                .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
+                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
               </style>
 
               <div id="ykinas-global-loader" class="ykinas-loader-overlay">
@@ -162,15 +185,15 @@ export default async function handler(req, res) {
 
               <div id="standalone_panel_wrapper" class="fixed inset-0 z-[99999] flex bg-[#faf9f8] overflow-hidden fade-in" style="font-family: 'Pretendard', 'Noto Sans KR', sans-serif;">
                 <div class="hidden lg:block lg:w-7/12 relative bg-gray-900">
-                  <img id="a_hero_img" src="/web/upload/hero_img_02.png" alt="Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
+                  <img src="/web/upload/hero_img_02.png" alt="Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
                   <div class="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
                   <button type="button" id="a_btn_back_shop" class="absolute top-10 left-10 !bg-transparent text-white hover:opacity-70 transition-opacity flex items-center gap-2 z-10 cursor-pointer">
                     <span class="text-xs tracking-widest uppercase font-medium">← Back to Shop</span>
                   </button>
                   <div class="absolute bottom-20 left-16 text-white max-w-lg">
-                    <span id="a_sub_title" class="text-xs uppercase tracking-[0.3em] opacity-80 mb-2 block font-sans">Exclusive Membership</span>
-                    <h2 id="a_main_title" class="text-5xl font-serif tracking-wide mb-4 leading-tight">Breathtaking<br>Clarity.</h2>
-                    <p id="a_desc" class="text-sm tracking-wide font-light opacity-80 leading-relaxed">지금 가입하시고 첫 구매 혜택과 프라이빗 컬렉션 소식을 가장 먼저 받아보세요.</p>
+                    <span class="text-xs uppercase tracking-[0.3em] opacity-80 mb-2 block font-sans">Exclusive Membership</span>
+                    <h2 class="text-5xl font-serif tracking-wide mb-4 leading-tight">Breathtaking<br>Clarity.</h2>
+                    <p class="text-sm tracking-wide font-light opacity-80 leading-relaxed">지금 가입하시고 첫 구매 혜택과 프라이빗 컬렉션 소식을 가장 먼저 받아보세요.</p>
                   </div>
                 </div>
 
@@ -190,40 +213,40 @@ export default async function handler(req, res) {
                           </div>
 
                           <div class="wrap_sns_log space-y-2 mb-6">
-                            <button type="button" id="a_sns_kakao" class="sns-grid-btn bg-kakao py-3 text-sm font-semibold rounded" style="display:none;">
+                            <button type="button" id="a_sns_kakao" class="sns-grid-btn bg-kakao py-3 text-sm font-semibold rounded">
                               <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
                               카카오로 시작하기
                             </button>
 
-                            <div id="a_sns_grid_container" class="grid grid-cols-2 gap-2" style="display:none;">
-                              <button type="button" id="a_sns_naver" class="sns-grid-btn bg-naver" style="display:none;">
+                            <div id="a_sns_grid_container" class="grid grid-cols-2 gap-2">
+                              <button type="button" id="a_sns_naver" class="sns-grid-btn bg-naver border-none">
                                 <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                               </button>
-                              <button type="button" id="a_sns_google" class="bg-google sns-grid-btn bg-white border border-gray-300 text-gray-600 font-medium hover:bg-gray-50" style="display:none;">
+                              <button type="button" id="a_sns_google" class="sns-grid-btn bg-google">
                                 <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                                 구글
                               </button>
-                              <button type="button" id="a_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
+                              <button type="button" id="a_sns_apple" class="sns-grid-btn bg-apple border-none" style="display:none;">
                                 <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
                                 Apple
                               </button>
-                              <button type="button" id="a_sns_facebook" class="sns-grid-btn bg-facebook" style="display:none;">
+                              <button type="button" id="a_sns_facebook" class="sns-grid-btn bg-facebook border-none" style="display:none;">
                                 <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
                                 Facebook
                               </button>
-                              <button type="button" id="a_sns_line" class="sns-grid-btn bg-line" style="display:none;">
+                              <button type="button" id="a_sns_line" class="sns-grid-btn bg-line border-none" style="display:none;">
                                 <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
                               </button>
-                              <button type="button" id="a_sns_yahoojp" class="sns-grid-btn bg-yahoojp" style="display:none;">
+                              <button type="button" id="a_sns_yahoojp" class="sns-grid-btn bg-yahoojp border-none" style="display:none;">
                                 <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
                               </button>
                             </div>
                           </div>
 
-                          <div class="relative flex items-center py-2">
-                            <div class="flex-grow border-t border-gray-100"></div>
+                          <div class="relative flex items-center py-4">
+                            <div class="flex-grow border-t border-gray-200"></div>
                             <span class="flex-shrink-0 mx-4 text-[11px] text-gray-400">또는 아이디로 로그인</span>
-                            <div class="flex-grow border-t border-gray-100"></div>
+                            <div class="flex-grow border-t border-gray-200"></div>
                           </div>
 
                           <div class="login space-y-4 mt-5">
@@ -234,7 +257,7 @@ export default async function handler(req, res) {
                             <div class="relative w-full">
                               <input type="password" id="a_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                               <label class="floating-label">비밀번호</label>
-                              <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
+                              <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
                                 <svg id="a_eye_icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                   <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
                                 </svg>
@@ -246,17 +269,19 @@ export default async function handler(req, res) {
                                 <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
                               </label>
                             </div>
-                            <button type="button" id="a_btn_submit_login" class="w-full py-3.5 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded mt-4">로그인</button>
+                            <button type="button" id="a_btn_submit_login" class="w-full py-4 bg-black text-white text-sm font-semibold tracking-widest hover:bg-gray-800 transition-colors mt-4 rounded shadow-md active:scale-[0.99] transform">로그인</button>
                           </div>
 
-                          <div class="flex justify-center items-center space-x-4 mt-6 text-[11px] text-gray-400">
-                            <a href="/member/id/find_id.html" class="hover:text-black">아이디 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
-                            <a href="/member/passwd/find_passwd_info.html" class="hover:text-black">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
-                            <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black">회원가입</a>
+                          <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500">
+                            <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-3 bg-gray-300"></span>
+                            <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-3 bg-gray-300"></span>
+                            <a href="/member/agreement.html" class="font-bold text-black border-b border-black pb-0.5">회원가입</a>
                           </div>
 
-                          <div class="mt-12 text-center border-t border-gray-100 pt-6 pb-6">
-                            <button type="button" id="a_btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4">비회원으로 주문하셨나요?</button>
+                          <div class="mt-12 text-center border-t border-gray-100 pt-6 pb-[calc(2rem+env(safe-area-inset-bottom))] lg:pb-6">
+                            <button type="button" id="a_btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors active:opacity-70">
+                              비회원으로 주문하셨나요?
+                            </button>
                           </div>
                         </fieldset>
                       </div>
@@ -266,6 +291,7 @@ export default async function handler(req, res) {
                           <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2 mt-4">비회원 주문조회</h1>
                           <p class="text-sm text-gray-500">주문 시 입력하신 정보를 입력해 주세요.</p>
                         </div>
+
                         <div class="space-y-6 mt-6">
                           <div class="relative w-full">
                             <input type="text" id="a_order_name" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
@@ -278,7 +304,7 @@ export default async function handler(req, res) {
                           <div class="relative w-full">
                             <input type="password" id="a_order_pw" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                             <label class="floating-label">주문 비밀번호</label>
-                            <button type="button" id="a_btn_toggle_order_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
+                            <button type="button" id="a_btn_toggle_order_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
                               <svg id="a_guest_eye_icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
                               </svg>
@@ -286,8 +312,9 @@ export default async function handler(req, res) {
                           </div>
                           <button type="button" id="a_btn_submit_guest" class="w-full py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors mt-4 rounded shadow-sm">주문 추적하기</button>
                         </div>
+
                         <div class="mt-12 text-center border-t border-gray-100 pt-6">
-                          <button type="button" id="a_btn_goto_login" class="text-xs text-gray-400 hover:text-black underline underline-offset-4">회원 로그인으로 돌아가기</button>
+                          <button type="button" id="a_btn_goto_login" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">회원 로그인으로 돌아가기</button>
                         </div>
                       </div>
 
@@ -299,16 +326,14 @@ export default async function handler(req, res) {
 
             document.body.insertAdjacentHTML('beforeend', fullScreenHTML);
 
-            if (window.YKINAS_SIGNIT_CONFIG) {
-              const cfg = window.YKINAS_SIGNIT_CONFIG;
-              if (cfg.heroImage) document.getElementById('a_hero_img').src = cfg.heroImage;
-              if (cfg.subTitle) document.getElementById('a_sub_title').textContent = cfg.subTitle;
-              if (cfg.mainTitle) document.getElementById('a_main_title').innerHTML = cfg.mainTitle;
-              if (cfg.description) document.getElementById('a_desc').textContent = cfg.description;
-            }
-
-            const showLoader = () => { document.getElementById('ykinas-global-loader').style.display = 'flex'; };
-            const hideLoader = () => { document.getElementById('ykinas-global-loader').style.display = 'none'; };
+            const showLoader = () => {
+              const loader = document.getElementById('ykinas-global-loader');
+              if (loader) loader.style.display = 'flex';
+            };
+            const hideLoader = () => {
+              const loader = document.getElementById('ykinas-global-loader');
+              if (loader) loader.style.display = 'none';
+            };
 
             const closeHandler = (e) => {
               hideLoader(); 
@@ -339,29 +364,19 @@ export default async function handler(req, res) {
             const searchParams = new URLSearchParams(window.location.search);
             const currentReturnUrl = searchParams.get('returnUrl') || '';
 
-            const triggerSns = searchParams.get('triggerSns');
-            if (triggerSns) {
-              window.history.replaceState({}, document.title, window.location.pathname + (currentReturnUrl ? '?returnUrl=' + encodeURIComponent(currentReturnUrl) : ''));
-              showLoader();
-              setTimeout(() => {
-                const originBtn = getNativeSnsButton(triggerSns, document);
-                if (originBtn) {
-                  originBtn.click();
-                }
-                setTimeout(hideLoader, 1500);
-              }, 300);
-            }
-
             document.getElementById('a_btn_goto_guest').addEventListener('click', () => {
               showLoader();
-              window.location.replace('/member/login.html?noMemberOrder=1&returnUrl=' + encodeURIComponent(currentReturnUrl || '/myshop/order/list.html'));
+              const targetReturnUrl = currentReturnUrl || '/myshop/order/list.html';
+              window.location.replace('/member/login.html?noMemberOrder=1&returnUrl=' + encodeURIComponent(targetReturnUrl));
             });
 
             document.getElementById('a_btn_goto_login').addEventListener('click', () => {
               showLoader();
-              window.location.replace(currentReturnUrl ? '/member/login.html?returnUrl=' + encodeURIComponent(currentReturnUrl) : '/member/login.html');
+              const nextUrl = currentReturnUrl ? '/member/login.html?returnUrl=' + encodeURIComponent(currentReturnUrl) : '/member/login.html';
+              window.location.replace(nextUrl);
             });
 
+            // [인라인 SVG 패스 정의] 눈 감음 / 눈뜸
             const svgEyeClosed = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />';
             const svgEyeOpen = '<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />';
 
@@ -396,18 +411,9 @@ export default async function handler(req, res) {
               const wrap = document.getElementById('cafe24-original-wrap');
               if (wrap) {
                 showLoader();
-                const iId = wrap.querySelector('input[name="member_id"]');
-                const iPw = wrap.querySelector('input[name="member_passwd"]');
-                if (iId) iId.value = idVal;
-                if (iPw) iPw.value = pwVal;
-                
-                const originBtn = wrap.querySelector('.btnSubmit') || wrap.querySelector('a[onclick*="login"]');
-                if (originBtn) {
-                  originBtn.click();
-                } else if (iId && iId.form) {
-                  iId.form.submit();
-                }
-                setTimeout(hideLoader, 2500);
+                wrap.querySelector('input[name="member_id"]').value = idVal;
+                wrap.querySelector('input[name="member_passwd"]').value = pwVal;
+                document.getElementById('origin_btn_login')?.click();
               }
             };
             document.getElementById('a_btn_submit_login').addEventListener('click', submitLogin);
@@ -421,20 +427,10 @@ export default async function handler(req, res) {
               const wrap = document.getElementById('cafe24-original-wrap');
               if (wrap) {
                 showLoader();
-                const iName = wrap.querySelector('input[name="order_name"]');
-                const iId = wrap.querySelector('input[name="order_id"]');
-                const iPw = wrap.querySelector('input[name="order_password"]');
-                if(iName) iName.value = nameVal;
-                if(iId) iId.value = idVal;
-                if(iPw) iPw.value = pwVal;
-
-                const originBtn = wrap.querySelector('.btnSubmitOrder') || wrap.querySelector('button[type="submit"]');
-                if (originBtn) {
-                  originBtn.click();
-                } else if (iName && iName.form) {
-                  iName.form.submit();
-                }
-                setTimeout(hideLoader, 2500);
+                wrap.querySelector('input[name="order_name"]').value = nameVal;
+                wrap.querySelector('input[name="order_id"]').value = idVal;
+                wrap.querySelector('input[name="order_password"]').value = pwVal;
+                document.getElementById('origin_btn_order_history')?.click();
               }
             };
             document.getElementById('a_btn_submit_guest').addEventListener('click', submitGuest);
@@ -448,9 +444,11 @@ export default async function handler(req, res) {
                 const customBtn = document.getElementById('a_sns_' + key);
                 if (!customBtn) return;
 
-                const originEl = getNativeSnsButton(key, document);
+                const originEl = getNativeSnsButton(key);
+
                 if (originEl) {
-                  const isHidden = (originEl.className || '').toString().includes('displaynone');
+                  const isHidden = originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1;
+
                   if (isHidden) {
                     customBtn.style.display = 'none';
                   } else {
@@ -465,13 +463,6 @@ export default async function handler(req, res) {
               const gridContainer = document.getElementById('a_sns_grid_container');
               if (gridContainer) {
                 gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
-                if (gridActiveCount === 1) {
-                  gridContainer.classList.remove('grid-cols-2');
-                  gridContainer.classList.add('grid-cols-1');
-                } else if (gridActiveCount > 1) {
-                  gridContainer.classList.remove('grid-cols-1');
-                  gridContainer.classList.add('grid-cols-2');
-                }
               }
             };
 
@@ -480,7 +471,7 @@ export default async function handler(req, res) {
             let snsIntervalA = setInterval(syncSnsA, 300);
             setTimeout(() => clearInterval(snsIntervalA), 3000);
             const observer = new MutationObserver(() => syncSnsA());
-            observer.observe(document.body, { attributes: true, childList: true, subtree: true });
+            observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const customBtn = document.getElementById('a_sns_' + provider);
@@ -489,13 +480,30 @@ export default async function handler(req, res) {
                   e.preventDefault();
                   e.stopPropagation();
 
-                  const originBtn = getNativeSnsButton(provider, document);
-                  if (originBtn) {
-                    showLoader();
-                    originBtn.click();
-                    setTimeout(hideLoader, 2000);
+                  const originBtn = getNativeSnsButton(provider);
+                  if (!originBtn) {
+                    alert('간편 로그인 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
+                    return;
+                  }
+
+                  const panelWrapper = document.getElementById('standalone_panel_wrapper');
+                  if (panelWrapper) {
+                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+                    panelWrapper.style.zIndex = isMobile ? '10' : '99990';
+                  }
+
+                  const onclickScript = originBtn.getAttribute('onclick');
+                  if (onclickScript) {
+                    try {
+                      const execNative = new Function(onclickScript);
+                      execNative.call(originBtn);
+                    } catch(err) {
+                      originBtn.click();
+                    }
+                  } else if (originBtn.href && originBtn.href !== '#none' && originBtn.href !== 'javascript:void(0);') {
+                    window.location.href = originBtn.href;
                   } else {
-                    alert('간편 로그인 연결에 실패했습니다.');
+                    originBtn.click();
                   }
                 });
               }
@@ -516,7 +524,7 @@ export default async function handler(req, res) {
 
         } else {
           // ==========================================
-          // [MODE B] 글로벌 드로어 (사이드바)
+          // [MODE B] 글로벌 드로어 (기기 공통 통합)
           // ==========================================
           document.addEventListener('click', function(e) {
             const target = e.target.closest('a');
@@ -592,8 +600,13 @@ export default async function handler(req, res) {
               proxyIframe = document.createElement('iframe');
               proxyIframe.id = 'ykinas_proxy_iframe';
               proxyIframe.src = skinPrefix + '/member/login.html';
-              proxyIframe.style.cssText = 'position:fixed; width:1px; height:1px; left:-9999px; top:-9999px; opacity:0; pointer-events:none;';
+              proxyIframe.style.cssText = 'position:absolute; width:1px; height:1px; left:-9999px; opacity:0; pointer-events:none;';
               document.body.appendChild(proxyIframe);
+            }
+
+            const originWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
+            if (originWrap) {
+              originWrap.style.cssText = 'position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none;';
             }
 
             const host = document.createElement('div');
@@ -636,10 +649,12 @@ export default async function handler(req, res) {
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; border: none; outline: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-btn-primary { background-color: #111111; color: #ffffff; }
-                .ykinas-loader-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; }
+
+                .ykinas-loader-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
-                .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; }
+                .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
+                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
               </style>
 
               <div id="global-login-drawer">
@@ -655,22 +670,25 @@ export default async function handler(req, res) {
                   </button>
 
                   <div class="px-8 sm:px-10 py-16 flex-1 flex flex-col justify-center drawer-content-wrapper">
+
                     <div id="ui-login-mode" class="member-login-wrap">
                       <fieldset class="form" style="border: none; padding: 0; margin: 0; width: 100%;">
+                        <legend style="display: none;">회원로그인</legend>
+
                         <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
                         <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
 
                         <div class="wrap_sns_log space-y-2 mb-6">
-                          <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 sns-grid-btn bg-kakao text-sm font-semibold rounded hover:opacity-90" style="display:none;">
+                          <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 sns-grid-btn bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
                             카카오로 시작하기
                           </button>
 
-                          <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2" style="display:none;">
-                            <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver" style="display:none;">
+                          <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2">
+                            <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver">
                               <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                             </button>
-                            <button type="button" id="btn_sns_google" class="bg-google sns-grid-btn bg-white border border-gray-300 text-gray-600 font-medium hover:bg-gray-50" style="display:none;">
+                            <button type="button" id="btn_sns_google" class="bg-google sns-grid-btn bg-white border border-gray-300 text-gray-600 font-medium hover:bg-gray-50">
                               <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                               구글
                             </button>
@@ -705,7 +723,8 @@ export default async function handler(req, res) {
                           <div class="relative w-full">
                             <input type="password" id="s_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                             <label class="floating-label">비밀번호</label>
-                            <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
+                            <!-- [인라인 SVG 적용] 드로어 영역 비밀번호 토글 버튼 -->
+                            <button type="button" id="btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
                               <svg id="s_eye_icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
                               </svg>
@@ -721,14 +740,17 @@ export default async function handler(req, res) {
                         </div>
 
                         <div class="flex justify-center items-center space-x-4 mt-6 text-[11px] text-gray-400">
-                          <a href="/member/id/find_id.html" class="hover:text-black">아이디 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
-                          <a href="/member/passwd/find_passwd_info.html" class="hover:text-black">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
-                          <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black">회원가입</a>
+                          <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
+                          <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
+                          <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black transition-colors">회원가입</a>
                         </div>
 
                         <div class="mt-12 text-center border-t border-gray-100 pt-6 pb-6">
-                          <button type="button" id="btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4">비회원으로 주문하셨나요?</button>
+                          <button type="button" id="btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors active:opacity-70">
+                            비회원으로 주문하셨나요?
+                          </button>
                         </div>
+
                       </fieldset>
                     </div>
                   </div>
@@ -746,7 +768,9 @@ export default async function handler(req, res) {
               const allLinks = ykinasShadowRoot.querySelectorAll('a');
               allLinks.forEach(link => {
                 const href = link.getAttribute('href');
-                if (href && href.startsWith('/')) link.setAttribute('href', skinPrefix + href);
+                if (href && href.startsWith('/')) {
+                  link.setAttribute('href', skinPrefix + href);
+                }
               });
             }
 
@@ -757,120 +781,125 @@ export default async function handler(req, res) {
             if (btnGotoGuest) {
               btnGotoGuest.addEventListener('click', function() {
                 showDrawerLoader();
-                window.location.href = '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+                window.location.href = '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
               });
             }
+
+            // [인라인 SVG 토글 핸들러 적용 (드로어 영역)]
+            const drawerSvgEyeClosed = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />';
+            const drawerSvgEyeOpen = '<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />';
 
             ykinasShadowRoot.querySelector('#btn_toggle_pw').addEventListener('click', function() {
               const pw = ykinasShadowRoot.querySelector('#s_pw');
               const svgEl = ykinasShadowRoot.querySelector('#s_eye_icon');
               if (pw.type === 'password') {
                 pw.type = 'text';
-                svgEl.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />';
+                svgEl.innerHTML = drawerSvgEyeOpen;
               } else {
                 pw.type = 'password';
-                svgEl.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />';
+                svgEl.innerHTML = drawerSvgEyeClosed;
               }
             });
 
             ykinasShadowRoot.querySelector('#btn_submit_login').addEventListener('click', function() {
-              const idVal = ykinasShadowRoot.querySelector('#s_id').value.trim();
-              const pwVal = ykinasShadowRoot.querySelector('#s_pw').value.trim();
-              if (!idVal || !pwVal) return alert("아이디와 비밀번호를 모두 입력해주세요.");
+               const idVal = ykinasShadowRoot.querySelector('#s_id').value.trim();
+               const pwVal = ykinasShadowRoot.querySelector('#s_pw').value.trim();
+               if (!idVal || !pwVal) { 
+                 alert("아이디와 비밀번호를 모두 입력해주세요."); 
+                 return; 
+               }
 
-              showDrawerLoader();
-              try {
-                const iframe = document.getElementById('ykinas_proxy_iframe');
-                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+               const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
+               if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
+                 showDrawerLoader();
+                 originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
+                 originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
+                 (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
+               } else {
+                 try {
+                   showDrawerLoader();
+                   const iframe = document.getElementById('ykinas_proxy_iframe');
+                   const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
 
-                const ifId = iframeDoc.querySelector('input[name="member_id"]');
-                const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
-                const ifBtn = iframeDoc.querySelector('.btnSubmit') || iframeDoc.querySelector('a[onclick*="login"]');
+                   iframe.contentWindow.alert = function(msg) {
+                     window.alert(msg);
+                   };
 
-                if (ifId && ifPw) {
-                  ifId.value = idVal;
-                  ifPw.value = pwVal;
+                   const ifId = iframeDoc.querySelector('input[name="member_id"]');
+                   const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
+                   const ifBtn = iframeDoc.getElementById('origin_btn_login');
 
-                  const form = ifId.closest('form');
-                  if (form) {
-                    form.target = "_parent";
-                    let retInput = form.querySelector('input[name="returnUrl"]');
-                    if (!retInput) {
-                      retInput = iframeDoc.createElement('input');
-                      retInput.type = 'hidden';
-                      retInput.name = 'returnUrl';
-                      form.appendChild(retInput);
-                    }
-                    retInput.value = window.location.pathname + window.location.search;
-                  }
+                   if (ifId && ifPw && ifBtn) {
+                     ifId.value = idVal;
+                     ifPw.value = pwVal;
 
-                  if (ifBtn) {
-                    ifBtn.click();
-                  } else if (form) {
-                    form.submit();
-                  }
-                  setTimeout(hideDrawerLoader, 2500);
-                } else {
-                  throw new Error("Form not ready");
-                }
-              } catch(e) {
-                hideDrawerLoader();
-                window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
-              }
+                     const form = ifId.closest('form');
+                     if (form) {
+                       form.target = "_parent"; 
+                       let retInput = form.querySelector('input[name="returnUrl"]');
+                       if (!retInput) {
+                         retInput = iframeDoc.createElement('input');
+                         retInput.type = 'hidden';
+                         retInput.name = 'returnUrl';
+                         form.appendChild(retInput);
+                       }
+                       retInput.value = window.location.pathname + window.location.search;
+                     }
+                     ifBtn.click();
+                   } else {
+                     throw new Error("Iframe form not found");
+                   }
+                 } catch (e) {
+                   window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+                 }
+               }
             });
 
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
-              let iframeDoc = null;
 
-              try {
-                const iframeNode = document.getElementById('ykinas_proxy_iframe');
-                if (iframeNode) {
-                  iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
-                }
-              } catch(e) {
-                return;
-              }
+              const syncDisplay = (sourceDoc) => {
+                if (!sourceDoc) return;
+                let gridActiveCount = 0;
 
-              if (!iframeDoc) return;
-              let gridActiveCount = 0;
+                snsProviders.forEach(key => {
+                  const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
+                  if (!shadowBtn) return;
 
-              snsProviders.forEach(key => {
-                const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
-                if (!shadowBtn) return;
-
-                const originEl = getNativeSnsButton(key, iframeDoc);
-                if (originEl) {
-                  const isHidden = (originEl.className || '').toString().includes('displaynone');
-                  if (isHidden) {
-                    shadowBtn.style.display = 'none';
+                  const originEl = getNativeSnsButton(key);
+                  if (originEl) {
+                    const isHidden = originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1;
+                    if (isHidden) {
+                      shadowBtn.style.display = 'none';
+                    } else {
+                      shadowBtn.style.display = 'flex';
+                      if (key !== 'kakao') gridActiveCount++;
+                    }
                   } else {
-                    shadowBtn.style.display = 'flex';
-                    if (key !== 'kakao') gridActiveCount++;
+                    shadowBtn.style.display = 'none';
                   }
-                } else {
-                  shadowBtn.style.display = 'none';
-                }
-              });
+                });
 
-              const gridContainer = ykinasShadowRoot.querySelector('#b_sns_grid_container');
-              if (gridContainer) {
-                gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
-                if (gridActiveCount === 1) {
-                  gridContainer.classList.remove('grid-cols-2');
-                  gridContainer.classList.add('grid-cols-1');
-                } else if (gridActiveCount > 1) {
-                  gridContainer.classList.remove('grid-cols-1');
-                  gridContainer.classList.add('grid-cols-2');
+                const gridContainer = ykinasShadowRoot.querySelector('#b_sns_grid_container');
+                if (gridContainer) {
+                  gridContainer.style.display = gridActiveCount > 0 ? 'grid' : 'none';
                 }
+              };
+
+              const iframeNode = document.getElementById('ykinas_proxy_iframe');
+              if (iframeNode) {
+                try {
+                  const iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
+                  syncDisplay(iframeDoc);
+                } catch(e) {}
+              } else {
+                syncDisplay(document);
               }
             };
 
             syncRealtimeSnsVisibility();
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
-            const observer = new MutationObserver(() => syncRealtimeSnsVisibility());
-            observer.observe(document.body, { attributes: true, childList: true, subtree: true });
 
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
@@ -879,9 +908,25 @@ export default async function handler(req, res) {
                   e.preventDefault();
                   e.stopPropagation();
 
-                  showDrawerLoader();
-                  const currentUrl = window.location.pathname + window.location.search;
-                  window.location.href = skinPrefix + '/member/login.html?triggerSns=' + provider + '&returnUrl=' + encodeURIComponent(currentUrl);
+                  const originBtn = getNativeSnsButton(provider);
+                  if (originBtn) {
+                    window.YkinasLogin.close();
+                    const onclickScript = originBtn.getAttribute('onclick');
+                    if (onclickScript) {
+                      try {
+                        const execNative = new Function(onclickScript);
+                        execNative.call(originBtn);
+                      } catch (err) {
+                        originBtn.click();
+                      }
+                    } else if (originBtn.href && originBtn.href !== '#none' && originBtn.href !== 'javascript:void(0);') {
+                      window.location.href = originBtn.href;
+                    } else {
+                      originBtn.click();
+                    }
+                  } else {
+                    alert('간편 로그인 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
+                  }
                 });
               }
             });
