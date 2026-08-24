@@ -93,23 +93,15 @@ export default async function handler(req, res) {
         const currentPath = window.location.pathname;
         const isLoginPage = currentPath.includes('/member/login.html');
 
-        function getNativeSnsButton(provider) {
+        // 기존 함수를 아래 코드로 통째로 교체하세요. (파라미터 doc = document 추가됨)
+        function getNativeSnsButton(provider, doc = document) {
           const targetClass = provider === 'yahoojp' ? '.yahoojp' : '.btn' + provider.charAt(0).toUpperCase() + provider.slice(1);
-          let btn = null;
-
-          const originalWrap = document.getElementById('cafe24-original-wrap');
+          const originalWrap = doc.getElementById('cafe24-original-wrap');
           if (originalWrap) {
-            btn = originalWrap.querySelector(targetClass) || originalWrap.querySelector('#origin_btn_' + provider);
+            const btn = originalWrap.querySelector(targetClass) || originalWrap.querySelector('#origin_btn_' + provider);
             if (btn) return btn;
           }
-
-          const hiddenModule = document.getElementById('hidden-cafe24-login-module');
-          if (hiddenModule) {
-            btn = hiddenModule.querySelector(targetClass) || hiddenModule.querySelector('#origin_btn_' + provider);
-            if (btn) return btn;
-          }
-
-          return document.querySelector(targetClass) || document.getElementById('origin_btn_' + provider);
+          return doc.querySelector(targetClass) || doc.getElementById('origin_btn_' + provider);
         }
 
         // ==========================================
@@ -857,7 +849,7 @@ export default async function handler(req, res) {
                   const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
                   if (!shadowBtn) return;
 
-                  const originEl = getNativeSnsButton(key);
+                  const originEl = getNativeSnsButton(key, sourceDoc);
                   if (originEl) {
                     const isHidden = originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1;
                     if (isHidden) {
@@ -908,7 +900,9 @@ export default async function handler(req, res) {
                   e.preventDefault();
                   e.stopPropagation();
 
-                  const originBtn = getNativeSnsButton(provider);
+                  const iframeNode = document.getElementById('ykinas_proxy_iframe');
+                  const iframeDoc = iframeNode ? (iframeNode.contentDocument || iframeNode.contentWindow.document) : document;
+                  const originBtn = getNativeSnsButton(provider, iframeDoc);
                   if (originBtn) {
                     window.YkinasLogin.close();
                     const onclickScript = originBtn.getAttribute('onclick');
