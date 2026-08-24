@@ -7,7 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
-    // 캐시 무효화로 즉시 반영
+    // [백엔드 최적화] 실시간 반영을 위해 캐시 무효화 유지
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -93,17 +93,17 @@ export default async function handler(req, res) {
         const currentPath = window.location.pathname;
         const isLoginPage = currentPath.includes('/member/login.html');
 
-        // [공통] 카페24 원본 버튼 탐색기
+        // [핵심] 카페24 원본 버튼 탐색기
         function getNativeSnsButton(provider, doc) {
           if (!doc) doc = document;
           const classMap = {
-            'kakao': ['.btnKakao', '#btnKakao'],
-            'naver': ['.btnNaver', '#btnNaver', '#naver_id_login'],
-            'google': ['.btnGoogle', '#btnGoogle'],
-            'facebook': ['.btnFacebook', '#btnFacebook'],
-            'apple': ['.btnApple', '#btnApple'],
-            'line': ['.btnLine', '#btnLine'],
-            'yahoojp': ['.yahoojp', '#yahoojp']
+            'kakao': ['.btnKakao', '#btnKakao', 'a[onclick*="kakao"]'],
+            'naver': ['.btnNaver', '#btnNaver', '#naver_id_login', 'a[onclick*="naver"]'],
+            'google': ['.btnGoogle', '#btnGoogle', 'a[onclick*="google"]'],
+            'facebook': ['.btnFacebook', '#btnFacebook', 'a[onclick*="facebook"]'],
+            'apple': ['.btnApple', '#btnApple', 'a[onclick*="apple"]'],
+            'line': ['.btnLine', '#btnLine', 'a[onclick*="line"]'],
+            'yahoojp': ['.yahoojp', '#yahoojp', 'a[onclick*="yahoojp"]']
           };
           const selectors = classMap[provider] || [];
           selectors.unshift('#origin_btn_' + provider);
@@ -129,6 +129,11 @@ export default async function handler(req, res) {
         // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
+            const originWrap = document.getElementById('cafe24-original-wrap');
+            if (originWrap) {
+              originWrap.style.cssText = 'position: absolute; left: -9999px; top: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none;';
+            }
+
             if (!document.getElementById('ykinas-tailwind')) {
               const tailwind = document.createElement('link');
               tailwind.id = 'ykinas-tailwind';
@@ -145,7 +150,7 @@ export default async function handler(req, res) {
                   .minimal-input { height: 40px !important; font-size: 16px !important; padding-top: 0 !important; padding-bottom: 0 !important; }
                 }
                 .floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
-                .minimal-input:focus~.floating-label, .minimal-input:not(:placeholder-shown)~.floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
+                .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
                 .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
                 .mode-hidden { display: none !important; }
@@ -158,14 +163,13 @@ export default async function handler(req, res) {
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease, background-color 0.2s ease; width: 100%; outline: none; cursor: pointer; border:none; }
+                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; border: none; outline: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
-                .bg-google:hover { background-color: #F1F3F4; opacity: 1; } 
+                .bg-btn-primary { background-color: #111111; color: #ffffff; }
                 .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
-                .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
-                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+                .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; }
               </style>
 
               <div id="ykinas-global-loader" class="ykinas-loader-overlay">
@@ -195,8 +199,6 @@ export default async function handler(req, res) {
 
                       <div id="ui-login-mode" class="fade-in member-login-wrap">
                         <fieldset class="form" style="border: none; padding: 0; margin: 0; width: 100%;">
-                          <legend style="display: none;">회원로그인</legend>
-
                           <div class="mb-10">
                             <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h1>
                             <p class="text-sm text-gray-500">SNS 간편 로그인 또는 아이디로 접속하세요.</p>
@@ -209,34 +211,34 @@ export default async function handler(req, res) {
                             </button>
 
                             <div id="a_sns_grid_container" class="grid grid-cols-2 gap-2" style="display:none;">
-                              <button type="button" id="a_sns_naver" class="sns-grid-btn bg-naver border-none" style="display:none;">
+                              <button type="button" id="a_sns_naver" class="sns-grid-btn bg-naver" style="display:none;">
                                 <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                               </button>
-                              <button type="button" id="a_sns_google" class="sns-grid-btn bg-google" style="display:none;">
+                              <button type="button" id="a_sns_google" class="bg-google sns-grid-btn bg-white border border-gray-300 text-gray-600 font-medium hover:bg-gray-50" style="display:none;">
                                 <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                                 구글
                               </button>
-                              <button type="button" id="a_sns_apple" class="sns-grid-btn bg-apple border-none" style="display:none;">
+                              <button type="button" id="a_sns_apple" class="sns-grid-btn bg-apple" style="display:none;">
                                 <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 384 512"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-96.2 20.7-22 0-53-22.9-86-22.9-49.8 0-96.3 35.6-122 85.7-52.7 101.4-13.8 247.9 36.6 320.1 24.3 34.6 52.8 70.9 88.5 69.4 34.6-1.5 48.7-22.4 90.4-22.4 41.7 0 53.6 22.4 90.1 22.4 37.9 0 62.7-32.9 86.8-68.5 16-23.7 22.7-47 23.3-48.5-1.1-.5-45.7-17-45.9-66.6zM245.9 64.6c20.5-24.8 34.3-59.5 30.6-94.6-29.5 1.2-65.7 19.8-87.3 44.8-17.7 20.5-33.8 55.7-29.4 89.8 33.3 2.6 65.5-15.2 86.1-40z"/></svg>
                                 Apple
                               </button>
-                              <button type="button" id="a_sns_facebook" class="sns-grid-btn bg-facebook border-none" style="display:none;">
+                              <button type="button" id="a_sns_facebook" class="sns-grid-btn bg-facebook" style="display:none;">
                                 <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 320 512"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
                                 Facebook
                               </button>
-                              <button type="button" id="a_sns_line" class="sns-grid-btn bg-line border-none" style="display:none;">
+                              <button type="button" id="a_sns_line" class="sns-grid-btn bg-line" style="display:none;">
                                 <span class="font-bold text-[11px] mr-1 tracking-wider">LINE</span> 라인
                               </button>
-                              <button type="button" id="a_sns_yahoojp" class="sns-grid-btn bg-yahoojp border-none" style="display:none;">
+                              <button type="button" id="a_sns_yahoojp" class="sns-grid-btn bg-yahoojp" style="display:none;">
                                 <span class="font-bold text-[12px] italic mr-1">Y!</span> Yahoo
                               </button>
                             </div>
                           </div>
 
-                          <div class="relative flex items-center py-4">
-                            <div class="flex-grow border-t border-gray-200"></div>
+                          <div class="relative flex items-center py-2">
+                            <div class="flex-grow border-t border-gray-100"></div>
                             <span class="flex-shrink-0 mx-4 text-[11px] text-gray-400">또는 아이디로 로그인</span>
-                            <div class="flex-grow border-t border-gray-200"></div>
+                            <div class="flex-grow border-t border-gray-100"></div>
                           </div>
 
                           <div class="login space-y-4 mt-5">
@@ -247,7 +249,7 @@ export default async function handler(req, res) {
                             <div class="relative w-full">
                               <input type="password" id="a_pw" placeholder=" " required autocomplete="current-password" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                               <label class="floating-label">비밀번호</label>
-                              <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
+                              <button type="button" id="a_btn_toggle_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
                                 <svg id="a_eye_icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                   <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
                                 </svg>
@@ -259,19 +261,17 @@ export default async function handler(req, res) {
                                 <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
                               </label>
                             </div>
-                            <button type="button" id="a_btn_submit_login" class="w-full py-4 bg-black text-white text-sm font-semibold tracking-widest hover:bg-gray-800 transition-colors mt-4 rounded shadow-md active:scale-[0.99] transform">로그인</button>
+                            <button type="button" id="a_btn_submit_login" class="w-full py-3.5 bg-btn-primary text-sm font-semibold tracking-widest transition-colors rounded mt-4">로그인</button>
                           </div>
 
-                          <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500">
-                            <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-3 bg-gray-300"></span>
-                            <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-3 bg-gray-300"></span>
-                            <a href="/member/agreement.html" class="font-bold text-black border-b border-black pb-0.5">회원가입</a>
+                          <div class="flex justify-center items-center space-x-4 mt-6 text-[11px] text-gray-400">
+                            <a href="/member/id/find_id.html" class="hover:text-black">아이디 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
+                            <a href="/member/passwd/find_passwd_info.html" class="hover:text-black">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
+                            <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black">회원가입</a>
                           </div>
 
-                          <div class="mt-12 text-center border-t border-gray-100 pt-6 pb-[calc(2rem+env(safe-area-inset-bottom))] lg:pb-6">
-                            <button type="button" id="a_btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors active:opacity-70">
-                              비회원으로 주문하셨나요?
-                            </button>
+                          <div class="mt-12 text-center border-t border-gray-100 pt-6 pb-6">
+                            <button type="button" id="a_btn_goto_guest" class="p-2 text-xs text-gray-400 hover:text-black underline underline-offset-4">비회원으로 주문하셨나요?</button>
                           </div>
                         </fieldset>
                       </div>
@@ -281,7 +281,6 @@ export default async function handler(req, res) {
                           <h1 class="text-2xl font-bold tracking-tight text-gray-900 mb-2 mt-4">비회원 주문조회</h1>
                           <p class="text-sm text-gray-500">주문 시 입력하신 정보를 입력해 주세요.</p>
                         </div>
-
                         <div class="space-y-6 mt-6">
                           <div class="relative w-full">
                             <input type="text" id="a_order_name" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900" />
@@ -294,7 +293,7 @@ export default async function handler(req, res) {
                           <div class="relative w-full">
                             <input type="password" id="a_order_pw" placeholder=" " autocomplete="off" class="minimal-input w-full py-2.5 text-sm text-gray-900 pr-8" />
                             <label class="floating-label">주문 비밀번호</label>
-                            <button type="button" id="a_btn_toggle_order_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black transition-colors">
+                            <button type="button" id="a_btn_toggle_order_pw" class="absolute right-0 top-2.5 text-gray-400 hover:text-black">
                               <svg id="a_guest_eye_icon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
                               </svg>
@@ -302,9 +301,8 @@ export default async function handler(req, res) {
                           </div>
                           <button type="button" id="a_btn_submit_guest" class="w-full py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors mt-4 rounded shadow-sm">주문 추적하기</button>
                         </div>
-
                         <div class="mt-12 text-center border-t border-gray-100 pt-6">
-                          <button type="button" id="a_btn_goto_login" class="text-xs text-gray-400 hover:text-black underline underline-offset-4 transition-colors">회원 로그인으로 돌아가기</button>
+                          <button type="button" id="a_btn_goto_login" class="text-xs text-gray-400 hover:text-black underline underline-offset-4">회원 로그인으로 돌아가기</button>
                         </div>
                       </div>
 
@@ -355,21 +353,6 @@ export default async function handler(req, res) {
 
             const searchParams = new URLSearchParams(window.location.search);
             const currentReturnUrl = searchParams.get('returnUrl') || '';
-
-            // [핵심] 사이드바에서 SNS 클릭하여 넘어왔을 경우, 즉시 SNS 자동 클릭 및 로딩
-            const triggerSns = searchParams.get('triggerSns');
-            if (triggerSns) {
-              showLoader();
-              setTimeout(() => {
-                const originBtn = getNativeSnsButton(triggerSns, document);
-                if (originBtn) {
-                  originBtn.click();
-                } else {
-                  hideLoader();
-                  alert('해당 간편 로그인을 찾을 수 없습니다.');
-                }
-              }, 150);
-            }
 
             document.getElementById('a_btn_goto_guest').addEventListener('click', () => {
               showLoader();
@@ -485,7 +468,7 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [MODE A] 로그인 창 자체 SNS 클릭
+            // [MODE A] 안전한 SNS 팝업 클릭 이벤트
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const customBtn = document.getElementById('a_sns_' + provider);
               if (customBtn) {
@@ -494,12 +477,11 @@ export default async function handler(req, res) {
                   e.stopPropagation();
 
                   const originBtn = getNativeSnsButton(provider, document);
-                  
                   if (originBtn) {
-                    showLoader();
+                    // 강제 로딩창을 띄우지 않고 팝업만 열도록 수정
                     originBtn.click();
                   } else {
-                    alert('간편 로그인 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
+                    alert('간편 로그인 연결에 실패했습니다.');
                   }
                 });
               }
@@ -591,14 +573,36 @@ export default async function handler(req, res) {
             const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
             const skinPrefix = skinMatch ? skinMatch[0] : '';
 
-            // ⚠️ 투명 iframe (ID/PW 로그인 및 SNS 노출 동기화 용도)
+            // [핵심 해결] iframe의 window.open을 부모창으로 가로채기
             let proxyIframe = document.getElementById('ykinas_proxy_iframe');
             if (!proxyIframe) {
               proxyIframe = document.createElement('iframe');
               proxyIframe.id = 'ykinas_proxy_iframe';
               proxyIframe.src = skinPrefix + '/member/login.html';
               proxyIframe.style.cssText = 'position:absolute; width:1px; height:1px; left:-9999px; opacity:0; pointer-events:none;';
+              
+              proxyIframe.onload = function() {
+                try {
+                  const iWin = proxyIframe.contentWindow;
+                  // iframe 안에서 팝업(window.open)이 실행되면 부모창에서 띄우도록 재정의
+                  iWin.open = function(url, name, specs) {
+                     window.top.open(url, name, specs);
+                     return true;
+                  };
+                  
+                  const idoc = iWin.document;
+                  const base = idoc.createElement('base');
+                  base.target = '_parent';
+                  idoc.head.appendChild(base);
+                  idoc.querySelectorAll('form').forEach(f => f.target = '_parent');
+                } catch(e) {}
+              };
               document.body.appendChild(proxyIframe);
+            }
+
+            const originWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
+            if (originWrap) {
+              originWrap.style.cssText = 'position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none;';
             }
 
             const host = document.createElement('div');
@@ -641,7 +645,6 @@ export default async function handler(req, res) {
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; border: none; outline: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-btn-primary { background-color: #111111; color: #ffffff; }
-
                 .ykinas-loader-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
@@ -662,16 +665,13 @@ export default async function handler(req, res) {
                   </button>
 
                   <div class="px-8 sm:px-10 py-16 flex-1 flex flex-col justify-center drawer-content-wrapper">
-
                     <div id="ui-login-mode" class="member-login-wrap">
                       <fieldset class="form" style="border: none; padding: 0; margin: 0; width: 100%;">
-                        <legend style="display: none;">회원로그인</legend>
-
                         <h2 class="text-2xl font-bold tracking-tight text-gray-900 mb-2">로그인</h2>
                         <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
 
                         <div class="wrap_sns_log space-y-2 mb-6">
-                          <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 sns-grid-btn bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity" style="display:none;">
+                          <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 sns-grid-btn bg-kakao text-sm font-semibold rounded hover:opacity-90" style="display:none;">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
                             카카오로 시작하기
                           </button>
@@ -773,7 +773,7 @@ export default async function handler(req, res) {
             if (btnGotoGuest) {
               btnGotoGuest.addEventListener('click', function() {
                 showDrawerLoader();
-                window.location.href = '/member/login.html?noMemberOrder=1&returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+                window.location.href = '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
               });
             }
 
@@ -800,41 +800,52 @@ export default async function handler(req, res) {
                  return; 
                }
 
-               try {
+               const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
+               if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
                  showDrawerLoader();
-                 const iframe = document.getElementById('ykinas_proxy_iframe');
-                 const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                 originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
+                 originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
+                 (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
+               } else {
+                 try {
+                   showDrawerLoader();
+                   const iframe = document.getElementById('ykinas_proxy_iframe');
+                   const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
 
-                 const ifId = iframeDoc.querySelector('input[name="member_id"]');
-                 const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
-                 const ifBtn = iframeDoc.getElementById('origin_btn_login');
+                   iframe.contentWindow.alert = function(msg) {
+                     window.alert(msg);
+                   };
 
-                 if (ifId && ifPw && ifBtn) {
-                   ifId.value = idVal;
-                   ifPw.value = pwVal;
+                   const ifId = iframeDoc.querySelector('input[name="member_id"]');
+                   const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
+                   const ifBtn = iframeDoc.getElementById('origin_btn_login');
 
-                   const form = ifId.closest('form');
-                   if (form) {
-                     form.target = "_parent"; 
-                     let retInput = form.querySelector('input[name="returnUrl"]');
-                     if (!retInput) {
-                       retInput = iframeDoc.createElement('input');
-                       retInput.type = 'hidden';
-                       retInput.name = 'returnUrl';
-                       form.appendChild(retInput);
+                   if (ifId && ifPw && ifBtn) {
+                     ifId.value = idVal;
+                     ifPw.value = pwVal;
+
+                     const form = ifId.closest('form');
+                     if (form) {
+                       form.target = "_parent"; 
+                       let retInput = form.querySelector('input[name="returnUrl"]');
+                       if (!retInput) {
+                         retInput = iframeDoc.createElement('input');
+                         retInput.type = 'hidden';
+                         retInput.name = 'returnUrl';
+                         form.appendChild(retInput);
+                       }
+                       retInput.value = window.location.pathname + window.location.search;
                      }
-                     retInput.value = window.location.pathname + window.location.search;
+                     ifBtn.click();
+                   } else {
+                     throw new Error("Iframe form not found");
                    }
-                   ifBtn.click();
-                 } else {
-                   window.location.href = skinPrefix + '/member/login.html';
+                 } catch (e) {
+                   window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
                  }
-               } catch (e) {
-                 window.location.href = skinPrefix + '/member/login.html';
                }
             });
 
-            // [핵심] 사이드바에 SNS 버튼 렌더링 동기화
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               let iframeDoc = null;
@@ -857,7 +868,7 @@ export default async function handler(req, res) {
 
                 const originEl = getNativeSnsButton(key, iframeDoc);
                 if (originEl) {
-                  const isHidden = originEl.classList.contains('displaynone');
+                  const isHidden = (originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1) || (originEl.style && originEl.style.display === 'none');
                   if (isHidden) {
                     shadowBtn.style.display = 'none';
                   } else {
@@ -885,8 +896,10 @@ export default async function handler(req, res) {
             syncRealtimeSnsVisibility();
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
+            const observer = new MutationObserver(() => syncRealtimeSnsVisibility());
+            observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [핵심] 사이드바에서 SNS 클릭 시 로그인 페이지로 넘겨서 대신 클릭 (패스스루)
+            // [MODE B] 단순화된 부모창 클릭 이벤트
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
@@ -894,10 +907,20 @@ export default async function handler(req, res) {
                   e.preventDefault();
                   e.stopPropagation();
 
-                  showDrawerLoader();
-                  const currentUrl = window.location.pathname + window.location.search;
-                  // login.html로 보내면서 triggerSns 파라미터 전달
-                  window.location.href = skinPrefix + '/member/login.html?triggerSns=' + provider + '&returnUrl=' + encodeURIComponent(currentUrl);
+                  try {
+                    const iframeNode = document.getElementById('ykinas_proxy_iframe');
+                    const iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
+                    const originBtn = getNativeSnsButton(provider, iframeDoc);
+                    
+                    if (originBtn) {
+                      window.YkinasLogin.close();
+                      originBtn.click(); // iframe 안에서 클릭 (부모창으로 리디렉션 됨)
+                    } else {
+                      window.location.href = skinPrefix + '/member/login.html';
+                    }
+                  } catch(err) {
+                    window.location.href = skinPrefix + '/member/login.html';
+                  }
                 });
               }
             });
