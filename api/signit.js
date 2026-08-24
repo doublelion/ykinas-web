@@ -134,11 +134,12 @@ export default async function handler(req, res) {
         // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
-          // 기존 로그인 폼 강제 하이드 처리 (고객 실수 방어)
+            // [방어 코드] 기존 로그인 폼 강제 하이드 처리 (UI 겹침 방지)
             const fallbackOriginModule = document.querySelector('.xans-member-login');
             if (fallbackOriginModule && !document.getElementById('cafe24-original-wrap')) {
               fallbackOriginModule.style.cssText = 'position: absolute; left: -9999px; opacity: 0; pointer-events: none;';
             }
+
             const originWrap = document.getElementById('cafe24-original-wrap');
             if (originWrap) {
               originWrap.style.cssText = 'position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none;';
@@ -151,6 +152,15 @@ export default async function handler(req, res) {
               tailwind.href = 'https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css';
               document.head.appendChild(tailwind);
             }
+
+            // ===================================================================
+            // [HOTFIX] 커스텀 에디토리얼 설정 동적 바인딩 (안전한 Fallback 적용)
+            // ===================================================================
+            const config = window.YKINAS_SIGNIT_CONFIG || {};
+            const customHeroImage = config.heroImage || '/web/upload/hero_img_02.png';
+            const customSubTitle = config.subTitle || 'Exclusive Membership';
+            const customMainTitle = config.mainTitle || 'Breathtaking<br>Clarity.';
+            const customDescription = config.description || '지금 가입하시고 첫 구매 혜택과 프라이빗 컬렉션 소식을 가장 먼저 받아보세요.';
 
             const fullScreenHTML = \`
               <style>
@@ -190,15 +200,15 @@ export default async function handler(req, res) {
 
               <div id="standalone_panel_wrapper" class="fixed inset-0 z-[99999] flex bg-[#faf9f8] overflow-hidden fade-in" style="font-family: 'Pretendard', 'Noto Sans KR', sans-serif;">
                 <div class="hidden lg:block lg:w-7/12 relative bg-gray-900">
-                  <img src="/web/upload/hero_img_02.png" alt="Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
+                  <img src="${customHeroImage}" alt="Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
                   <div class="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
                   <button type="button" id="a_btn_back_shop" class="absolute top-10 left-10 !bg-transparent text-white hover:opacity-70 transition-opacity flex items-center gap-2 z-10 cursor-pointer">
                     <span class="text-xs tracking-widest uppercase font-medium">← Back to Shop</span>
                   </button>
                   <div class="absolute bottom-20 left-16 text-white max-w-lg">
-                    <span class="text-xs uppercase tracking-[0.3em] opacity-80 mb-2 block font-sans">Exclusive Membership</span>
-                    <h2 class="text-5xl font-serif tracking-wide mb-4 leading-tight">Breathtaking<br>Clarity.</h2>
-                    <p class="text-sm tracking-wide font-light opacity-80 leading-relaxed">지금 가입하시고 첫 구매 혜택과 프라이빗 컬렉션 소식을 가장 먼저 받아보세요.</p>
+                    <span class="text-xs uppercase tracking-[0.3em] opacity-80 mb-2 block font-sans">${customSubTitle}</span>
+                    <h2 class="text-5xl font-serif tracking-wide mb-4 leading-tight">${customMainTitle}</h2>
+                    <p class="text-sm tracking-wide font-light opacity-80 leading-relaxed">${customDescription}</p>
                   </div>
                 </div>
 
