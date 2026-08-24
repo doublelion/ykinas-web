@@ -7,6 +7,7 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   try {
+    // 캐시 무효화로 즉시 반영
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -92,41 +93,42 @@ export default async function handler(req, res) {
         const currentPath = window.location.pathname;
         const isLoginPage = currentPath.includes('/member/login.html');
 
-        function getNativeSnsButton(provider, doc = document) {
+        // [공통] 카페24 원본 버튼 탐색기
+        function getNativeSnsButton(provider, doc) {
+          if (!doc) doc = document;
           const classMap = {
-            'kakao': ['.btnKakao', '#btnKakao', 'a[onclick*="kakao"]'],
-            'naver': ['.btnNaver', '#btnNaver', '#naver_id_login', 'a[onclick*="naver"]'],
-            'google': ['.btnGoogle', '#btnGoogle', 'a[onclick*="google"]'],
-            'facebook': ['.btnFacebook', '#btnFacebook', 'a[onclick*="facebook"]'],
-            'apple': ['.btnApple', '#btnApple', 'a[onclick*="apple"]'],
-            'line': ['.btnLine', '#btnLine', 'a[onclick*="line"]'],
-            'yahoojp': ['.yahoojp', '#yahoojp', 'a[onclick*="yahoojp"]']
+            'kakao': ['.btnKakao', '#btnKakao'],
+            'naver': ['.btnNaver', '#btnNaver', '#naver_id_login'],
+            'google': ['.btnGoogle', '#btnGoogle'],
+            'facebook': ['.btnFacebook', '#btnFacebook'],
+            'apple': ['.btnApple', '#btnApple'],
+            'line': ['.btnLine', '#btnLine'],
+            'yahoojp': ['.yahoojp', '#yahoojp']
           };
           const selectors = classMap[provider] || [];
-          selectors.push('#origin_btn_' + provider);
+          selectors.unshift('#origin_btn_' + provider);
 
-          const originalWrap = doc.getElementById('cafe24-original-wrap');
-          if (originalWrap) {
+          try {
+            const wrap = doc.getElementById('cafe24-original-wrap') || doc.getElementById('hidden-cafe24-login-module');
+            if (wrap) {
+              for (let sel of selectors) {
+                const btn = wrap.querySelector(sel);
+                if (btn) return btn;
+              }
+            }
             for (let sel of selectors) {
-              const btn = originalWrap.querySelector(sel);
+              const btn = doc.querySelector(sel);
               if (btn) return btn;
             }
-          }
-          
-          for (let sel of selectors) {
-            const btn = doc.querySelector(sel);
-            if (btn) return btn;
-          }
+          } catch(e) {}
           return null;
         }
 
+        // ==========================================
+        // [MODE A] 정식 로그인 페이지 (login.html)
+        // ==========================================
         if (isLoginPage) {
           function renderFullScreenUI() {
-            const originWrap = document.getElementById('cafe24-original-wrap');
-            if (originWrap) {
-              originWrap.style.cssText = 'position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none;';
-            }
-
             if (!document.getElementById('ykinas-tailwind')) {
               const tailwind = document.createElement('link');
               tailwind.id = 'ykinas-tailwind';
@@ -156,7 +158,7 @@ export default async function handler(req, res) {
                 .bg-line { background-color: #06C755; color: #ffffff; }
                 .bg-apple { background-color: #000000; color: #ffffff; }
                 .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease, background-color 0.2s ease; width: 100%; outline: none; cursor: pointer; }
+                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease, background-color 0.2s ease; width: 100%; outline: none; cursor: pointer; border:none; }
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-google:hover { background-color: #F1F3F4; opacity: 1; } 
                 .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
@@ -173,15 +175,15 @@ export default async function handler(req, res) {
 
               <div id="standalone_panel_wrapper" class="fixed inset-0 z-[99999] flex bg-[#faf9f8] overflow-hidden fade-in" style="font-family: 'Pretendard', 'Noto Sans KR', sans-serif;">
                 <div class="hidden lg:block lg:w-7/12 relative bg-gray-900">
-                  <img src="/web/upload/hero_img_02.png" alt="Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
+                  <img id="a_hero_img" src="/web/upload/hero_img_02.png" alt="Editorial" class="w-full h-full object-cover opacity-90" onerror="this.src='https://via.placeholder.com/1200x800/111/333?text=Brand+Image'" />
                   <div class="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>
                   <button type="button" id="a_btn_back_shop" class="absolute top-10 left-10 !bg-transparent text-white hover:opacity-70 transition-opacity flex items-center gap-2 z-10 cursor-pointer">
                     <span class="text-xs tracking-widest uppercase font-medium">← Back to Shop</span>
                   </button>
                   <div class="absolute bottom-20 left-16 text-white max-w-lg">
-                    <span class="text-xs uppercase tracking-[0.3em] opacity-80 mb-2 block font-sans">Exclusive Membership</span>
-                    <h2 class="text-5xl font-serif tracking-wide mb-4 leading-tight">Breathtaking<br>Clarity.</h2>
-                    <p class="text-sm tracking-wide font-light opacity-80 leading-relaxed">지금 가입하시고 첫 구매 혜택과 프라이빗 컬렉션 소식을 가장 먼저 받아보세요.</p>
+                    <span id="a_sub_title" class="text-xs uppercase tracking-[0.3em] opacity-80 mb-2 block font-sans">Exclusive Membership</span>
+                    <h2 id="a_main_title" class="text-5xl font-serif tracking-wide mb-4 leading-tight">Breathtaking<br>Clarity.</h2>
+                    <p id="a_desc" class="text-sm tracking-wide font-light opacity-80 leading-relaxed">지금 가입하시고 첫 구매 혜택과 프라이빗 컬렉션 소식을 가장 먼저 받아보세요.</p>
                   </div>
                 </div>
 
@@ -201,16 +203,16 @@ export default async function handler(req, res) {
                           </div>
 
                           <div class="wrap_sns_log space-y-2 mb-6">
-                            <button type="button" id="a_sns_kakao" class="sns-grid-btn bg-kakao py-3 text-sm font-semibold rounded">
+                            <button type="button" id="a_sns_kakao" class="sns-grid-btn bg-kakao py-3 text-sm font-semibold rounded" style="display:none;">
                               <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z"/></svg>
                               카카오로 시작하기
                             </button>
 
-                            <div id="a_sns_grid_container" class="grid grid-cols-2 gap-2">
-                              <button type="button" id="a_sns_naver" class="sns-grid-btn bg-naver border-none">
+                            <div id="a_sns_grid_container" class="grid grid-cols-2 gap-2" style="display:none;">
+                              <button type="button" id="a_sns_naver" class="sns-grid-btn bg-naver border-none" style="display:none;">
                                 <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                               </button>
-                              <button type="button" id="a_sns_google" class="sns-grid-btn bg-google">
+                              <button type="button" id="a_sns_google" class="sns-grid-btn bg-google" style="display:none;">
                                 <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                                 구글
                               </button>
@@ -314,14 +316,16 @@ export default async function handler(req, res) {
 
             document.body.insertAdjacentHTML('beforeend', fullScreenHTML);
 
-            const showLoader = () => {
-              const loader = document.getElementById('ykinas-global-loader');
-              if (loader) loader.style.display = 'flex';
-            };
-            const hideLoader = () => {
-              const loader = document.getElementById('ykinas-global-loader');
-              if (loader) loader.style.display = 'none';
-            };
+            if (window.YKINAS_SIGNIT_CONFIG) {
+              const cfg = window.YKINAS_SIGNIT_CONFIG;
+              if (cfg.heroImage) document.getElementById('a_hero_img').src = cfg.heroImage;
+              if (cfg.subTitle) document.getElementById('a_sub_title').textContent = cfg.subTitle;
+              if (cfg.mainTitle) document.getElementById('a_main_title').innerHTML = cfg.mainTitle;
+              if (cfg.description) document.getElementById('a_desc').textContent = cfg.description;
+            }
+
+            const showLoader = () => { document.getElementById('ykinas-global-loader').style.display = 'flex'; };
+            const hideLoader = () => { document.getElementById('ykinas-global-loader').style.display = 'none'; };
 
             const closeHandler = (e) => {
               hideLoader(); 
@@ -352,16 +356,29 @@ export default async function handler(req, res) {
             const searchParams = new URLSearchParams(window.location.search);
             const currentReturnUrl = searchParams.get('returnUrl') || '';
 
+            // [핵심] 사이드바에서 SNS 클릭하여 넘어왔을 경우, 즉시 SNS 자동 클릭 및 로딩
+            const triggerSns = searchParams.get('triggerSns');
+            if (triggerSns) {
+              showLoader();
+              setTimeout(() => {
+                const originBtn = getNativeSnsButton(triggerSns, document);
+                if (originBtn) {
+                  originBtn.click();
+                } else {
+                  hideLoader();
+                  alert('해당 간편 로그인을 찾을 수 없습니다.');
+                }
+              }, 150);
+            }
+
             document.getElementById('a_btn_goto_guest').addEventListener('click', () => {
               showLoader();
-              const targetReturnUrl = currentReturnUrl || '/myshop/order/list.html';
-              window.location.replace('/member/login.html?noMemberOrder=1&returnUrl=' + encodeURIComponent(targetReturnUrl));
+              window.location.replace('/member/login.html?noMemberOrder=1&returnUrl=' + encodeURIComponent(currentReturnUrl || '/myshop/order/list.html'));
             });
 
             document.getElementById('a_btn_goto_login').addEventListener('click', () => {
               showLoader();
-              const nextUrl = currentReturnUrl ? '/member/login.html?returnUrl=' + encodeURIComponent(currentReturnUrl) : '/member/login.html';
-              window.location.replace(nextUrl);
+              window.location.replace(currentReturnUrl ? '/member/login.html?returnUrl=' + encodeURIComponent(currentReturnUrl) : '/member/login.html');
             });
 
             const svgEyeClosed = '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />';
@@ -431,10 +448,10 @@ export default async function handler(req, res) {
                 const customBtn = document.getElementById('a_sns_' + key);
                 if (!customBtn) return;
 
-                const originEl = getNativeSnsButton(key);
+                const originEl = getNativeSnsButton(key, document);
 
                 if (originEl) {
-                  const isHidden = (originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1) || (originEl.style && originEl.style.display === 'none');
+                  const isHidden = originEl.classList.contains('displaynone') || (originEl.style && originEl.style.display === 'none');
 
                   if (isHidden) {
                     customBtn.style.display = 'none';
@@ -468,7 +485,7 @@ export default async function handler(req, res) {
             const observer = new MutationObserver(() => syncSnsA());
             observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [MODE A] 단순화된 부모창 클릭 이벤트
+            // [MODE A] 로그인 창 자체 SNS 클릭
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const customBtn = document.getElementById('a_sns_' + provider);
               if (customBtn) {
@@ -479,19 +496,8 @@ export default async function handler(req, res) {
                   const originBtn = getNativeSnsButton(provider, document);
                   
                   if (originBtn) {
-                    const onclickScript = originBtn.getAttribute('onclick');
-                    if (onclickScript) {
-                      try {
-                        const execNative = new Function(onclickScript);
-                        execNative.call(originBtn);
-                      } catch(err) {
-                        originBtn.click();
-                      }
-                    } else if (originBtn.href && originBtn.href !== '#none' && !originBtn.href.startsWith('javascript:')) {
-                      window.location.href = originBtn.href;
-                    } else {
-                      originBtn.click();
-                    }
+                    showLoader();
+                    originBtn.click();
                   } else {
                     alert('간편 로그인 연결에 실패했습니다. 잠시 후 다시 시도해주세요.');
                   }
@@ -585,7 +591,7 @@ export default async function handler(req, res) {
             const skinMatch = currentPath.match(/^\\/skin-[^\\/]+/);
             const skinPrefix = skinMatch ? skinMatch[0] : '';
 
-            // ⚠️ 여기서 투명 iframe은 더 이상 SNS 클릭용이 아니라 ID/PW 로그인 제출용으로만 쓰입니다.
+            // ⚠️ 투명 iframe (ID/PW 로그인 및 SNS 노출 동기화 용도)
             let proxyIframe = document.getElementById('ykinas_proxy_iframe');
             if (!proxyIframe) {
               proxyIframe = document.createElement('iframe');
@@ -593,11 +599,6 @@ export default async function handler(req, res) {
               proxyIframe.src = skinPrefix + '/member/login.html';
               proxyIframe.style.cssText = 'position:absolute; width:1px; height:1px; left:-9999px; opacity:0; pointer-events:none;';
               document.body.appendChild(proxyIframe);
-            }
-
-            const originWrap = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-            if (originWrap) {
-              originWrap.style.cssText = 'position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none;';
             }
 
             const host = document.createElement('div');
@@ -670,16 +671,16 @@ export default async function handler(req, res) {
                         <p class="text-sm text-gray-500 mb-8">SNS 간편 로그인 또는 아이디로 편리하게 접속하세요.</p>
 
                         <div class="wrap_sns_log space-y-2 mb-6">
-                          <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 sns-grid-btn bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity">
+                          <button type="button" id="btn_sns_kakao" class="w-full flex items-center justify-center py-3 sns-grid-btn bg-kakao text-sm font-semibold rounded hover:opacity-90 transition-opacity" style="display:none;">
                             <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-5.5 0-10 3.5-10 7.8 0 2.8 1.8 5.2 4.4 6.6-.2.8-1 3.5-1 3.6 0 .1.1.2.3.2.1 0 .2 0 .3-.1.6-.4 4.3-2.9 5-3.3.7.1 1.3.1 2 .1 5.5 0 10-3.5 10-7.8S17.5 3 12 3z" /></svg>
                             카카오로 시작하기
                           </button>
 
-                          <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2">
-                            <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver">
+                          <div id="b_sns_grid_container" class="grid grid-cols-2 gap-2" style="display:none;">
+                            <button type="button" id="btn_sns_naver" class="sns-grid-btn bg-naver" style="display:none;">
                               <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                             </button>
-                            <button type="button" id="btn_sns_google" class="bg-google sns-grid-btn bg-white border border-gray-300 text-gray-600 font-medium hover:bg-gray-50">
+                            <button type="button" id="btn_sns_google" class="bg-google sns-grid-btn bg-white border border-gray-300 text-gray-600 font-medium hover:bg-gray-50" style="display:none;">
                               <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                               구글
                             </button>
@@ -772,7 +773,7 @@ export default async function handler(req, res) {
             if (btnGotoGuest) {
               btnGotoGuest.addEventListener('click', function() {
                 showDrawerLoader();
-                window.location.href = '/member/login.html?noMemberOrder&returnUrl=' + encodeURIComponent('/myshop/order/list.html');
+                window.location.href = '/member/login.html?noMemberOrder=1&returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
               });
             }
 
@@ -799,54 +800,41 @@ export default async function handler(req, res) {
                  return; 
                }
 
-               const originWrapInner = document.getElementById('hidden-cafe24-login-module') || document.getElementById('cafe24-original-wrap');
-               if (originWrapInner && originWrapInner.querySelector('input[name="member_id"]')) { 
+               try {
                  showDrawerLoader();
-                 originWrapInner.querySelector('input[name="member_id"]').value = idVal; 
-                 originWrapInner.querySelector('input[name="member_passwd"]').value = pwVal; 
-                 (document.getElementById('hidden_btn_login') || document.getElementById('origin_btn_login')).click(); 
-               } else {
-                 try {
-                   showDrawerLoader();
-                   const iframe = document.getElementById('ykinas_proxy_iframe');
-                   const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                 const iframe = document.getElementById('ykinas_proxy_iframe');
+                 const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
 
-                   iframe.contentWindow.alert = function(msg) {
-                     window.alert(msg);
-                   };
+                 const ifId = iframeDoc.querySelector('input[name="member_id"]');
+                 const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
+                 const ifBtn = iframeDoc.getElementById('origin_btn_login');
 
-                   const ifId = iframeDoc.querySelector('input[name="member_id"]');
-                   const ifPw = iframeDoc.querySelector('input[name="member_passwd"]');
-                   const ifBtn = iframeDoc.getElementById('origin_btn_login');
+                 if (ifId && ifPw && ifBtn) {
+                   ifId.value = idVal;
+                   ifPw.value = pwVal;
 
-                   if (ifId && ifPw && ifBtn) {
-                     ifId.value = idVal;
-                     ifPw.value = pwVal;
-
-                     const form = ifId.closest('form');
-                     if (form) {
-                       form.target = "_parent"; 
-                       let retInput = form.querySelector('input[name="returnUrl"]');
-                       if (!retInput) {
-                         retInput = iframeDoc.createElement('input');
-                         retInput.type = 'hidden';
-                         retInput.name = 'returnUrl';
-                         form.appendChild(retInput);
-                       }
-                       retInput.value = window.location.pathname + window.location.search;
+                   const form = ifId.closest('form');
+                   if (form) {
+                     form.target = "_parent"; 
+                     let retInput = form.querySelector('input[name="returnUrl"]');
+                     if (!retInput) {
+                       retInput = iframeDoc.createElement('input');
+                       retInput.type = 'hidden';
+                       retInput.name = 'returnUrl';
+                       form.appendChild(retInput);
                      }
-                     ifBtn.click();
-                   } else {
-                     throw new Error("Iframe form not found");
+                     retInput.value = window.location.pathname + window.location.search;
                    }
-                 } catch (e) {
-                   window.location.href = skinPrefix + '/member/login.html?returnUrl=' + encodeURIComponent(window.location.pathname + window.location.search);
+                   ifBtn.click();
+                 } else {
+                   window.location.href = skinPrefix + '/member/login.html';
                  }
+               } catch (e) {
+                 window.location.href = skinPrefix + '/member/login.html';
                }
             });
 
-            // [핵심 개선] iframe 접근을 완전히 차단하고 부모창(document)의 상태만 읽어 SecurityError 방지
-            // [핵심 개선] 버튼은 다시 iframe에서 찾고, SecurityError는 안전하게 무시
+            // [핵심] 사이드바에 SNS 버튼 렌더링 동기화
             const syncRealtimeSnsVisibility = () => {
               const snsProviders = ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'];
               let iframeDoc = null;
@@ -857,7 +845,6 @@ export default async function handler(req, res) {
                   iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
                 }
               } catch(e) {
-                // 클릭 후 카카오로 넘어가서 SecurityError가 발생하면 쿨하게 렌더링 중지 (무시)
                 return;
               }
 
@@ -868,10 +855,9 @@ export default async function handler(req, res) {
                 const shadowBtn = ykinasShadowRoot.querySelector('#btn_sns_' + key);
                 if (!shadowBtn) return;
 
-                // 고객님 말씀대로 반드시 iframeDoc에서 찾아야 합니다!
                 const originEl = getNativeSnsButton(key, iframeDoc);
                 if (originEl) {
-                  const isHidden = (originEl.className && typeof originEl.className === 'string' && originEl.className.indexOf('displaynone') !== -1) || (originEl.style && originEl.style.display === 'none');
+                  const isHidden = originEl.classList.contains('displaynone');
                   if (isHidden) {
                     shadowBtn.style.display = 'none';
                   } else {
@@ -899,10 +885,8 @@ export default async function handler(req, res) {
             syncRealtimeSnsVisibility();
             let snsIntervalB = setInterval(syncRealtimeSnsVisibility, 300);
             setTimeout(() => clearInterval(snsIntervalB), 3000);
-            const observer = new MutationObserver(() => syncRealtimeSnsVisibility());
-            observer.observe(document.body, { attributes: true, childList: true, subtree: true, attributeFilter: ['class', 'style'] });
 
-            // [MODE B] 단순화된 부모창 클릭 이벤트
+            // [핵심] 사이드바에서 SNS 클릭 시 로그인 페이지로 넘겨서 대신 클릭 (패스스루)
             ['kakao', 'naver', 'google', 'apple', 'facebook', 'line', 'yahoojp'].forEach(provider => {
               const btn = ykinasShadowRoot.querySelector('#btn_sns_' + provider);
               if (btn) {
@@ -910,33 +894,10 @@ export default async function handler(req, res) {
                   e.preventDefault();
                   e.stopPropagation();
 
-                  try {
-                    const iframeNode = document.getElementById('ykinas_proxy_iframe');
-                    const iframeDoc = iframeNode.contentDocument || iframeNode.contentWindow.document;
-                    const originBtn = getNativeSnsButton(provider, iframeDoc);
-                    
-                    if (originBtn) {
-                      window.YkinasLogin.close();
-                      
-                      const onclickScript = originBtn.getAttribute('onclick');
-                      const href = originBtn.getAttribute('href');
-
-                      // 💡 핵심: iframe 안에서 클릭하지 말고, 함수를 훔쳐와서 부모창(window)에서 직접 실행합니다!
-                      if (onclickScript && !onclickScript.includes('{$')) {
-                        const execFn = new Function(onclickScript);
-                        execFn.call(window);
-                      } else if (href && href !== '#none' && !href.startsWith('javascript:')) {
-                        window.location.href = href;
-                      } else {
-                        // 최후의 수단
-                        originBtn.click();
-                      }
-                    } else {
-                      window.location.href = skinPrefix + '/member/login.html';
-                    }
-                  } catch(err) {
-                    window.location.href = skinPrefix + '/member/login.html';
-                  }
+                  showDrawerLoader();
+                  const currentUrl = window.location.pathname + window.location.search;
+                  // login.html로 보내면서 triggerSns 파라미터 전달
+                  window.location.href = skinPrefix + '/member/login.html?triggerSns=' + provider + '&returnUrl=' + encodeURIComponent(currentUrl);
                 });
               }
             });
@@ -957,4 +918,3 @@ export default async function handler(req, res) {
     return res.status(500).send('/* Sign-It Initialization error */');
   }
 }
-
