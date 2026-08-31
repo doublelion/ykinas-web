@@ -282,6 +282,18 @@ export default function BannerItAdmin() {
 
               {loginError && <p style={{ color: '#ef4444', fontSize: '0.95rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px', fontWeight: '500' }}>{loginError}</p>}
 
+              {/* 💡 [추가된 UI] 비밀번호 찾기 안내 */}
+              <div style={{ textAlign: 'right', marginBottom: '1rem' }}>
+                <button
+                  type="button"
+                  onClick={() => toast('보안을 위해 비밀번호 초기화는 고객센터(채널톡)로 문의해주세요.', { icon: '💬' })}
+                  style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  비밀번호를 잊으셨나요?
+                </button>
+              </div>
+
+
               <button onClick={handleLogin} disabled={isChecking} style={{ width: '100%', padding: '1.1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '700', fontSize: '1.1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '0.5rem' }}>{isChecking ? '인증 중...' : '접속하기'}</button>
 
               <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px dashed #e5e7eb' }}>
