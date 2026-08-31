@@ -270,37 +270,41 @@ export default function BannerItAdmin() {
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', backgroundColor: '#f3f4f6' }}>
         <Toaster position="top-center" reverseOrder={false} />
         <div style={{ background: '#fff', padding: '3.5rem 3rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '440px', textAlign: 'center', maxWidth: '90%' }}>
+
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
             <img src="/bannerit_logo.jpg" alt="BannerIt Logo" style={{ width: '72px', height: '72px', borderRadius: '18px', marginBottom: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
             <h1 style={{ margin: '0', fontSize: '1.75rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>BANNER-IT 관리자</h1>
           </div>
+
           {!isFirstSetup ? (
+            /* 🟢 [1] 기본 어드민 로그인 화면 (여기에 안내 멘트가 들어가야 합니다) */
             <>
               <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '1.05rem', fontWeight: '500' }}>팝업을 설정할 쇼핑몰 정보를 입력하세요.</p>
+
               <input type="text" placeholder="카페24 쇼핑몰 ID" value={loginInput} onChange={(e) => setLoginInput(e.target.value)} style={{ width: '100%', padding: '1.1rem', fontSize: '1.05rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '12px', marginBottom: '0.75rem', boxSizing: 'border-box', outline: 'none' }} />
               <input type="password" placeholder="관리자 비밀번호" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }} style={{ width: '100%', padding: '1.1rem', fontSize: '1.05rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '12px', marginBottom: '0.75rem', boxSizing: 'border-box', outline: 'none' }} />
 
               {loginError && <p style={{ color: '#ef4444', fontSize: '0.95rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px', fontWeight: '500' }}>{loginError}</p>}
 
-              {/* 💡 [추가된 UI] 비밀번호 찾기 안내 */}
+              {/* 💡 [수정된 위치] 메인 접속하기 CTA 버튼 바로 위에 우측 정렬로 배치! */}
               <div style={{ textAlign: 'right', marginBottom: '1rem' }}>
                 <button
                   type="button"
-                  onClick={() => toast('보안을 위해 비밀번호 초기화는 고객센터(채널톡)로 문의해주세요.', { icon: '💬' })}
-                  style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}
+                  onClick={() => toast('보안을 위해 비밀번호 초기화는 고객센터(채널톡)로 문의해주세요.', { icon: '💬', duration: 4000 })}
+                  style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
                 >
                   비밀번호를 잊으셨나요?
                 </button>
               </div>
 
-
-              <button onClick={handleLogin} disabled={isChecking} style={{ width: '100%', padding: '1.1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '700', fontSize: '1.1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '0.5rem' }}>{isChecking ? '인증 중...' : '접속하기'}</button>
+              <button onClick={handleLogin} disabled={isChecking} style={{ width: '100%', padding: '1.1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '700', fontSize: '1.1rem', cursor: isChecking ? 'not-allowed' : 'pointer' }}>{isChecking ? '인증 중...' : '접속하기'}</button>
 
               <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px dashed #e5e7eb' }}>
                 <button onClick={handleDemoLogin} disabled={isChecking} style={{ width: '100%', padding: '1rem', backgroundColor: '#EFF6FF', color: '#3B82F6', border: '1px solid #DBEAFE', borderRadius: '12px', fontWeight: '800', fontSize: '1.05rem', cursor: isChecking ? 'not-allowed' : 'pointer' }}>👉 1초 만에 데모 계정으로 체험하기</button>
               </div>
             </>
           ) : (
+            /* 🔴 [2] 신규 셋팅 화면 (여기서는 비밀번호 찾기를 완전히 제거했습니다) */
             <>
               <p style={{ color: '#2563eb', fontWeight: '800', marginBottom: '0.75rem', fontSize: '1.15rem' }}>🎉 신규 쇼핑몰 환영합니다!</p>
               <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '1rem', lineHeight: '1.5' }}>앞으로 안전하게 사용할<br /><b style={{ color: '#111' }}>[{loginInput}]</b> 몰의 비밀번호를 생성해주세요.</p>
@@ -310,16 +314,7 @@ export default function BannerItAdmin() {
 
               {loginError && <p style={{ color: '#ef4444', fontSize: '0.95rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px', fontWeight: '500' }}>{loginError}</p>}
 
-              {/* 💡 [추가된 UI] 비밀번호 찾기 안내 */}
-              <div style={{ textAlign: 'right', marginBottom: '1rem' }}>
-                <button
-                  type="button"
-                  onClick={() => toast('보안을 위해 비밀번호 초기화는 고객센터(채널톡)로 문의해주세요.', { icon: '💬' })}
-                  style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '0.85rem', cursor: 'pointer', textDecoration: 'underline' }}
-                >
-                  비밀번호를 잊으셨나요?
-                </button>
-              </div>
+              {/* 이곳에 있던 비밀번호 찾기 문구는 불필요하여 삭제했습니다! */}
 
               <button onClick={handleSetupPassword} disabled={isChecking} style={{ width: '100%', padding: '1.1rem', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '700', fontSize: '1.1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '0.5rem' }}>{isChecking ? '설정 중...' : '비밀번호 등록 및 시작하기'}</button>
               <button onClick={() => { setIsFirstSetup(false); setLoginError(''); }} style={{ background: 'none', border: 'none', color: '#9ca3af', marginTop: '1.25rem', cursor: 'pointer', fontSize: '0.95rem', fontWeight: '500' }}>← 다시 로그인하기</button>
