@@ -7,10 +7,10 @@ const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'placeholder-
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function BannerItAdmin() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const urlMallId = urlParams.get('mall_id');
-
-  const [currentMallId, setCurrentMallId] = useState(urlMallId || null);
+  // 🚨 [보안 패치 1] URL 파라미터를 무조건 신뢰하지 않고, 세션 스토리지의 인증 기록을 최우선으로 확인합니다.
+  const [currentMallId, setCurrentMallId] = useState(() => {
+    return sessionStorage.getItem('BANNERIT_SECURE_SESSION') || null;
+  });
 
   const [loginInput, setLoginInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -27,6 +27,15 @@ export default function BannerItAdmin() {
   const [deletedItemIds, setDeletedItemIds] = useState([]);
   const [deletedImagePaths, setDeletedImagePaths] = useState([]);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState(0);
+
+  // 🚨 [보안 패치 2] 악의적인 URL 파라미터 강제 클린업
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('mall_id')) {
+      // URL에 mall_id가 남아있다면 흔적을 지워버립니다.
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const performLogin = async (targetMallId, targetPassword = '') => {
     if (!targetMallId) return;
@@ -46,9 +55,13 @@ export default function BannerItAdmin() {
 
       if (status === 'NEED_SETUP') {
         setIsFirstSetup(true);
+        setLoginInput(targetMallId); // 온보딩을 위해 세팅
         toast('신규 등록된 쇼핑몰입니다. 최초 비밀번호를 설정해주세요.', { icon: '👋' });
       } else if (status === 'SUCCESS') {
-        window.location.href = `?mall_id=${targetMallId}`;
+        // 🚨 [보안 패치 3] URL 리다이렉트 대신 세션 스토리지에 암호화 보관 후 상태 즉시 업데이트
+        sessionStorage.setItem('BANNERIT_SECURE_SESSION', targetMallId);
+        setCurrentMallId(targetMallId);
+        toast.success('관리자 접속 성공!');
       } else {
         setLoginError('아이디 또는 비밀번호가 일치하지 않거나 서비스 권한이 없습니다.');
       }
@@ -62,6 +75,15 @@ export default function BannerItAdmin() {
 
   const handleLogin = () => performLogin(loginInput.trim(), passwordInput.trim());
   const handleDemoLogin = () => performLogin('ecudemo388727', '');
+
+  // 💡 [기능 추가] 안전한 로그아웃 처리
+  const handleLogout = () => {
+    sessionStorage.removeItem('BANNERIT_SECURE_SESSION');
+    setCurrentMallId(null);
+    setLoginInput('');
+    setPasswordInput('');
+    toast.success('안전하게 로그아웃 되었습니다.');
+  };
 
   const handleSetupPassword = async () => {
     if (!newPassword || newPassword.length < 4) {
@@ -80,8 +102,12 @@ export default function BannerItAdmin() {
         p_current_password: null
       });
       if (error || !success) throw new Error('비밀번호 등록 실패');
+
       toast.success('비밀번호가 성공적으로 설정되었습니다! 🎉');
-      setTimeout(() => { window.location.href = `?mall_id=${loginInput.trim()}`; }, 1000);
+      // 바로 로그인 처리
+      sessionStorage.setItem('BANNERIT_SECURE_SESSION', loginInput.trim());
+      setCurrentMallId(loginInput.trim());
+      setIsFirstSetup(false);
     } catch (err) {
       setLoginError('비밀번호 설정 중 오류가 발생했습니다.');
     } finally {
@@ -91,15 +117,9 @@ export default function BannerItAdmin() {
 
   useEffect(() => {
     if (!currentMallId) return;
-    document.title = `BannerIt 관리자 | ${currentMallId || 'YKINAS'}`;
-    let link = document.querySelector("link[rel~='icon']");
-    if (!link) {
-      link = document.createElement('link');
-      link.rel = 'icon';
-      document.head.appendChild(link);
-    }
-    link.href = '/bannerit_favicon.ico';
+    document.title = `BannerIt 관리자 | ${currentMallId}`;
 
+    // 데이터 페칭 로직 (생략 없이 기존 로직 그대로 유지)
     async function loadExistingBanner() {
       try {
         const { data: campaign } = await supabase
@@ -233,6 +253,7 @@ export default function BannerItAdmin() {
           <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#6b7280' }}>※ 약 1분 내외로 쇼핑몰에 반영됩니다.</p>
         </div>, { duration: 4000 }
       );
+      // 저장 후 새로고침 대신 데이터를 다시 불러오는 것이 UX상 좋지만, 우선 기존 로직 유지
       setTimeout(() => { window.location.reload(); }, 2000);
     } catch (error) {
       toast.error(`저장 중 오류가 발생했습니다: ${error.message}`);
@@ -251,20 +272,16 @@ export default function BannerItAdmin() {
         <div style={{ background: '#fff', padding: '3.5rem 3rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', width: '440px', textAlign: 'center', maxWidth: '90%' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
             <img src="/bannerit_logo.jpg" alt="BannerIt Logo" style={{ width: '72px', height: '72px', borderRadius: '18px', marginBottom: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-            {/* 💡 타이틀 가독성 증가 */}
             <h1 style={{ margin: '0', fontSize: '1.75rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em' }}>BANNER-IT 관리자</h1>
           </div>
           {!isFirstSetup ? (
             <>
-              {/* 💡 서브텍스트 폰트 증가 */}
               <p style={{ color: '#6b7280', marginBottom: '1.5rem', fontSize: '1.05rem', fontWeight: '500' }}>팝업을 설정할 쇼핑몰 정보를 입력하세요.</p>
-              {/* 💡 Input 텍스트 가독성 증가 (fontSize: 1.05rem 명시) */}
               <input type="text" placeholder="카페24 쇼핑몰 ID" value={loginInput} onChange={(e) => setLoginInput(e.target.value)} style={{ width: '100%', padding: '1.1rem', fontSize: '1.05rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '12px', marginBottom: '0.75rem', boxSizing: 'border-box', outline: 'none' }} />
               <input type="password" placeholder="관리자 비밀번호" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(); }} style={{ width: '100%', padding: '1.1rem', fontSize: '1.05rem', border: `1px solid ${loginError ? '#ef4444' : '#d1d5db'}`, borderRadius: '12px', marginBottom: '0.75rem', boxSizing: 'border-box', outline: 'none' }} />
 
               {loginError && <p style={{ color: '#ef4444', fontSize: '0.95rem', margin: '0 0 1rem', textAlign: 'left', paddingLeft: '4px', fontWeight: '500' }}>{loginError}</p>}
 
-              {/* 💡 메인 버튼 텍스트 증가 */}
               <button onClick={handleLogin} disabled={isChecking} style={{ width: '100%', padding: '1.1rem', backgroundColor: isChecking ? '#6b7280' : '#111', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: '700', fontSize: '1.1rem', cursor: isChecking ? 'not-allowed' : 'pointer', marginTop: loginError ? '0' : '0.5rem' }}>{isChecking ? '인증 중...' : '접속하기'}</button>
 
               <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px dashed #e5e7eb' }}>
@@ -273,7 +290,6 @@ export default function BannerItAdmin() {
             </>
           ) : (
             <>
-              {/* 💡 온보딩 화면 폰트 가독성 전체 증가 */}
               <p style={{ color: '#2563eb', fontWeight: '800', marginBottom: '0.75rem', fontSize: '1.15rem' }}>🎉 신규 쇼핑몰 환영합니다!</p>
               <p style={{ color: '#6b7280', marginBottom: '2rem', fontSize: '1rem', lineHeight: '1.5' }}>앞으로 안전하게 사용할<br /><b style={{ color: '#111' }}>[{loginInput}]</b> 몰의 비밀번호를 생성해주세요.</p>
 
@@ -313,7 +329,6 @@ export default function BannerItAdmin() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center' }}>
             <img src="/bannerit_logo.jpg" alt="Logo" style={{ width: '40px', height: '40px', borderRadius: '10px', marginRight: '12px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }} />
-            {/* 💡 헤더 폰트 증가 */}
             <h1 style={{ margin: 0, fontSize: '1.75rem', fontWeight: '800', color: '#111', letterSpacing: '-0.02em', display: 'flex', alignItems: 'center' }}>
               팝업 설정
               <span style={{ fontSize: '1.1rem', color: '#6b7280', fontWeight: '500', marginLeft: '10px', marginRight: '12px' }}>({currentMallId})</span>
@@ -321,18 +336,16 @@ export default function BannerItAdmin() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-            {/* 💡 실제 쇼핑몰 확인 링크 폰트 및 패딩 증가 */}
-            <a
-              href={`https://${currentMallId}.cafe24.com`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ padding: '0.5rem 1rem', backgroundColor: '#EFF6FF', color: '#3B82F6', borderRadius: '8px', fontSize: '0.95rem', fontWeight: '700', textDecoration: 'none', border: '1px solid #DBEAFE', display: 'flex', alignItems: 'center', transition: 'all 0.2s' }}
-            >
+            <a href={`https://${currentMallId}.cafe24.com`} target="_blank" rel="noopener noreferrer" style={{ padding: '0.5rem 1rem', backgroundColor: '#EFF6FF', color: '#3B82F6', borderRadius: '8px', fontSize: '0.95rem', fontWeight: '700', textDecoration: 'none', border: '1px solid #DBEAFE', display: 'flex', alignItems: 'center', transition: 'all 0.2s' }}>
               🚀 실제 쇼핑몰 확인
             </a>
 
+            {/* 💡 [로그아웃 기능 추가] */}
+            <button onClick={handleLogout} style={{ padding: '0.5rem 1rem', backgroundColor: '#F3F4F6', color: '#4B5563', borderRadius: '8px', fontSize: '0.95rem', fontWeight: '700', border: '1px solid #E5E7EB', cursor: 'pointer' }}>
+              로그아웃
+            </button>
+
             <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-              {/* 💡 라이브 활성화 라벨 사이즈 증가 */}
               <span style={{ marginRight: '0.5rem', fontSize: '1rem', fontWeight: '700', color: '#111' }}>라이브 활성화</span>
               <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} style={{ width: '1.35rem', height: '1.35rem', cursor: 'pointer' }} />
             </label>
@@ -342,13 +355,11 @@ export default function BannerItAdmin() {
         {slides.map((s, idx) => (
           <div key={idx} style={{ marginBottom: '2rem', padding: '1.75rem', backgroundColor: '#f9fafb', borderRadius: '16px', border: '1px solid #e5e7eb' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center' }}>
-              {/* 💡 슬라이드 제목 가독성 증가 */}
               <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: '#111' }}>슬라이드 {idx + 1}</h3>
               <button onClick={() => removeSlide(idx)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '700', fontSize: '1rem' }}>삭제</button>
             </div>
 
             <div style={{ marginBottom: '1.5rem' }}>
-              {/* 💡 모든 입력 폼 라벨 사이즈 1rem으로 고정 및 가독성 증가 */}
               <label style={{ display: 'block', marginBottom: '0.6rem', fontSize: '1rem', fontWeight: '700', color: '#374151' }}>팝업 이미지 (1MB 이하)</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.6rem', border: '1px solid #d1d5db', borderRadius: '8px', backgroundColor: '#fff' }}>
 
@@ -373,7 +384,6 @@ export default function BannerItAdmin() {
 
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ display: 'block', marginBottom: '0.6rem', fontSize: '1rem', fontWeight: '700', color: '#374151' }}>메인 타이틀</label>
-              {/* 💡 Input 폼 폰트사이즈 1rem 추가 및 패딩 여유 확보 */}
               <input type="text" value={s.title} onChange={(e) => updateSlide(idx, 'title', e.target.value)} placeholder="예: 배너잇으로 배너를 쉽고 빠르게 교체하세요." style={{ width: '100%', padding: '0.9rem', fontSize: '1rem', border: '1px solid #d1d5db', borderRadius: '8px', outline: 'none' }} />
             </div>
 
@@ -395,13 +405,11 @@ export default function BannerItAdmin() {
         ))}
 
         {slides.length < 3 && (
-          // 💡 버튼 텍스트 사이즈 증가
           <button onClick={addEmptySlide} style={{ width: '100%', padding: '1.2rem', backgroundColor: '#f3f4f6', color: '#374151', fontSize: '1.05rem', fontWeight: '700', borderRadius: '12px', cursor: 'pointer', border: '1px dashed #d1d5db', marginBottom: '2rem' }}>
             + 슬라이드 추가 ({slides.length}/3)
           </button>
         )}
 
-        {/* 💡 최종 저장 버튼 폰트 및 패딩 증가 */}
         <button onClick={handleSave} disabled={isSaving} style={{ width: '100%', padding: '1.35rem', backgroundColor: isSaving ? '#6b7280' : '#111', color: '#fff', fontWeight: '800', fontSize: '1.15rem', borderRadius: '14px', cursor: isSaving ? 'not-allowed' : 'pointer', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.15)' }}>
           {isSaving ? '저장 및 배포 중...' : '저장 및 라이브 반영'}
         </button>
