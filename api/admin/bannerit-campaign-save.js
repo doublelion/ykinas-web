@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto'; // 💡 Vercel Node.js 환경에서 기본 제공되는 내장 모듈입니다.
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -13,8 +14,6 @@ export default async function handler(req, res) {
   const { mall_id, is_active, deletedItemIds, items } = req.body;
 
   try {
-    // 🚨 [긴급 패치] 외래 키(FK) 에러 방어 로직 추가
-    // bannerit_campaigns 저장 전, 부모 테이블인 skin_licenses에 해당 mall_id가 무조건 존재하도록 보장합니다.
     const { error: licenseError } = await supabase
       .from('skin_licenses')
       .upsert(
@@ -23,22 +22,22 @@ export default async function handler(req, res) {
       );
     if (licenseError) throw licenseError;
 
-    // 1. 캠페인 활성화 상태 업데이트
     const { data: campaignData, error: campaignError } = await supabase
       .from('bannerit_campaigns')
       .upsert({ mall_id, is_active }, { onConflict: 'mall_id' })
       .select().single();
     if (campaignError) throw campaignError;
 
-    // 2. 삭제된 슬라이드 아이템 제거
     if (deletedItemIds && deletedItemIds.length > 0) {
       await supabase.from('bannerit_items').delete().in('id', deletedItemIds);
     }
 
-    // [Backend] api/admin/bannerit-campaign-save.js 3번 단계 부분 교체
+    // 🚨 [긴급 패치 핵심] 배열 내 객체의 Key 구조를 완벽하게 통일합니다.
     if (items && items.length > 0) {
       const payload = items.map(item => {
-        const baseItem = {
+        return {
+          // 기존 슬라이드는 기존 id 유지, 신규 슬라이드(id 없음)는 서버가 즉시 UUID 생성
+          id: item.id ? item.id : crypto.randomUUID(),
           campaign_id: campaignData.id,
           image_url: item.image_url,
           title: item.title,
@@ -47,13 +46,6 @@ export default async function handler(req, res) {
           cta_link: item.cta_link,
           sort_order: item.sort_order
         };
-
-        // 🚨 [데이터베이스 보호] 신규 생성 시 id를 전달하지 않아 gen_random_uuid()가 작동하게 유도
-        if (item.id) {
-          baseItem.id = item.id;
-        }
-
-        return baseItem;
       });
 
       const { error: itemsError } = await supabase.from('bannerit_items').upsert(payload);
