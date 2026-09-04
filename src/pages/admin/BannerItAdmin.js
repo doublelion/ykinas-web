@@ -199,21 +199,17 @@ export default function BannerItAdmin() {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      const { data: campaignData, error: campaignError } = await supabase
-        .from('bannerit_campaigns')
-        .upsert({ mall_id: currentMallId, is_active: isActive }, { onConflict: 'mall_id' }).select().single();
-      if (campaignError) throw campaignError;
 
-      if (deletedItemIds.length > 0) {
-        await supabase.from('bannerit_items').delete().in('id', deletedItemIds);
-        setDeletedItemIds([]);
-      }
+      // 1. 스토리지 휴지통 비우기 (기존 로직 유지)
       if (deletedImagePaths.length > 0) {
         await supabase.storage.from('bannerit_assets').remove(deletedImagePaths);
         setDeletedImagePaths([]);
       }
 
       const isCompletelyEmpty = slides.length === 1 && !slides[0].imageUrl && !slides[0].title;
+
+      // 💡 [빌드 에러 해결] preparedItems 선언을 if문 밖으로 빼서 스코프를 일치시킵니다.
+      let preparedItems = [];
 
       if (!isCompletelyEmpty) {
         for (let i = 0; i < slides.length; i++) {
@@ -233,21 +229,19 @@ export default function BannerItAdmin() {
             finalImageUrl = publicUrlData.publicUrl;
           }
 
-          const itemPayload = {
-            campaign_id: campaignData.id,
+          preparedItems.push({
+            id: currentSlide.id || undefined, // undefined로 넘겨야 신규 row로 인식합니다
             image_url: finalImageUrl,
             title: currentSlide.title,
             subtitle: currentSlide.subtitle,
             cta_text: currentSlide.cta_text,
             cta_link: currentSlide.cta_link,
             sort_order: i
-          };
-          if (currentSlide.id) itemPayload.id = currentSlide.id;
-          await supabase.from('bannerit_items').upsert(itemPayload);
+          });
         }
       }
 
-      // 🚨 [핵심 변경] 클라이언트 직접 upsert를 제거하고 Vercel API 호출
+      // 🚨 [핵심 변경] 클라이언트 직접 upsert 대신 Vercel API(서버리스)를 호출합니다.
       const response = await fetch('/api/admin/bannerit-campaign-save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -255,14 +249,14 @@ export default function BannerItAdmin() {
           mall_id: currentMallId,
           is_active: isActive,
           deletedItemIds: deletedItemIds,
-          items: preparedItems
+          items: preparedItems // 이제 스코프 에러 없이 정상적으로 참조됩니다.
         })
       });
 
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || '저장 중 서버 오류가 발생했습니다.');
+      if (!response.ok) throw new Error(result.error || '저장 중 서버 통신 오류가 발생했습니다.');
 
-      setDeletedItemIds([]); // 저장 성공 후 초기화
+      setDeletedItemIds([]);
 
       toast.success(
         <div>
@@ -273,9 +267,8 @@ export default function BannerItAdmin() {
 
       setTimeout(() => { window.location.reload(); }, 2000);
     } catch (error) {
-      // 💡 사용자 친화적인 에러 핸들링
-      console.error(error);
-      toast.error(`저장 실패: 시스템 보안 규칙에 의해 차단되었거나 통신 오류가 발생했습니다. (${error.message})`);
+      console.error('[Save Error]', error);
+      toast.error(`저장 실패: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
