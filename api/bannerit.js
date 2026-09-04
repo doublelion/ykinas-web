@@ -9,10 +9,6 @@ const supabase = createClient(
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-
-  // 💡 [핵심 최적화] 
-  // max-age=0, must-revalidate: 방문자의 브라우저는 스크립트를 절대 캐싱하지 않고 무조건 서버(CDN)에 확인합니다.
-  // s-maxage=10: Vercel Edge Node(CDN)는 딱 10초만 캐싱합니다. DB 부하를 1/10로 줄이면서 사실상 즉각 반영을 구현합니다.
   res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=10, stale-while-revalidate=30');
 
   // 브라우저의 304 Not Modified 억제를 위해 ETag 비활성화 (항상 200 반환 강제)

@@ -197,18 +197,33 @@ export default function BannerItAdmin() {
   };
 
   const handleSave = async () => {
+    // 🚨 [유효성 검사 추가] 데이터 저장 전 빈 값 체크
+    for (let i = 0; i < slides.length; i++) {
+      const s = slides[i];
+      // 이미지가 아예 비어있고 텍스트도 없는 완전 초기 상태(isCompletelyEmpty)는 패스하지만,
+      // 조금이라도 작성된 슬라이드라면 필수값을 체크합니다.
+      const isCompletelyEmpty = slides.length === 1 && !s.imageUrl && !s.title;
+
+      if (!isCompletelyEmpty) {
+        if (!s.title || !s.subtitle || !s.cta_text) {
+          toast.error(`[슬라이드 ${i + 1}] 제목, 부제목, 버튼 텍스트를 모두 입력해주세요.`, {
+            icon: '✍️',
+            duration: 3500,
+          });
+          return; // 검증 실패 시 함수 실행 즉시 중단
+        }
+      }
+    }
+
     try {
       setIsSaving(true);
 
-      // 1. 스토리지 휴지통 비우기 (기존 로직 유지)
       if (deletedImagePaths.length > 0) {
         await supabase.storage.from('bannerit_assets').remove(deletedImagePaths);
         setDeletedImagePaths([]);
       }
 
       const isCompletelyEmpty = slides.length === 1 && !slides[0].imageUrl && !slides[0].title;
-
-      // 💡 [빌드 에러 해결] preparedItems 선언을 if문 밖으로 빼서 스코프를 일치시킵니다.
       let preparedItems = [];
 
       if (!isCompletelyEmpty) {
@@ -230,7 +245,7 @@ export default function BannerItAdmin() {
           }
 
           preparedItems.push({
-            id: currentSlide.id || undefined, // undefined로 넘겨야 신규 row로 인식합니다
+            id: currentSlide.id || undefined,
             image_url: finalImageUrl,
             title: currentSlide.title,
             subtitle: currentSlide.subtitle,
@@ -241,7 +256,6 @@ export default function BannerItAdmin() {
         }
       }
 
-      // 🚨 [핵심 변경] 클라이언트 직접 upsert 대신 Vercel API(서버리스)를 호출합니다.
       const response = await fetch('/api/admin/bannerit-campaign-save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -249,7 +263,7 @@ export default function BannerItAdmin() {
           mall_id: currentMallId,
           is_active: isActive,
           deletedItemIds: deletedItemIds,
-          items: preparedItems // 이제 스코프 에러 없이 정상적으로 참조됩니다.
+          items: preparedItems
         })
       });
 
