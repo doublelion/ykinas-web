@@ -247,16 +247,35 @@ export default function BannerItAdmin() {
         }
       }
 
+      // 🚨 [핵심 변경] 클라이언트 직접 upsert를 제거하고 Vercel API 호출
+      const response = await fetch('/api/admin/bannerit-campaign-save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mall_id: currentMallId,
+          is_active: isActive,
+          deletedItemIds: deletedItemIds,
+          items: preparedItems
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || '저장 중 서버 오류가 발생했습니다.');
+
+      setDeletedItemIds([]); // 저장 성공 후 초기화
+
       toast.success(
         <div>
           <b>성공적으로 라이브에 저장되었습니다! 🎉</b>
           <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#6b7280' }}>※ 약 1분 내외로 쇼핑몰에 반영됩니다.</p>
         </div>, { duration: 4000 }
       );
-      // 저장 후 새로고침 대신 데이터를 다시 불러오는 것이 UX상 좋지만, 우선 기존 로직 유지
+
       setTimeout(() => { window.location.reload(); }, 2000);
     } catch (error) {
-      toast.error(`저장 중 오류가 발생했습니다: ${error.message}`);
+      // 💡 사용자 친화적인 에러 핸들링
+      console.error(error);
+      toast.error(`저장 실패: 시스템 보안 규칙에 의해 차단되었거나 통신 오류가 발생했습니다. (${error.message})`);
     } finally {
       setIsSaving(false);
     }
