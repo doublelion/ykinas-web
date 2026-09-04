@@ -35,12 +35,27 @@ export default async function handler(req, res) {
       await supabase.from('bannerit_items').delete().in('id', deletedItemIds);
     }
 
-    // 3. 신규 및 수정된 슬라이드 아이템 저장
+    // [Backend] api/admin/bannerit-campaign-save.js 3번 단계 부분 교체
     if (items && items.length > 0) {
-      const payload = items.map(item => ({
-        campaign_id: campaignData.id,
-        ...item
-      }));
+      const payload = items.map(item => {
+        const baseItem = {
+          campaign_id: campaignData.id,
+          image_url: item.image_url,
+          title: item.title,
+          subtitle: item.subtitle,
+          cta_text: item.cta_text,
+          cta_link: item.cta_link,
+          sort_order: item.sort_order
+        };
+
+        // 🚨 [데이터베이스 보호] 신규 생성 시 id를 전달하지 않아 gen_random_uuid()가 작동하게 유도
+        if (item.id) {
+          baseItem.id = item.id;
+        }
+
+        return baseItem;
+      });
+
       const { error: itemsError } = await supabase.from('bannerit_items').upsert(payload);
       if (itemsError) throw itemsError;
     }

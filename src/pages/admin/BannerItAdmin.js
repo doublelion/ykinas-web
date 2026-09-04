@@ -244,15 +244,22 @@ export default function BannerItAdmin() {
             finalImageUrl = publicUrlData.publicUrl;
           }
 
-          preparedItems.push({
-            id: currentSlide.id || undefined,
+          // [Frontend] BannerItAdmin.js 내 handleSave 안의 preparedItems.push 부분 교체
+          const itemPayload = {
             image_url: finalImageUrl,
             title: currentSlide.title,
             subtitle: currentSlide.subtitle,
             cta_text: currentSlide.cta_text,
             cta_link: currentSlide.cta_link,
             sort_order: i
-          });
+          };
+
+          // 💡 [핵심 최적화] id가 있을 때(기존 슬라이드 업데이트)만 속성을 삽입합니다.
+          if (currentSlide.id) {
+            itemPayload.id = currentSlide.id;
+          }
+
+          preparedItems.push(itemPayload);
         }
       }
 
