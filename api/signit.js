@@ -173,86 +173,70 @@ export default async function handler(req, res) {
 
             const fullScreenHTML = \`
               <style>
-                .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; }
-                .minimal-input:focus { border-bottom-color: #111 !important; }
-                @media (max-width: 768px) {
-                  .minimal-input { height: 40px !important; font-size: 16px !important; padding-top: 0 !important; padding-bottom: 0 !important; }
-                }
-                .floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
-                .minimal-input:focus~.floating-label, .minimal-input:not(:placeholder-shown)~.floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
-                .fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
-                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-                .mode-hidden { display: none !important; }
-                .custom-scrollbar-02::-webkit-scrollbar { width: 4px; }
-                .custom-scrollbar-02::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
-                .bg-kakao { background-color: #FEE500; color: #191919; }
-                .bg-naver { background-color: #03C75A; color: #ffffff; }
-                .bg-google { background-color: #F8F9FA; color: #3C4043; border: 1px solid #DADCE0!important; }
-                .bg-facebook { background-color: #1877F2; color: #ffffff; }
-                .bg-line { background-color: #06C755; color: #ffffff; }
-                .bg-apple { background-color: #000000; color: #ffffff; }
-                .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease, background-color 0.2s ease; width: 100%; outline: none; cursor: pointer; }
-                .sns-grid-btn:hover { opacity: 0.85; }
-                .bg-google:hover { background-color: #F1F3F4; opacity: 1; } 
-                .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
-                .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
-
                 /* [HOTFIX] 스킨 부모 CSS 간섭 완벽 차단 및 강제 리셋 */
-                #standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
-                .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
-                .minimal-input:focus { border-bottom-color: #111 !important; }
+#standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
+.minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
+.minimal-input:focus { border-bottom-color: #111 !important; }
 
-                /* [HOTFIX] 카페24 스킨 전역 CSS(base.css 등)로부터 로그인/비회원 버튼 스타일 완벽 격리 */
-                #a_btn_group_login {
-                  display: flex !important;
-                  gap: 10px !important;
-                  margin-top: 20px !important;
-                  width: 100% !important;
-                }
+@media (max-width: 768px) {
+  .minimal-input { height: 40px !important; font-size: 16px !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+}
+.floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
+.minimal-input:focus~.floating-label, .minimal-input:not(:placeholder-shown)~.floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
+.fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.mode-hidden { display: none !important; }
+.custom-scrollbar-02::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar-02::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
+.bg-kakao { background-color: #FEE500; color: #191919; }
+.bg-naver { background-color: #03C75A; color: #ffffff; }
+.bg-google { background-color: #F8F9FA; color: #3C4043; border: 1px solid #DADCE0!important; }
+.bg-facebook { background-color: #1877F2; color: #ffffff; }
+.bg-line { background-color: #06C755; color: #ffffff; }
+.bg-apple { background-color: #000000; color: #ffffff; }
+.bg-yahoojp { background-color: #FF0033; color: #ffffff; }
+.sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease, background-color 0.2s ease; width: 100%; outline: none; cursor: pointer; }
+.sns-grid-btn:hover { opacity: 0.85; }
+.bg-google:hover { background-color: #F1F3F4; opacity: 1; } 
+.ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
+.ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
+@keyframes ykinas-spin { to { transform: rotate(360deg); } }
+.ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-                #a_btn_submit_login, #a_btn_nomember_order {
-                  box-sizing: border-box !important;
-                  flex: 1 !important;
-                  height: 48px !important;
-                  line-height: 46px !important; /* 텍스트 세로 중앙 정렬 보장 */
-                  text-align: center !important;
-                  font-size: 13px !important;
-                  font-weight: 500 !important;
-                  letter-spacing: 0.05em !important;
-                  border-radius: 2px !important;
-                  cursor: pointer !important;
-                  transition: all 0.2s ease !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  outline: none !important;
-                  box-shadow: none !important;
-                }
+/* ==========================================================================
+   [HOTFIX] 모든 로그인/비회원 폼 액션 버튼 강력 잠금 (스킨 전역 설정 무력화)
+   ========================================================================== */
+#a_btn_group_login { display: flex !important; gap: 10px !important; margin-top: 20px !important; width: 100% !important; }
 
-                /* 로그인 버튼 고정 스타일 */
-                #a_btn_submit_login {
-                  background-color: #111 !important;
-                  color: #ffffff !important;
-                  border: 1px solid #111 !important;
-                }
-                #a_btn_submit_login:hover {
-                  opacity: 0.85 !important;
-                }
+#a_btn_submit_login, #a_btn_nomember_order, #a_btn_submit_guest, #btn_submit_login {
+  display: flex !important; flex: 1 !important; align-items: center !important; justify-content: center !important;
+  box-sizing: border-box !important; width: 100% !important; height: 48px !important; line-height: 48px !important;
+  font-size: 13px !important; font-weight: 500 !important; letter-spacing: 0.05em !important; border-radius: 2px !important;
+  cursor: pointer !important; transition: all 0.2s ease !important; padding: 0 !important;
+  outline: none !important; box-shadow: none !important; visibility: visible !important; opacity: 1 !important;
+}
 
-                /* 비회원 구매 버튼 고정 스타일 */
-                #a_btn_nomember_order {
-                  background-color: #ffffff !important;
-                  color: #4b5563 !important;
-                  border: 1px solid #e5e5e5 !important;
-                }
-                #a_btn_nomember_order:hover {
-                  border-color: #111 !important;
-                  color: #111 !important;
-                }
+/* 그룹 내 버튼의 margin 제거, 독립 버튼은 상단 여백 추가 */
+#a_btn_submit_login, #a_btn_nomember_order { margin: 0 !important; }
+#a_btn_submit_guest, #btn_submit_login { margin: 16px 0 0 0 !important; }
 
-                @keyframes ykinas-spin { to { transform: rotate(360deg); } }
-                .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
-                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+/* Primary 버튼 컬러 (로그인, 주문 추적) */
+#a_btn_submit_login, #a_btn_submit_guest, #btn_submit_login { background-color: #111 !important; color: #ffffff !important; border: 1px solid #111 !important; }
+#a_btn_submit_login:hover, #a_btn_submit_guest:hover, #btn_submit_login:hover { opacity: 0.85 !important; }
+
+/* Secondary 버튼 컬러 (비회원 구매) */
+#a_btn_nomember_order { background-color: #ffffff !important; color: #4b5563 !important; border: 1px solid #e5e5e5 !important; }
+#a_btn_nomember_order:hover { border-color: #111 !important; color: #111 !important; }
+
+/* [HOTFIX] 하단 텍스트 링크 버튼이 스킨에 의해 숨겨지는 현상 완벽 방어 */
+#a_btn_goto_guest, #btn_goto_guest, #a_btn_goto_login {
+  display: inline-block !important; background: transparent !important; border: none !important;
+  color: #9ca3af !important; font-size: 12px !important; font-weight: 400 !important; text-decoration: underline !important; text-underline-offset: 4px !important;
+  cursor: pointer !important; padding: 8px !important; margin: 0 auto !important;
+  visibility: visible !important; opacity: 1 !important; line-height: normal !important; box-shadow: none !important;
+}
+#a_btn_goto_guest:hover, #btn_goto_guest:hover, #a_btn_goto_login:hover { color: #111 !important; background: transparent !important; }
               </style>
 
               <div id="ykinas-global-loader" class="ykinas-loader-overlay">
@@ -345,6 +329,7 @@ export default async function handler(req, res) {
                               </label>
                             </div>
                             <!-- 로그인/비회원 버튼 UI -->
+                            <!-- [HOTFIX] 디자인 시스템 고정 (CSS 우선순위 제어) -->
                             <div id="a_btn_group_login">
                               <button type="button" id="a_btn_submit_login">로그인</button>
                               <button type="button" id="a_btn_nomember_order" style="display: none;">비회원 구매</button>
@@ -770,47 +755,70 @@ if (noMemberOrderBtn) {
             const fullScreenHTML = \`
               <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
               <style>
-                :host { all: initial; font-family: 'Pretendard', 'Noto Sans KR', sans-serif; }
-                * { box-sizing: border-box; }
-                #global-login-drawer { position: fixed; inset: 0; z-index: 999999; display: none; justify-content: flex-end; }
-                #login-backdrop { position: absolute; inset: 0; background-color: rgba(0,0,0,0.4); backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.4s ease; cursor: pointer; }
-                #login-backdrop.is-open { opacity: 1; }
-                #login-panel { position: relative; width: 100%; max-width: 420px; height: 100%; background-color: #ffffff; box-shadow: -10px 0 40px rgba(0,0,0,0.1); transform: translateX(100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; z-index: 10; }
-                #login-panel.is-open { transform: translateX(0); }
-                .drawer-content-wrapper { opacity: 0; transform: translateY(20px); transition: opacity 0.4s ease 0.2s, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.2s; }
-                #login-panel.is-open .drawer-content-wrapper { opacity: 1; transform: translateY(0); }
-                .custom-scrollbar-02 { overflow-y: auto; }
-                .custom-scrollbar-02::-webkit-scrollbar { width: 4px; }
-                .custom-scrollbar-02::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
-                .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; }
-                .minimal-input:focus { border-bottom-color: #111 !important; }
-                @media (max-width: 768px) {
-                  .minimal-input { height: 40px !important; font-size: 16px !important; padding-top: 0 !important; padding-bottom: 0 !important; }
-                }
-                .floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
-                .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
-                .bg-kakao { background-color: #FEE500; color: #191919; }
-                .bg-naver { background-color: #03C75A; color: #ffffff; }
-                .bg-google { background-color: #F8F9FA; color: #3C4043; border: 1px solid #DADCE0!important; }
-                .bg-facebook { background-color: #1877F2; color: #ffffff; }
-                .bg-line { background-color: #06C755; color: #ffffff; }
-                .bg-apple { background-color: #000000; color: #ffffff; }
-                .bg-yahoojp { background-color: #FF0033; color: #ffffff; }
-                .bg-google:hover { background-color: #F1F3F4; opacity: 1; }
-                .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; border: none; outline: none; cursor: pointer; }
-                .sns-grid-btn:hover { opacity: 0.85; }
-                .bg-btn-primary { background-color: #111111; color: #ffffff; }
-
                 /* [HOTFIX] 스킨 부모 CSS 간섭 완벽 차단 및 강제 리셋 */
 #standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
 .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
 .minimal-input:focus { border-bottom-color: #111 !important; }
 
-                .ykinas-loader-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
-                .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
-                @keyframes ykinas-spin { to { transform: rotate(360deg); } }
-                .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
-                @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+@media (max-width: 768px) {
+  .minimal-input { height: 40px !important; font-size: 16px !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+}
+.floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
+.minimal-input:focus~.floating-label, .minimal-input:not(:placeholder-shown)~.floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
+.fade-in { animation: fadeIn 0.4s ease-in-out forwards; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.mode-hidden { display: none !important; }
+.custom-scrollbar-02::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar-02::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
+.bg-kakao { background-color: #FEE500; color: #191919; }
+.bg-naver { background-color: #03C75A; color: #ffffff; }
+.bg-google { background-color: #F8F9FA; color: #3C4043; border: 1px solid #DADCE0!important; }
+.bg-facebook { background-color: #1877F2; color: #ffffff; }
+.bg-line { background-color: #06C755; color: #ffffff; }
+.bg-apple { background-color: #000000; color: #ffffff; }
+.bg-yahoojp { background-color: #FF0033; color: #ffffff; }
+.sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease, background-color 0.2s ease; width: 100%; outline: none; cursor: pointer; }
+.sns-grid-btn:hover { opacity: 0.85; }
+.bg-google:hover { background-color: #F1F3F4; opacity: 1; } 
+.ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
+.ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
+@keyframes ykinas-spin { to { transform: rotate(360deg); } }
+.ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+/* ==========================================================================
+   [HOTFIX] 모든 로그인/비회원 폼 액션 버튼 강력 잠금 (스킨 전역 설정 무력화)
+   ========================================================================== */
+#a_btn_group_login { display: flex !important; gap: 10px !important; margin-top: 20px !important; width: 100% !important; }
+
+#a_btn_submit_login, #a_btn_nomember_order, #a_btn_submit_guest, #btn_submit_login {
+  display: flex !important; flex: 1 !important; align-items: center !important; justify-content: center !important;
+  box-sizing: border-box !important; width: 100% !important; height: 48px !important; line-height: 48px !important;
+  font-size: 13px !important; font-weight: 500 !important; letter-spacing: 0.05em !important; border-radius: 2px !important;
+  cursor: pointer !important; transition: all 0.2s ease !important; padding: 0 !important;
+  outline: none !important; box-shadow: none !important; visibility: visible !important; opacity: 1 !important;
+}
+
+/* 그룹 내 버튼의 margin 제거, 독립 버튼은 상단 여백 추가 */
+#a_btn_submit_login, #a_btn_nomember_order { margin: 0 !important; }
+#a_btn_submit_guest, #btn_submit_login { margin: 16px 0 0 0 !important; }
+
+/* Primary 버튼 컬러 (로그인, 주문 추적) */
+#a_btn_submit_login, #a_btn_submit_guest, #btn_submit_login { background-color: #111 !important; color: #ffffff !important; border: 1px solid #111 !important; }
+#a_btn_submit_login:hover, #a_btn_submit_guest:hover, #btn_submit_login:hover { opacity: 0.85 !important; }
+
+/* Secondary 버튼 컬러 (비회원 구매) */
+#a_btn_nomember_order { background-color: #ffffff !important; color: #4b5563 !important; border: 1px solid #e5e5e5 !important; }
+#a_btn_nomember_order:hover { border-color: #111 !important; color: #111 !important; }
+
+/* [HOTFIX] 하단 텍스트 링크 버튼이 스킨에 의해 숨겨지는 현상 완벽 방어 */
+#a_btn_goto_guest, #btn_goto_guest, #a_btn_goto_login {
+  display: inline-block !important; background: transparent !important; border: none !important;
+  color: #9ca3af !important; font-size: 12px !important; font-weight: 400 !important; text-decoration: underline !important; text-underline-offset: 4px !important;
+  cursor: pointer !important; padding: 8px !important; margin: 0 auto !important;
+  visibility: visible !important; opacity: 1 !important; line-height: normal !important; box-shadow: none !important;
+}
+#a_btn_goto_guest:hover, #btn_goto_guest:hover, #a_btn_goto_login:hover { color: #111 !important; background: transparent !important; }
               </style>
 
               <div id="global-login-drawer">
