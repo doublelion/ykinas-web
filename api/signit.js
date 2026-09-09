@@ -199,9 +199,56 @@ export default async function handler(req, res) {
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
 
                 /* [HOTFIX] 스킨 부모 CSS 간섭 완벽 차단 및 강제 리셋 */
-#standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
-.minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
-.minimal-input:focus { border-bottom-color: #111 !important; }
+                #standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
+                .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
+                .minimal-input:focus { border-bottom-color: #111 !important; }
+
+                /* [HOTFIX] 카페24 스킨 전역 CSS(base.css 등)로부터 로그인/비회원 버튼 스타일 완벽 격리 */
+                #a_btn_group_login {
+                  display: flex !important;
+                  gap: 10px !important;
+                  margin-top: 20px !important;
+                  width: 100% !important;
+                }
+
+                #a_btn_submit_login, #a_btn_nomember_order {
+                  box-sizing: border-box !important;
+                  flex: 1 !important;
+                  height: 48px !important;
+                  line-height: 46px !important; /* 텍스트 세로 중앙 정렬 보장 */
+                  text-align: center !important;
+                  font-size: 13px !important;
+                  font-weight: 500 !important;
+                  letter-spacing: 0.05em !important;
+                  border-radius: 2px !important;
+                  cursor: pointer !important;
+                  transition: all 0.2s ease !important;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  outline: none !important;
+                  box-shadow: none !important;
+                }
+
+                /* 로그인 버튼 고정 스타일 */
+                #a_btn_submit_login {
+                  background-color: #111 !important;
+                  color: #ffffff !important;
+                  border: 1px solid #111 !important;
+                }
+                #a_btn_submit_login:hover {
+                  opacity: 0.85 !important;
+                }
+
+                /* 비회원 구매 버튼 고정 스타일 */
+                #a_btn_nomember_order {
+                  background-color: #ffffff !important;
+                  color: #4b5563 !important;
+                  border: 1px solid #e5e5e5 !important;
+                }
+                #a_btn_nomember_order:hover {
+                  border-color: #111 !important;
+                  color: #111 !important;
+                }
 
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
                 .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
@@ -298,9 +345,9 @@ export default async function handler(req, res) {
                               </label>
                             </div>
                             <!-- 로그인/비회원 버튼 UI -->
-                            <div id="a_btn_group_login" class="flex gap-2.5 mt-5">
-                              <button type="button" id="a_btn_submit_login" class="flex-1 h-[48px] bg-[#111] text-white text-[13px] font-medium tracking-widest transition-all hover:opacity-90 rounded-[2px]">로그인</button>
-                              <button type="button" id="a_btn_nomember_order" class="flex-1 h-[48px] bg-white border border-[#e5e5e5] text-gray-600 text-[13px] font-medium tracking-widest transition-all hover:border-[#111] hover:text-[#111] rounded-[2px]" style="display: none;">비회원 구매</button>
+                            <div id="a_btn_group_login">
+                              <button type="button" id="a_btn_submit_login">로그인</button>
+                              <button type="button" id="a_btn_nomember_order" style="display: none;">비회원 구매</button>
                             </div>
                           </div>
                           <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500">
