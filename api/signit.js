@@ -1,5 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
 export default async function handler(req, res) {
   try {
     // [백엔드 최적화] 글로벌 Edge CDN 캐싱
@@ -28,46 +33,17 @@ export default async function handler(req, res) {
       return sendDisabledScript('Mall ID is missing or invalid placeholder.');
     }
 
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    let { data: license, error } = await supabase
+    const { data: license, error } = await supabase
       .from('skin_licenses')
       .select('id, is_active, has_login_module, skin_allowed_domains ( domain )')
       .eq('mall_id', clientMallId)
       .maybeSingle();
 
-    // =========================================================================
-    // [HOTFIX] 완벽한 무인 자동화: 상점이 DB에 없으면 즉시 자동 생성 (수동 SQL 불필요)
-    // =========================================================================
-    if (!license) {
-      const { data: newLicense, error: insertError } = await supabase
-        .from('skin_licenses')
-        .insert([{
-          mall_id: clientMallId,
-          client_name: `${clientMallId} (Auto Registered)`,
-          is_active: true,
-          has_login_module: true,
-          has_bannerit_module: false,
-          setup_fee_paid: true,
-          plan_type: 'LIFETIME'
-        }])
-        .select('id, is_active, has_login_module')
-        .single();
-
-      if (insertError || !newLicense) {
-        return sendDisabledScript('Auto-registration failed.');
-      }
-
-      // 방금 자동 생성된 상점은 도메인 제약 없이(프리패스) 통과시킴
-      license = { ...newLicense, skin_allowed_domains: [] };
-    } else if (!license.is_active || !license.has_login_module) {
+    if (error || !license || !license.is_active || !license.has_login_module) {
       return sendDisabledScript('Unauthorized or module has_login_module is FALSE.');
     }
 
-    // 견고한 Referer 도메인 검증 파이프라인
+    // [HOTFIX] 견고한 Referer 도메인 검증 파이프라인
     const allowedDomains = license.skin_allowed_domains ? license.skin_allowed_domains.map(d => d.domain) : [];
 
     let isDomainMatch = allowedDomains.length === 0 || clientReferer === '';
@@ -193,7 +169,7 @@ export default async function handler(req, res) {
 
             const fullScreenHTML = \`
               <style>
-                /* 스킨 부모 CSS 간섭 완벽 차단 및 폼 리셋 */
+                /* [HOTFIX] 스킨 부모 CSS 간섭 완벽 차단 및 폼 리셋 */
                 #standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
                 .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
                 .minimal-input:focus { border-bottom-color: #111 !important; }
@@ -209,6 +185,7 @@ export default async function handler(req, res) {
                 .custom-scrollbar-02::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar-02::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
                 
+                /* 간편로그인 버튼 컬러 */
                 .bg-kakao { background-color: #FEE500; color: #191919; }
                 .bg-naver { background-color: #03C75A; color: #ffffff; }
                 .bg-google { background-color: #F8F9FA; color: #3C4043; border: 1px solid #DADCE0!important; }
@@ -226,6 +203,9 @@ export default async function handler(req, res) {
                 .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
                 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
+                /* ==========================================================================
+                   [HOTFIX] 모든 폼 액션/텍스트 버튼 강력 잠금 (스킨 전역 base.css 무력화)
+                   ========================================================================== */
                 #a_btn_group_login { display: flex !important; gap: 10px !important; margin-top: 20px !important; width: 100% !important; }
 
                 #a_btn_submit_login, #a_btn_nomember_order, #a_btn_submit_guest, #btn_submit_login {
@@ -235,16 +215,20 @@ export default async function handler(req, res) {
                   cursor: pointer !important; transition: all 0.2s ease !important; padding: 0 !important;
                   outline: none !important; box-shadow: none !important; visibility: visible !important; opacity: 1 !important;
                 }
+                /* display는 JS로 제어할 수 있도록 기본 블록이나 인라인을 해치지 않는 선에서 고정 해제 */
 
                 #a_btn_submit_login, #a_btn_nomember_order { margin: 0 !important; }
                 #a_btn_submit_guest, #btn_submit_login { margin: 16px 0 0 0 !important; }
 
+                /* Primary 버튼 */
                 #a_btn_submit_login, #a_btn_submit_guest, #btn_submit_login { background-color: #111 !important; color: #ffffff !important; border: 1px solid #111 !important; }
                 #a_btn_submit_login:hover, #a_btn_submit_guest:hover, #btn_submit_login:hover { opacity: 0.85 !important; }
 
+                /* Secondary 버튼 */
                 #a_btn_nomember_order { background-color: #ffffff !important; color: #4b5563 !important; border: 1px solid #e5e5e5 !important; }
                 #a_btn_nomember_order:hover { border-color: #111 !important; color: #111 !important; }
 
+                /* 하단 텍스트 링크 잠금 */
                 #a_btn_goto_guest, #btn_goto_guest, #a_btn_goto_login {
                   display: inline-block !important; background: transparent !important; border: none !important;
                   color: #9ca3af !important; font-size: 12px !important; font-weight: 400 !important; text-decoration: underline !important; text-underline-offset: 4px !important;
@@ -342,6 +326,7 @@ export default async function handler(req, res) {
                                 <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
                               </label>
                             </div>
+                            <!-- [HOTFIX] 디자인 시스템 고정 버튼 그룹 -->
                             <div id="a_btn_group_login">
                               <button type="button" id="a_btn_submit_login">로그인</button>
                               <button type="button" id="a_btn_nomember_order" style="display: none;">비회원 구매</button>
@@ -516,6 +501,7 @@ export default async function handler(req, res) {
             
             document.getElementById('a_btn_submit_login').addEventListener('click', submitLogin);
             
+            // [HOTFIX] 비회원 구매 조건 대소문자 예외 처리 및 안전한 액션 바인딩
             const isGuestPurchase = window.location.search.toLowerCase().includes('nomember') && searchParams.get('returnUrl');
 
             if (isGuestPurchase) {
@@ -583,6 +569,7 @@ export default async function handler(req, res) {
                   }
                 }
               } else {
+                // 스킨 DOM 의존성 제거 비회원 폼 동적 전송 핫픽스 유지
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = '/exec/front/Myshop/OrderHistoryNoneLogin/';
@@ -816,8 +803,6 @@ export default async function handler(req, res) {
                 .bg-google:hover { background-color: #F1F3F4; opacity: 1; }
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; border: none; outline: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
-
-                #standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
 
                 #btn_submit_login {
                   display: flex !important; align-items: center !important; justify-content: center !important;
