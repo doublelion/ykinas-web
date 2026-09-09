@@ -184,6 +184,27 @@ export default async function handler(req, res) {
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
                 .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
                 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+                /* [HOTFIX] 글로벌 CSS 간섭 완벽 차단 */
+                #standalone_panel_wrapper * { box-sizing: border-box !important; }
+                .minimal-input { 
+                  border: none !important; 
+                  border-bottom: 1px solid #e5e5e5 !important; 
+                  border-radius: 0 !important; 
+                  background-color: transparent !important; 
+                  box-shadow: none !important; 
+                  outline: none !important; 
+                  transition: border-bottom-color 0.3s ease !important; 
+                  
+                  /* 부모 몰의 input 기본값 상속 방지 */
+                  height: 48px !important; 
+                  padding: 10px 0 !important; 
+                  font-size: 14px !important; 
+                  line-height: normal !important; 
+                  appearance: none !important; 
+                  -webkit-appearance: none !important;
+                }
+                .minimal-input:focus { border-bottom-color: #111 !important; }
               </style>
 
               <div id="ykinas-global-loader" class="ykinas-loader-overlay">
