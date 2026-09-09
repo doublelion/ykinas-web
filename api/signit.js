@@ -43,11 +43,27 @@ export default async function handler(req, res) {
       return sendDisabledScript('Unauthorized or module has_login_module is FALSE.');
     }
 
+    // [HOTFIX] 견고한 Referer 도메인 검증 파이프라인
     const allowedDomains = license.skin_allowed_domains ? license.skin_allowed_domains.map(d => d.domain) : [];
-    const isDomainMatch = allowedDomains.length === 0 || allowedDomains.some(domain => clientReferer.includes(domain)) || clientReferer === '';
+
+    let isDomainMatch = allowedDomains.length === 0 || clientReferer === '';
 
     if (!isDomainMatch) {
-      return sendDisabledScript('Domain mismatch.');
+      try {
+        const refererUrl = new URL(clientReferer);
+        // 서브도메인을 포함한 정확한 호스트네임 매칭 방어
+        isDomainMatch = allowedDomains.some(domain =>
+          refererUrl.hostname === domain || refererUrl.hostname.endsWith('.' + domain)
+        );
+      } catch (e) {
+        // 유효하지 않은 URL(예: 모바일 앱 커스텀 스킴 등)일 경우 기존의 fallback 로직 수행
+        isDomainMatch = allowedDomains.some(domain => clientReferer.includes(domain));
+      }
+    }
+
+    if (!isDomainMatch) {
+      // 디버깅을 용이하게 하기 위해 어떤 Referer에서 막혔는지 로그에 포함시킵니다.
+      return sendDisabledScript(`Domain mismatch. (Referer: ${clientReferer})`);
     }
 
     // 서버 측 리터럴 안에 클라이언트 변수를 넣을 때는 반드시 \${} 형태로 이스케이프 처리
@@ -184,6 +200,25 @@ export default async function handler(req, res) {
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
                 .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
                 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+                /* [HOTFIX] 글로벌 CSS 간섭 완벽 차단 및 강제 리셋 */
+                #standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
+                .minimal-input { 
+                  border: none !important; 
+                  border-bottom: 1px solid #e5e5e5 !important; 
+                  border-radius: 0 !important; 
+                  background-color: transparent !important; 
+                  box-shadow: none !important; 
+                  outline: none !important; 
+                  transition: border-bottom-color 0.3s ease !important; 
+                  height: 48px !important; 
+                  padding: 10px 0 !important; 
+                  font-size: 14px !important; 
+                  line-height: normal !important; 
+                  appearance: none !important; 
+                  -webkit-appearance: none !important;
+                }
+                .minimal-input:focus { border-bottom-color: #111 !important; }
               </style>
 
               <div id="ykinas-global-loader" class="ykinas-loader-overlay">
@@ -700,6 +735,25 @@ export default async function handler(req, res) {
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
                 .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
                 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+                /* [HOTFIX] 글로벌 CSS 간섭 완벽 차단 및 강제 리셋 */
+                #standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
+                .minimal-input { 
+                  border: none !important; 
+                  border-bottom: 1px solid #e5e5e5 !important; 
+                  border-radius: 0 !important; 
+                  background-color: transparent !important; 
+                  box-shadow: none !important; 
+                  outline: none !important; 
+                  transition: border-bottom-color 0.3s ease !important; 
+                  height: 48px !important; 
+                  padding: 10px 0 !important; 
+                  font-size: 14px !important; 
+                  line-height: normal !important; 
+                  appearance: none !important; 
+                  -webkit-appearance: none !important;
+                }
+                .minimal-input:focus { border-bottom-color: #111 !important; }
               </style>
 
               <div id="global-login-drawer">
