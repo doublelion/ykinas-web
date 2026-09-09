@@ -197,6 +197,11 @@ export default async function handler(req, res) {
                 .bg-google:hover { background-color: #F1F3F4; opacity: 1; } 
                 .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
+
+                #standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
+                .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
+                .minimal-input:focus { border-bottom-color: #111 !important; }
+
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
                 .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
                 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
@@ -291,13 +296,12 @@ export default async function handler(req, res) {
                                 <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
                               </label>
                             </div>
-                            <!-- [HOTFIX] 비회원 구매(Guest Purchase) 분기 버튼 UI -->
-                              <div id="a_btn_group_login" class="flex gap-2 mt-4">
-                                <button type="button" id="a_btn_submit_login" class="flex-1 py-4 bg-black text-white text-sm font-semibold tracking-widest hover:bg-gray-800 transition-colors rounded shadow-md active:scale-[0.99] transform">로그인</button>
-                                <button type="button" id="a_btn_nomember_order" class="flex-1 py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors rounded shadow-md active:scale-[0.99] transform" style="display: none;">비회원 구매</button>
-                              </div>
+                            <!-- 로그인/비회원 버튼 UI -->
+                            <div id="a_btn_group_login" class="flex gap-2.5 mt-5">
+                              <button type="button" id="a_btn_submit_login" class="flex-1 h-[48px] bg-[#111] text-white text-[13px] font-medium tracking-widest transition-all hover:opacity-90 rounded-[2px]">로그인</button>
+                              <button type="button" id="a_btn_nomember_order" class="flex-1 h-[48px] bg-white border border-[#e5e5e5] text-gray-600 text-[13px] font-medium tracking-widest transition-all hover:border-[#111] hover:text-[#111] rounded-[2px]" style="display: none;">비회원 구매</button>
+                            </div>
                           </div>
-
                           <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500">
                             <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-3 bg-gray-300"></span>
                             <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-3 bg-gray-300"></span>
@@ -750,6 +754,10 @@ export default async function handler(req, res) {
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; border: none; outline: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-btn-primary { background-color: #111111; color: #ffffff; }
+
+                #standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
+                .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
+                .minimal-input:focus { border-bottom-color: #111 !important; }
 
                 .ykinas-loader-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
