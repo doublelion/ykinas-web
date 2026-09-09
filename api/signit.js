@@ -788,6 +788,11 @@ export default async function handler(req, res) {
                 .custom-scrollbar-02::-webkit-scrollbar { width: 4px; }
                 .custom-scrollbar-02::-webkit-scrollbar-thumb { background: #e5e5e5; border-radius: 4px; }
                 
+                .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; width: 100% !important; display: block !important; }
+                .minimal-input:focus { border-bottom-color: #111 !important; }
+                .floating-label { position: absolute; left: 0; top: 10px; font-size: 0.875rem; color: #9ca3af; transition: transform 0.3s ease, color 0.3s ease; pointer-events: none; }
+                .minimal-input:focus ~ .floating-label, .minimal-input:not(:placeholder-shown) ~ .floating-label { transform: translateY(-120%) scale(0.85); color: #111; transform-origin: left top; }
+                
                 .bg-kakao { background-color: #FEE500; color: #191919; }
                 .bg-naver { background-color: #03C75A; color: #ffffff; }
                 .bg-google { background-color: #F8F9FA; color: #3C4043; border: 1px solid #DADCE0!important; }
@@ -799,41 +804,23 @@ export default async function handler(req, res) {
                 .sns-grid-btn { display: flex; align-items: center; justify-content: center; padding: 0.625rem; font-size: 0.8125rem; font-weight: 500; border-radius: 0.25rem; transition: opacity 0.2s ease; width: 100%; border: none; outline: none; cursor: pointer; }
                 .sns-grid-btn:hover { opacity: 0.85; }
 
-                /* [HOTFIX] 스킨 부모 CSS 간섭 완벽 차단 및 폼 리셋 */
-                #standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
-                .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
-                .minimal-input:focus { border-bottom-color: #111 !important; }
-
-                /* [HOTFIX] 모든 폼 액션/텍스트 버튼 강력 잠금 (스킨 전역 base.css 무력화) */
-                #a_btn_group_login { display: flex !important; gap: 10px !important; margin-top: 20px !important; width: 100% !important; }
-
-                #a_btn_submit_login, #a_btn_nomember_order, #a_btn_submit_guest, #btn_submit_login {
-                  flex: 1 !important; align-items: center !important; justify-content: center !important;
-                  box-sizing: border-box !important; width: 100% !important; height: 48px !important; line-height: 46px !important;
+                #btn_submit_login {
+                  display: flex !important; align-items: center !important; justify-content: center !important;
+                  box-sizing: border-box !important; width: 100% !important; height: 48px !important; line-height: 48px !important;
                   font-size: 13px !important; font-weight: 500 !important; letter-spacing: 0.05em !important; border-radius: 2px !important;
-                  cursor: pointer !important; transition: all 0.2s ease !important; padding: 0 !important;
+                  cursor: pointer !important; transition: all 0.2s ease !important; margin: 16px 0 0 0 !important; padding: 0 !important;
                   outline: none !important; box-shadow: none !important; visibility: visible !important; opacity: 1 !important;
+                  background-color: #111 !important; color: #ffffff !important; border: 1px solid #111 !important;
                 }
+                #btn_submit_login:hover { opacity: 0.85 !important; }
 
-                #a_btn_submit_login, #a_btn_nomember_order { margin: 0 !important; }
-                #a_btn_submit_guest, #btn_submit_login { margin: 16px 0 0 0 !important; }
-
-                /* Primary 버튼 */
-                #a_btn_submit_login, #a_btn_submit_guest, #btn_submit_login { background-color: #111 !important; color: #ffffff !important; border: 1px solid #111 !important; }
-                #a_btn_submit_login:hover, #a_btn_submit_guest:hover, #btn_submit_login:hover { opacity: 0.85 !important; }
-
-                /* Secondary 버튼 */
-                #a_btn_nomember_order { background-color: #ffffff !important; color: #4b5563 !important; border: 1px solid #e5e5e5 !important; }
-                #a_btn_nomember_order:hover { border-color: #111 !important; color: #111 !important; }
-
-                /* 하단 텍스트 링크 잠금 */
-                #a_btn_goto_guest, #btn_goto_guest, #a_btn_goto_login {
+                #btn_goto_guest {
                   display: inline-block !important; background: transparent !important; border: none !important;
                   color: #9ca3af !important; font-size: 12px !important; font-weight: 400 !important; text-decoration: underline !important; text-underline-offset: 4px !important;
                   cursor: pointer !important; padding: 8px !important; margin: 0 auto !important;
                   visibility: visible !important; opacity: 1 !important; line-height: normal !important; box-shadow: none !important;
                 }
-                #a_btn_goto_guest:hover, #btn_goto_guest:hover, #a_btn_goto_login:hover { color: #111 !important; background: transparent !important; }
+                #btn_goto_guest:hover { color: #111 !important; background: transparent !important; }
 
                 .ykinas-loader-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
