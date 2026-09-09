@@ -184,27 +184,6 @@ export default async function handler(req, res) {
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
                 .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
                 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-                /* [HOTFIX] 글로벌 CSS 간섭 완벽 차단 */
-                #standalone_panel_wrapper * { box-sizing: border-box !important; }
-                .minimal-input { 
-                  border: none !important; 
-                  border-bottom: 1px solid #e5e5e5 !important; 
-                  border-radius: 0 !important; 
-                  background-color: transparent !important; 
-                  box-shadow: none !important; 
-                  outline: none !important; 
-                  transition: border-bottom-color 0.3s ease !important; 
-                  
-                  /* 부모 몰의 input 기본값 상속 방지 */
-                  height: 48px !important; 
-                  padding: 10px 0 !important; 
-                  font-size: 14px !important; 
-                  line-height: normal !important; 
-                  appearance: none !important; 
-                  -webkit-appearance: none !important;
-                }
-                .minimal-input:focus { border-bottom-color: #111 !important; }
               </style>
 
               <div id="ykinas-global-loader" class="ykinas-loader-overlay">
@@ -477,40 +456,35 @@ export default async function handler(req, res) {
               const pwVal = document.getElementById('a_order_pw').value.trim();
               
               if (!nameVal || !idVal || !pwVal) return alert("주문자 정보를 모두 입력해주세요.");
+              
+              const wrap = document.getElementById('cafe24-original-wrap') || 
+                           document.querySelector('.xans-myshop-orderhistorynologin');
 
-              showLoader();
+              if (wrap) {
+                showLoader();
+                const nameInput = wrap.querySelector('input[name="order_name"]');
+                const idInput = wrap.querySelector('input[name="order_id"]');
+                const pwInput = wrap.querySelector('input[name="order_password"]');
 
-              // [HOTFIX] 스킨 DOM 의존성 제거: 카페24 코어 엔드포인트로 폼 강제 생성 및 전송
-              const form = document.createElement('form');
-              form.method = 'POST';
-              form.action = '/exec/front/Myshop/OrderHistoryNoneLogin/';
+                if (nameInput) nameInput.value = nameVal;
+                if (idInput) idInput.value = idVal;
+                if (pwInput) pwInput.value = pwVal;
 
-              const searchParams = new URLSearchParams(window.location.search);
-              const currentReturnUrl = searchParams.get('returnUrl') || '/myshop/order/list.html';
+                const guestBtn = document.getElementById('origin_btn_order_history') || 
+                                 wrap.querySelector('a[onclick*="OrderHistory"], button[type="submit"], input[type="image"]');
 
-              const payload = {
-                order_name: nameVal,
-                order_id: idVal,
-                order_password: pwVal,
-                returnUrl: currentReturnUrl
-              };
-
-              for (const key in payload) {
-                const hiddenField = document.createElement('input');
-                hiddenField.type = 'hidden';
-                hiddenField.name = key;
-                hiddenField.value = payload[key];
-                form.appendChild(hiddenField);
-              }
-
-              document.body.appendChild(form);
-
-              try {
-                form.submit();
-              } catch (err) {
-                hideLoader();
-                console.error('[YKINAS Sign-It] Guest Order API Exception:', err);
-                alert('주문 추적 요청 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+                if (guestBtn) {
+                  guestBtn.click();
+                } else {
+                  const form = nameInput ? nameInput.closest('form') : null;
+                  if (form) form.submit();
+                  else {
+                     hideLoader();
+                     alert('비회원 폼을 전송할 수 없습니다.');
+                  }
+                }
+              } else {
+                alert("비회원 주문조회 모듈을 찾을 수 없습니다.");
               }
             };
             
