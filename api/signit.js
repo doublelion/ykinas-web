@@ -6,10 +6,9 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400');
-    // [규칙 준수] API 버전 2026-03-01 적용
+    // [규칙 준수] API 버전 적용
     res.setHeader('X-Cafe24-Api-Version', '2026-03-01');
 
-    const clientReferer = req.headers['referer'] || '';
     const clientMallId = req.query.mall_id;
 
     const sendDisabledScript = (reason) => {
@@ -33,6 +32,7 @@ export default async function handler(req, res) {
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
+    // 도메인 테이블은 아예 조회조차 하지 않습니다. 라이선스 활성화 여부만 체크!
     const { data: license, error } = await supabase
       .from('skin_licenses')
       .select('id, is_active, has_login_module')
@@ -44,8 +44,8 @@ export default async function handler(req, res) {
     }
 
     // =========================================================================
-    // [HOTFIX] 도메인(Referer) 검증 로직 완전 제거 (퇴근 보장 핫픽스)
-    // - 이제 mall_id가 DB에 활성화(is_active: true)되어 있기만 하면 도메인을 따지지 않고 무조건 패스합니다.
+    // [HOTFIX] 도메인(Referer) 검증 로직 영구 삭제 완료
+    // - 이제 스킨 소스에 적힌 mall_id가 DB에 활성화되어 있기만 하면 무조건 통과합니다.
     // =========================================================================
 
     const injectedScript = `
@@ -152,7 +152,7 @@ export default async function handler(req, res) {
             const fullScreenHTML = \`
               <style>
                 #standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
-                .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
+                .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; width: 100% !important; display: block !important; }
                 .minimal-input:focus { border-bottom-color: #111 !important; }
 
                 @media (max-width: 768px) {
@@ -183,8 +183,8 @@ export default async function handler(req, res) {
                 .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
                 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
+                /* CSS 락 (Lock) */
                 #a_btn_group_login { display: flex !important; gap: 10px !important; margin-top: 20px !important; width: 100% !important; }
-
                 #a_btn_submit_login, #a_btn_nomember_order, #a_btn_submit_guest, #btn_submit_login {
                   flex: 1 !important; align-items: center !important; justify-content: center !important;
                   box-sizing: border-box !important; width: 100% !important; height: 48px !important; line-height: 46px !important;
@@ -192,16 +192,12 @@ export default async function handler(req, res) {
                   cursor: pointer !important; transition: all 0.2s ease !important; padding: 0 !important;
                   outline: none !important; box-shadow: none !important; visibility: visible !important; opacity: 1 !important;
                 }
-
                 #a_btn_submit_login, #a_btn_nomember_order { margin: 0 !important; }
                 #a_btn_submit_guest, #btn_submit_login { margin: 16px 0 0 0 !important; }
-
                 #a_btn_submit_login, #a_btn_submit_guest, #btn_submit_login { background-color: #111 !important; color: #ffffff !important; border: 1px solid #111 !important; }
                 #a_btn_submit_login:hover, #a_btn_submit_guest:hover, #btn_submit_login:hover { opacity: 0.85 !important; }
-
                 #a_btn_nomember_order { background-color: #ffffff !important; color: #4b5563 !important; border: 1px solid #e5e5e5 !important; }
                 #a_btn_nomember_order:hover { border-color: #111 !important; color: #111 !important; }
-
                 #a_btn_goto_guest, #btn_goto_guest, #a_btn_goto_login {
                   display: inline-block !important; background: transparent !important; border: none !important;
                   color: #9ca3af !important; font-size: 12px !important; font-weight: 400 !important; text-decoration: underline !important; text-underline-offset: 4px !important;
@@ -253,7 +249,7 @@ export default async function handler(req, res) {
                             <button type="button" id="a_sns_naver" class="sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-naver border-none py-3 text-sm font-semibold rounded whitespace-nowrap" style="display:none;">
                               <span class="w-4 h-4 flex items-center justify-center font-bold text-[10px] mr-1">N</span> 네이버
                             </button>
-                            <button type="button" id="a_sns_google" class="bg-google sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-white border border-gray-300 text-gray-600 py-3 text-sm font-semibold rounded whitespace-nowrap hover:bg-gray-50" style="display:none;">
+                            <button type="button" id="a_sns_google" class="bg-google  sns-grid-btn flex-auto w-full sm:w-auto min-w-[140px] bg-white border border-gray-300 text-gray-600 py-3 text-sm font-semibold rounded whitespace-nowrap hover:bg-gray-50" style="display:none;">
                               <svg class="w-4 h-4 mr-2" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                               구글
                             </button>
