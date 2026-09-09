@@ -291,11 +291,7 @@ export default async function handler(req, res) {
                                 <span class="ml-2 text-xs text-gray-500 group-hover:text-black transition-colors">보안 접속</span>
                               </label>
                             </div>
-                            <!-- [HOTFIX] 비회원 구매(Guest Purchase) 분기 버튼 UI -->
-                            <div id="a_btn_group_login" class="flex gap-2 mt-4">
-                              <button type="button" id="a_btn_submit_login" class="flex-1 py-4 bg-black text-white text-sm font-semibold tracking-widest hover:bg-gray-800 transition-colors rounded shadow-md active:scale-[0.99] transform">로그인</button>
-                              <button type="button" id="a_btn_nomember_order" class="flex-1 py-4 bg-white border border-black text-black text-sm font-semibold tracking-widest hover:bg-black hover:text-white transition-colors rounded shadow-md active:scale-[0.99] transform" style="display: none;">비회원 구매</button>
-                            </div>
+                            <button type="button" id="a_btn_submit_login" class="w-full py-4 bg-black text-white text-sm font-semibold tracking-widest hover:bg-gray-800 transition-colors mt-4 rounded shadow-md active:scale-[0.99] transform">로그인</button>
                           </div>
 
                           <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500">
@@ -467,42 +463,6 @@ export default async function handler(req, res) {
             };
             
             document.getElementById('a_btn_submit_login').addEventListener('click', submitLogin);
-            
-            // [HOTFIX] 비회원 구매 동적 렌더링 및 카페24 원본 액션 바인딩
-            const searchParams = new URLSearchParams(window.location.search);
-            const isGuestPurchase = searchParams.get('noMember') === '1' && searchParams.get('returnUrl');
-
-            if (isGuestPurchase) {
-              const nomemberBtn = document.getElementById('a_btn_nomember_order');
-              if (nomemberBtn) nomemberBtn.style.display = 'block'; // 버튼 반분(50:50) 활성화
-            }
-
-            const noMemberOrderBtn = document.getElementById('a_btn_nomember_order');
-            if (noMemberOrderBtn) {
-              noMemberOrderBtn.addEventListener('click', () => {
-                showLoader();
-                const wrap = document.getElementById('cafe24-original-wrap') || document.querySelector('.xans-member-login');
-                
-                if (wrap) {
-                  // 카페24 원본 모듈의 비회원 구매 액션($action_nomember_order) 트리거
-                  const originNoMemberBtn = wrap.querySelector('a[onclick*="nomember_order"], button[onclick*="nomember_order"]');
-                  if (originNoMemberBtn) {
-                    originNoMemberBtn.click();
-                    return;
-                  }
-                }
-                
-                // 원본 버튼이 돔에 없을 경우를 대비한 Fallback (강제 리다이렉트)
-                const returnUrl = searchParams.get('returnUrl');
-                if (returnUrl) {
-                  window.location.href = decodeURIComponent(returnUrl);
-                } else {
-                  hideLoader();
-                  alert('비회원 구매 경로를 찾을 수 없습니다.');
-                }
-              });
-            }
-
             document.getElementById('a_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitLogin(); });
 
 
