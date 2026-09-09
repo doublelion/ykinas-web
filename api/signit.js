@@ -304,7 +304,7 @@ export default async function handler(req, res) {
                           <div class="flex justify-center items-center space-x-4 mt-6 text-xs text-gray-500">
                             <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-3 bg-gray-300"></span>
                             <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-3 bg-gray-300"></span>
-                            <a href="/member/agreement.html" class="font-bold text-black border-b border-black pb-0.5">회원가입</a>
+                            <a href="/member/join.html" class="font-bold text-black border-b border-black pb-0.5">회원가입</a>
                           </div>
 
                           <div class="mt-12 text-center border-t border-gray-100 pt-6 pb-[calc(2rem+env(safe-area-inset-bottom))] lg:pb-6">
@@ -877,7 +877,7 @@ export default async function handler(req, res) {
                         <div class="flex justify-center items-center space-x-4 mt-6 text-[11px] text-gray-400">
                           <a href="/member/id/find_id.html" class="hover:text-black transition-colors">아이디 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
                           <a href="/member/passwd/find_passwd_info.html" class="hover:text-black transition-colors">비밀번호 찾기</a><span class="w-px h-2.5 bg-gray-200"></span>
-                          <a href="/member/agreement.html" class="font-semibold text-gray-800 hover:text-black transition-colors">회원가입</a>
+                          <a href="/member/join.html" class="font-semibold text-gray-800 hover:text-black transition-colors">회원가입</a>
                         </div>
 
                         <div class="mt-12 text-center border-t border-gray-100 pt-6 pb-6">
