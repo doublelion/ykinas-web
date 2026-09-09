@@ -198,9 +198,10 @@ export default async function handler(req, res) {
                 .ykinas-loader-overlay { position: fixed; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
 
-                #standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
-                .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
-                .minimal-input:focus { border-bottom-color: #111 !important; }
+                /* [HOTFIX] 스킨 부모 CSS 간섭 완벽 차단 및 강제 리셋 */
+#standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
+.minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
+.minimal-input:focus { border-bottom-color: #111 !important; }
 
                 @keyframes ykinas-spin { to { transform: rotate(360deg); } }
                 .ykinas-loader-text { margin-top: 16px; font-size: 13px; font-weight: 600; color: #111; letter-spacing: 0.05em; animation: pulse 1.5s infinite; }
@@ -472,40 +473,38 @@ export default async function handler(req, res) {
             
             document.getElementById('a_btn_submit_login').addEventListener('click', submitLogin);
             
-            // [HOTFIX] 비회원 구매 동적 렌더링 및 카페24 원본 액션 바인딩
-            // (주의: searchParams는 상단에서 이미 선언되었으므로 재사용합니다)
-            const isGuestPurchase = searchParams.get('noMember') === '1' && searchParams.get('returnUrl');
+            // [HOTFIX] 비회원 구매 조건 대소문자 예외 처리 및 안전한 액션 바인딩
+const isGuestPurchase = window.location.search.toLowerCase().includes('nomember') && searchParams.get('returnUrl');
 
-            if (isGuestPurchase) {
-              const nomemberBtn = document.getElementById('a_btn_nomember_order');
-              if (nomemberBtn) nomemberBtn.style.display = 'block'; // 버튼 반분(50:50) 활성화
-            }
+if (isGuestPurchase) {
+  const nomemberBtn = document.getElementById('a_btn_nomember_order');
+  if (nomemberBtn) nomemberBtn.style.display = 'block'; 
+}
 
-            const noMemberOrderBtn = document.getElementById('a_btn_nomember_order');
-            if (noMemberOrderBtn) {
-              noMemberOrderBtn.addEventListener('click', () => {
-                showLoader();
-                const wrap = document.getElementById('cafe24-original-wrap') || document.querySelector('.xans-member-login');
-                
-                if (wrap) {
-                  // 카페24 원본 모듈의 비회원 구매 액션($action_nomember_order) 트리거
-                  const originNoMemberBtn = wrap.querySelector('a[onclick*="nomember_order"], button[onclick*="nomember_order"]');
-                  if (originNoMemberBtn) {
-                    originNoMemberBtn.click();
-                    return;
-                  }
-                }
-                
-                // 원본 버튼이 돔에 없을 경우를 대비한 Fallback (강제 리다이렉트)
-                const fallbackReturnUrl = searchParams.get('returnUrl');
-                if (fallbackReturnUrl) {
-                  window.location.href = decodeURIComponent(fallbackReturnUrl);
-                } else {
-                  hideLoader();
-                  alert('비회원 구매 경로를 찾을 수 없습니다.');
-                }
-              });
-            }
+const noMemberOrderBtn = document.getElementById('a_btn_nomember_order');
+if (noMemberOrderBtn) {
+  noMemberOrderBtn.addEventListener('click', () => {
+    showLoader();
+    const wrap = document.getElementById('cafe24-original-wrap') || document.querySelector('.xans-member-login');
+    
+    if (wrap) {
+      const originNoMemberBtn = wrap.querySelector('a[onclick*="nomember_order"], button[onclick*="nomember_order"]');
+      if (originNoMemberBtn) {
+        originNoMemberBtn.click();
+        return;
+      }
+    }
+    
+    // 이중 디코딩 에러를 방지하고 바로 fallback 주소로 리다이렉트
+    const fallbackUrl = searchParams.get('returnUrl');
+    if (fallbackUrl) {
+      window.location.href = fallbackUrl;
+    } else {
+      hideLoader();
+      alert('비회원 구매 경로를 찾을 수 없습니다.');
+    }
+  });
+}
 
             document.getElementById('a_pw').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitLogin(); });
 
@@ -755,9 +754,10 @@ export default async function handler(req, res) {
                 .sns-grid-btn:hover { opacity: 0.85; }
                 .bg-btn-primary { background-color: #111111; color: #ffffff; }
 
-                #standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
-                .minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
-                .minimal-input:focus { border-bottom-color: #111 !important; }
+                /* [HOTFIX] 스킨 부모 CSS 간섭 완벽 차단 및 강제 리셋 */
+#standalone_panel_wrapper *, #global-login-drawer * { box-sizing: border-box !important; }
+.minimal-input { border: none !important; border-bottom: 1px solid #e5e5e5 !important; border-radius: 0 !important; background-color: transparent !important; box-shadow: none !important; outline: none !important; transition: border-bottom-color 0.3s ease !important; height: 48px !important; padding: 10px 0 !important; font-size: 14px !important; line-height: normal !important; appearance: none !important; -webkit-appearance: none !important; }
+.minimal-input:focus { border-bottom-color: #111 !important; }
 
                 .ykinas-loader-overlay { position: absolute; inset: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); z-index: 2147483647; display: none; align-items: center; justify-content: center; flex-direction: column; transition: opacity 0.3s ease; }
                 .ykinas-spinner { width: 44px; height: 44px; border: 3px solid rgba(0, 0, 0, 0.05); border-radius: 50%; border-top-color: #111; animation: ykinas-spin 0.8s linear infinite; }
