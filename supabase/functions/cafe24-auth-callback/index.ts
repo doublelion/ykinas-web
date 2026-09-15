@@ -5,7 +5,6 @@ serve(async (req: Request) => {
   try {
     const url = new URL(req.url);
 
-    // 💡 핫픽스: Cafe24가 인증을 거부하고 리다이렉트 했을 때의 에러 선제적 방어
     const oauthError = url.searchParams.get("error");
     if (oauthError) {
       const oauthDesc = url.searchParams.get("error_description") || oauthError;
@@ -15,7 +14,7 @@ serve(async (req: Request) => {
     const code = url.searchParams.get("code");
     const mall_id = url.searchParams.get("state"); 
     
-    // Cafe24 개발자 센터에서 발급받은 Client ID / Secret
+    // 환경변수 또는 하드코딩된 키 값 세팅
     const clientId = Deno.env.get("CAFE24_CLIENT_ID") || "WNy6KQv4Hd7orrA9ifubBA"; 
     const clientSecret = Deno.env.get("CAFE24_CLIENT_SECRET") || "fVDbpnnKUCDNtle8Uh2YMM";
     
@@ -23,7 +22,7 @@ serve(async (req: Request) => {
     const redirectUri = "https://" + supabaseRef + ".supabase.co/functions/v1/cafe24-auth-callback";
 
     if (!code || !mall_id) {
-      throw new Error("Invalid request: 권한 증명 코드(code)가 존재하지 않습니다.");
+      throw new Error("Invalid request: 권한 증명 코드(code)나 state 파라미터가 없습니다.");
     }
 
     const tokenParams = new URLSearchParams();
@@ -39,7 +38,7 @@ serve(async (req: Request) => {
       headers: {
         "Authorization": "Basic " + basicAuth,
         "Content-Type": "application/x-www-form-urlencoded",
-        "X-Cafe24-Api-Version": "2025-12-01" 
+        "X-Cafe24-Api-Version": "2026-03-01" 
       },
       body: tokenParams.toString()
     });
@@ -51,15 +50,27 @@ serve(async (req: Request) => {
 
     const tokenData = await tokenResponse.json();
 
+    // 💡 [HOTFIX] Cafe24 응답 스펙 예외 처리 (Invalid time value 완벽 방어)
+    let expiresAtIso = "";
+    if (tokenData.expires_at) {
+      // 1순위: 문자열로 반환된 만료 일시 그대로 사용
+      expiresAtIso = new Date(tokenData.expires_at).toISOString();
+    } else if (tokenData.expires_in) {
+      // 2순위: 초(seconds) 단위로 반환될 경우 계산
+      expiresAtIso = new Date(Date.now() + Number(tokenData.expires_in) * 1000).toISOString();
+    } else {
+      // 3순위: 누락된 경우 기본값 2시간 설정 (Fallback)
+      expiresAtIso = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     if (!supabaseUrl || !supabaseKey) {
-      throw new Error("Supabase 환경변수가 설정되지 않았습니다.");
+      throw new Error("Supabase 환경변수가 누락되었습니다.");
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
 
     const { error: dbError } = await supabase
       .from("cafe24_auth_tokens")
@@ -67,13 +78,14 @@ serve(async (req: Request) => {
         mall_id: mall_id,
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
-        expires_at: expiresAt,
+        expires_at: expiresAtIso,
         updated_at: new Date().toISOString()
       }, { onConflict: "mall_id" });
 
     if (dbError) throw dbError;
 
-    const successHtml = "[" + mall_id + "] Cafe24 인증이 완료되었습니다. 창을 닫아주세요.";return new Response(successHtml, { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 200 });
+    const successHtml = "[" + mall_id + "] Cafe24 인증이 완료되었습니다. 창을 닫아주세요.";
+return new Response(successHtml, { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 200 });
 
 } catch (error: any) {
 console.error("Auth Callback Error:", error);
