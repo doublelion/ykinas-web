@@ -6,6 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// 지시하신 대로 API 버전을 2025-12-01로 완벽 고정
 const CAFE24_API_VERSION = "2025-12-01";
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -15,18 +16,16 @@ async function fetchWithFailover(url: string, options: RequestInit, maxRetries =
   while (attempt < maxRetries) {
     try {
       const response = await fetch(url, options);
-      // 500번대(서버 에러)나 429(Rate Limit) 발생 시에만 재시도
       if (response.ok || (response.status !== 429 && response.status < 500 && response.status !== 401)) {
         return response; 
       }
       if (response.status === 401) {
-        return response; // 401은 Lazy Refresh로 처리해야 하므로 즉시 반환
+        return response; 
       }
-      throw new Error(`HTTP Status ${response.status}`);
+      throw new Error("HTTP Status " + response.status);
     } catch (error) {
       attempt++;
       if (attempt >= maxRetries) throw error;
-      // 지수 백오프: 1초 -> 2초 -> 4초 대기 후 재시도
       await delay(Math.pow(2, attempt - 1) * 1000);
     }
   }
@@ -57,22 +56,21 @@ serve(async (req: Request) => {
       .single();
 
     if (tokenError || !tokenData) {
-      throw new Error("API 토큰이 존재하지 않습니다. 권한 동의를 다시 진행해 주세요.");
+      throw new Error("API 토큰이 존재하지 않습니다.");
     }
 
+    // 💡 422 핫픽스: 에러를 유발하는 writer, is_secret 제거 및 member_id 추가
     const requestBody = {
       shop_no: 1,
       request: {
         title: payload.subject,
         content: payload.content,
-        writer: payload.writer || "비회원",
-        is_secret: "T"
+        member_id: payload.mall_id // 관리자 계정(areumtour) 명의로 글 작성 강제 처리
       }
     };
 
     const boardUrl = "https://" + payload.mall_id + ".cafe24api.com/api/v2/admin/boards/" + payload.board_no + "/articles";
     
-    // 1차 전송 (페일오버 적용)
     let cafe24Res = await fetchWithFailover(boardUrl, {
       method: "POST",
       headers: {
@@ -83,7 +81,6 @@ serve(async (req: Request) => {
       body: JSON.stringify(requestBody)
     });
 
-    // 401 만료 시 Lazy Refresh 시도
     if (cafe24Res.status === 401 && tokenData.refresh_token) {
       const clientId = Deno.env.get("CAFE24_CLIENT_ID")!;
       const clientSecret = Deno.env.get("CAFE24_CLIENT_SECRET")!;
@@ -122,7 +119,6 @@ serve(async (req: Request) => {
         updated_at: new Date().toISOString()
       }).eq("mall_id", payload.mall_id);
 
-      // 재발급된 새 토큰으로 2차 전송 시도
       cafe24Res = await fetchWithFailover(boardUrl, {
         method: "POST",
         headers: {
