@@ -38,7 +38,7 @@ serve(async (req: Request) => {
       headers: {
         "Authorization": "Basic " + basicAuth,
         "Content-Type": "application/x-www-form-urlencoded",
-        "X-Cafe24-Api-Version": "2026-03-01" 
+        "X-Cafe24-Api-Version": "2025-12-01" 
       },
       body: tokenParams.toString()
     });
