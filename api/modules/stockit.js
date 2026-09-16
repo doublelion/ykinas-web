@@ -54,10 +54,11 @@ export default async function handler(req, res) {
           
           // [Isolation] Shadow DOM: 호스트 쇼핑몰의 글로벌 CSS 오염 완벽 방지
           const shadowRoot = container.attachShadow({ mode: 'open' });
-          <style>
+          shadowRoot.innerHTML = \`
+            <style>
               .ykinas-stock-alert {
-                background-color: ${bgColor};
-                color: ${textColor};
+                background-color: \${bgColor};
+                color: \${textColor};
                 padding: 12px 16px;
                 border-radius: 6px;
                 font-size: 14px;
@@ -81,30 +82,29 @@ export default async function handler(req, res) {
             <div class="ykinas-stock-alert">
               <span class="pulse">⏳</span> 품절 임박! 현재 소량의 재고만 남아있습니다.
             </div>
+          \`;
+          
+          targetArea.insertAdjacentElement('beforeend', container);
+        }
 
-      \`;
-      
-      targetArea.insertAdjacentElement('beforeend', container);
-    }
+        // [Edge Case] 카페24 동적 렌더링(비동기 옵션 로드 등) 대비 DOM 변경 감지
+        const observer = new MutationObserver((mutations, obs) => {
+          if (document.querySelector('.xans-product-detail')) {
+            renderStockWidget();
+            obs.disconnect(); 
+          }
+        });
 
-    // [Edge Case] 카페24 동적 렌더링(비동기 옵션 로드 등) 대비 DOM 변경 감지
-    const observer = new MutationObserver((mutations, obs) => {
-      if (document.querySelector('.xans-product-detail')) {
-        renderStockWidget();
-        obs.disconnect(); 
-      }
-    });
-
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', renderStockWidget);
-    } else {
-      renderStockWidget();
-    }
-    
-    // 상품 상세 DOM이 늦게 그려지는 스킨을 위해 감시 시작
-    observer.observe(document.body, { childList: true, subtree: true });
-  })(window);
-`;
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', renderStockWidget);
+        } else {
+          renderStockWidget();
+        }
+        
+        // 상품 상세 DOM이 늦게 그려지는 스킨을 위해 감시 시작
+        observer.observe(document.body, { childList: true, subtree: true });
+      })(window);
+    `;
 
     return res.status(200).send(scriptContent);
   } catch (error) {
