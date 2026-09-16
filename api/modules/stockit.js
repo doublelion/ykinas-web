@@ -3,13 +3,15 @@ import { createClient } from '@supabase/supabase-js';
 export default async function handler(req, res) {
   const { mall_id } = req.query;
 
+  // [Edge Case] 1. mall_id 누락 시 빈 스크립트 반환 (400 에러로 인한 프론트엔드 콘솔 에러 방지)
   if (!mall_id) {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    return res.status(200).send('console.warn("[YKINAS] mall_id missing.");');
+    return res.status(200).send('console.warn("[YKINAS] mall_id is missing.");');
   }
 
   try {
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    // 2. DB 설정 조회
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
     const { data, error } = await supabase
       .from('skin_licenses')
       .select('modules_config')
@@ -17,9 +19,9 @@ export default async function handler(req, res) {
       .single();
 
     if (error) throw error;
-
     const config = data?.modules_config?.stock_indicator || { enabled: false };
 
+    // 3. Edge Caching 전략 (Core Web Vitals 최적화)
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
 
@@ -27,109 +29,131 @@ export default async function handler(req, res) {
       return res.status(200).send('/* YKINAS Stock Indicator: Disabled */');
     }
 
-    // 서버 사이드에서 JS 문자열 렌더링 (DOM Cascade & Minimal UI 적용)
+    // 4. 클라이언트 전송용 바닐라 JS (카페24 Front API 연동 및 Shadow DOM 렌더링)
     const scriptContent = `
-  (function (global) {
-    if (global.__YKINAS_STOCK_LOADED__) return;
-    global.__YKINAS_STOCK_LOADED__ = true;
+      (function (global) {
+        if (global.__YKINAS_STOCK_LOADED__) return;
+        global.__YKINAS_STOCK_LOADED__ = true;
 
-    // DB 설정값이 없으면, 미니멀 디자인 기본값 적용
-    const config = ${JSON.stringify(config)};
-    const bgColor = config.bgColor || '#f8f9fa';
-    const borderColor = config.borderColor || '#e9ecef';
-    const textColor = config.textColor || '#333333';
-    const pointColor = config.pointColor || '#ff6b6b'; // 맥박 애니메이션 포인트 컬러
+        // B2B 어드민 DB에서 주입된 설정값 (기본 미니멀 UI 폴백)
+        const injectedConfig = ${JSON.stringify(config)};
+        const CLIENT_ID = injectedConfig.clientId || 'YOUR_FRONT_CLIENT_ID';
+        const FRONT_API_KEY = injectedConfig.frontApiKey || 'YOUR_FRONT_API_KEY'; 
+        const API_VERSION = '2025-12-01'; // 카페24 권장 API 버전
+        
+        const STOCK_TIERS = {
+          CRITICAL: { max: 3, color: '#ff6b6b', text: '품절 임박! 재고가 얼마 남지 않았습니다.', pulse: true },
+          WARNING:  { max: 10, color: '#fcca23', text: '주문량 증가로 여유 재고가 소진되고 있습니다.', pulse: false }
+        };
 
-    // [핵심] 호스트 쇼핑몰 DOM 구조 파편화 대응 (Cascade Pattern)
-    function findTargetPlacement() {
-      // 1순위: 총 결제금액 상단 (구매 전환율이 가장 높은 최적의 위치)
-      const priceArea = document.querySelector('.xans-product-detail .totalPrice') || document.querySelector('#totalPrice');
-      if (priceArea) return { element: priceArea, position: 'beforebegin' };
+        // 재고 단건 조회 로직
+        async function fetchVariantInventory(productNo, variantCode) {
+          try {
+            const authHeader = 'Basic ' + btoa(CLIENT_ID + ':' + FRONT_API_KEY);
+            const response = await fetch('/api/v2/products/' + productNo + '/variants/' + variantCode + '/inventories', {
+              method: 'GET',
+              headers: {
+                'Authorization': authHeader,
+                'Content-Type': 'application/json',
+                'X-Cafe24-Api-Version': API_VERSION,
+                'X-Cafe24-Client-Id': CLIENT_ID
+              }
+            });
 
-      // 2순위: 상품 정보 영역 (infoArea) 하단
-      const infoArea = document.querySelector('.infoArea') || document.querySelector('.xans-product-info');
-      if (infoArea) return { element: infoArea, position: 'beforeend' };
-
-      // 3순위: 상품 상세 전체 래퍼 하단 (최후의 보루)
-      const detailArea = document.querySelector('.xans-product-detail');
-      if (detailArea) return { element: detailArea, position: 'beforeend' };
-
-      return null; // 타겟을 찾지 못함 (예외 처리)
-    }
-
-    function renderStockWidget() {
-      if (document.getElementById('ykinas-stock-widget-container')) return;
-
-      const target = findTargetPlacement();
-      if (!target) return; // 주입할 위치가 없으면 안전하게 렌더링 취소
-
-      const container = document.createElement('div');
-      container.id = 'ykinas-stock-widget-container';
-      
-      // Shadow DOM으로 캡슐화하여 쇼핑몰 CSS와 완벽 격리
-      const shadowRoot = container.attachShadow({ mode: 'open' });
-      shadowRoot.innerHTML = \`
-        <style>
-          .ykinas-stock-badge {
-            display: inline-flex; 
-            align-items: center; 
-            padding: 14px 16px;
-            background-color: \${bgColor}; 
-            border: 1px solid \${borderColor};
-            color: \${textColor};
-            border-radius: 4px; 
-            font-size: 13px;
-            font-weight: 500;
-            letter-spacing: -0.5px;
-            margin: 10px 0 20px 0; 
-            width: 100%; 
-            box-sizing: border-box; 
-            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            if (!response.ok) throw new Error('Inventory API HTTP error: ' + response.status);
+            const data = await response.json();
+            return data.inventory.quantity;
+          } catch (error) {
+            console.error('[YKINAS] Fetch inventory error:', error);
+            return null;
           }
-          .ykinas-pulse {
-            width: 6px; 
-            height: 6px; 
-            background-color: \${pointColor};
-            border-radius: 50%; 
-            margin-right: 10px; 
-            animation: pulse 2s infinite;
-          }
-          @keyframes pulse {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 \${pointColor}80; }
-            70% { transform: scale(1); box-shadow: 0 0 0 6px \${pointColor}00; }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 \${pointColor}00; }
-          }
-          .ykinas-text {
-            opacity: 0.9;
-          }
-        </style>
-        <div class="ykinas-stock-badge">
-          <span class="ykinas-pulse"></span>
-          <span class="ykinas-text">품절 임박! 현재 소량의 재고만 남아있습니다.</span>
-        </div>
-      \`;
-      
-      // 동적으로 찾은 위치에 안전하게 삽입
-      target.element.insertAdjacentElement(target.position, container);
-    }
+        }
 
-    const observer = new MutationObserver((mutations, obs) => {
-      if (findTargetPlacement()) {
-        renderStockWidget();
-        obs.disconnect(); 
-      }
-    });
+        // 위젯 렌더링 로직 (Cascade Pattern 적용)
+        function renderDynamicStockWidget(quantity) {
+          let tier = null;
+          if (quantity > 0 && quantity <= STOCK_TIERS.CRITICAL.max) tier = STOCK_TIERS.CRITICAL;
+          else if (quantity > STOCK_TIERS.CRITICAL.max && quantity <= STOCK_TIERS.WARNING.max) tier = STOCK_TIERS.WARNING;
+          
+          const existingContainer = document.getElementById('ykinas-stock-widget-container');
+          
+          // 재고가 넉넉하거나(10개 초과) 품절(0개)이면 위젯을 DOM에서 숨김 (미니멀리즘)
+          if (!tier) {
+            if (existingContainer) existingContainer.style.display = 'none';
+            return;
+          }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', renderStockWidget);
-    } else {
-      renderStockWidget();
-    }
-    
-    observer.observe(document.body, { childList: true, subtree: true });
-  })(window);
-`;
+          // 최적의 렌더링 타겟 찾기
+          const targetArea = document.querySelector('.xans-product-detail .totalPrice') || document.querySelector('.infoArea');
+          if (!targetArea) return;
+
+          let container = existingContainer;
+          if (!container) {
+            container = document.createElement('div');
+            container.id = 'ykinas-stock-widget-container';
+            targetArea.insertAdjacentElement('beforebegin', container);
+          }
+          
+          container.style.display = 'block';
+          
+          let shadowRoot = container.shadowRoot || container.attachShadow({ mode: 'open' });
+          const pulseAnimation = tier.pulse ? 'animation: pulse 2s infinite;' : '';
+          
+          shadowRoot.innerHTML = \`
+            <style>
+              .ykinas-stock-wrapper {
+                display: inline-flex; align-items: center; padding: 12px 16px;
+                background-color: #fafafa; border: 1px solid #eeeeee;
+                border-radius: 4px; margin: 8px 0 16px 0; width: 100%; box-sizing: border-box;
+              }
+              .ykinas-dot {
+                width: 6px; height: 6px; background-color: \${tier.color};
+                border-radius: 50%; margin-right: 12px; \${pulseAnimation}
+              }
+              @keyframes pulse {
+                0% { transform: scale(0.95); box-shadow: 0 0 0 0 \${tier.color}80; }
+                70% { transform: scale(1.2); box-shadow: 0 0 0 6px \${tier.color}00; }
+                100% { transform: scale(0.95); box-shadow: 0 0 0 0 \${tier.color}00; }
+              }
+              .ykinas-text {
+                font-size: 13px; color: #555555; font-family: 'Pretendard', sans-serif; letter-spacing: -0.3px;
+              }
+              .ykinas-qty { font-weight: 700; color: #111111; margin-left: 4px; }
+            </style>
+            <div class="ykinas-stock-wrapper">
+              <div class="ykinas-dot"></div>
+              <div class="ykinas-text">\${tier.text} <span class="ykinas-qty">(\${quantity}개)</span></div>
+            </div>
+          \`;
+        }
+
+        function initOptionObserver() {
+          const productNo = window.iProductNo || document.querySelector('meta[property="product:productId"]')?.content;
+          if (!productNo) return;
+
+          // 옵션(가격) 영역의 돔 변경을 감지하여 선택된 품목 코드를 추출
+          const priceObserver = new MutationObserver(async () => {
+            const selectedVariantInput = document.querySelector('input[name="option_box_id"]'); 
+            if (selectedVariantInput && selectedVariantInput.value) {
+              const variantCode = selectedVariantInput.value; 
+              const qty = await fetchVariantInventory(productNo, variantCode);
+              if (qty !== null) renderDynamicStockWidget(qty);
+            }
+          });
+
+          const priceArea = document.querySelector('.xans-product-detail');
+          if (priceArea) {
+            priceObserver.observe(priceArea, { childList: true, subtree: true, characterData: true });
+          }
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initOptionObserver);
+        } else {
+          initOptionObserver();
+        }
+      })(window);
+    `;
 
     return res.status(200).send(scriptContent);
   } catch (error) {
