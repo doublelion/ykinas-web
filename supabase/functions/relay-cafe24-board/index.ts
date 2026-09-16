@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// 지시하신 대로 API 버전을 2025-12-01로 완벽 고정
+// 💡 API 버전: 2025-12-01 고정
 const CAFE24_API_VERSION = "2025-12-01";
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -59,14 +59,21 @@ serve(async (req: Request) => {
       throw new Error("API 토큰이 존재하지 않습니다.");
     }
 
-    // 💡 422 핫픽스: 에러를 유발하는 writer, is_secret 제거 및 member_id 추가
+    // 💡 client_ip 실제 클라이언트 접속 IP 추출
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
+
+    // 💡 422 에러 원인 완벽 제거: 공식 문서대로 requests "배열" 내부에 필수 항목 맵핑
     const requestBody = {
       shop_no: 1,
-      request: {
-        title: payload.subject,
-        content: payload.content,
-        member_id: payload.mall_id // 관리자 계정(areumtour) 명의로 글 작성 강제 처리
-      }
+      requests: [
+        {
+          title: payload.subject,     // subject -> title 
+          content: payload.content,
+          writer: payload.writer,     // writer 
+          password: payload.password, // 패스워드
+          client_ip: clientIp         // IP 처리 완료
+        }
+      ]
     };
 
     const boardUrl = "https://" + payload.mall_id + ".cafe24api.com/api/v2/admin/boards/" + payload.board_no + "/articles";
