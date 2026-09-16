@@ -11,8 +11,6 @@ export default async function handler(req, res) {
 
   try {
     // 2. Supabase 연결 및 JSONB 모듈 설정 조회
-
-
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
     const { data, error } = await supabase
       .from('skin_licenses')
@@ -56,7 +54,33 @@ export default async function handler(req, res) {
           
           // [Isolation] Shadow DOM: 호스트 쇼핑몰의 글로벌 CSS 오염 완벽 방지
           const shadowRoot = container.attachShadow({ mode: 'open' });
-          shadowRoot.innerHTML = \`품절 임박! 현재 소량의 재고만 남아있습니다.
+          <style>
+              .ykinas-stock-alert {
+                background-color: ${bgColor};
+                color: ${textColor};
+                padding: 12px 16px;
+                border-radius: 6px;
+                font-size: 14px;
+                font-weight: 600;
+                text-align: center;
+                margin: 20px 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                box-sizing: border-box;
+                width: 100%;
+              }
+              .pulse { animation: pulse 1.5s infinite; }
+              @keyframes pulse { 
+                0% { opacity: 1; } 
+                50% { opacity: 0.4; } 
+                100% { opacity: 1; } 
+              }
+            </style>
+            <div class="ykinas-stock-alert">
+              <span class="pulse">⏳</span> 품절 임박! 현재 소량의 재고만 남아있습니다.
+            </div>
 
       \`;
       
