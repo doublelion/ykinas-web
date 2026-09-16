@@ -11,7 +11,9 @@ export default async function handler(req, res) {
 
   try {
     // 2. Supabase 연결 및 JSONB 모듈 설정 조회
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
     const { data, error } = await supabase
       .from('skin_licenses')
       .select('modules_config')
