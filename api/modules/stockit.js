@@ -3,15 +3,13 @@ import { createClient } from '@supabase/supabase-js';
 export default async function handler(req, res) {
   const { mall_id } = req.query;
 
-  // 1. Edge Case 방어: mall_id 누락 시 클라이언트 에러를 방지하기 위해 빈 JS 반환
   if (!mall_id) {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    return res.status(200).send('console.warn("[YKINAS] mall_id is missing.");');
+    return res.status(200).send('console.warn("[YKINAS] mall_id missing.");');
   }
 
   try {
-    // 2. Supabase 연결 및 JSONB 모듈 설정 조회
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
     const { data, error } = await supabase
       .from('skin_licenses')
       .select('modules_config')
@@ -20,96 +18,123 @@ export default async function handler(req, res) {
 
     if (error) throw error;
 
-    // 모듈 설정 추출 (기본값 false)
     const config = data?.modules_config?.stock_indicator || { enabled: false };
 
-    // 3. 브라우저 및 CDN 캐싱 전략 (Edge Caching) - 핵심 트래픽 최적화
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
 
-    // 비활성화 상태면 실행 불필요 로직 즉시 반환
     if (!config.enabled) {
       return res.status(200).send('/* YKINAS Stock Indicator: Disabled */');
     }
 
-    // 4. 프론트엔드로 전달할 클라이언트 사이드 바닐라 JS (config 변수 동적 주입)
+    // 서버 사이드에서 JS 문자열 렌더링 (DOM Cascade & Minimal UI 적용)
     const scriptContent = `
-      (function (global) {
-        // [Idempotency] 카페24 SPA 환경 및 중복 호출 방어
-        if (global.__YKINAS_STOCK_LOADED__) return;
-        global.__YKINAS_STOCK_LOADED__ = true;
+  (function (global) {
+    if (global.__YKINAS_STOCK_LOADED__) return;
+    global.__YKINAS_STOCK_LOADED__ = true;
 
-        // 서버(API)에서 DB 값을 읽어 직접 주입 완료된 설정 객체
-        const config = ${JSON.stringify(config)};
-        const bgColor = config.bgColor || '#ffe3e3';
-        const textColor = config.textColor || '#fa5252';
+    // DB 설정값이 없으면, 미니멀 디자인 기본값 적용
+    const config = ${JSON.stringify(config)};
+    const bgColor = config.bgColor || '#f8f9fa';
+    const borderColor = config.borderColor || '#e9ecef';
+    const textColor = config.textColor || '#333333';
+    const pointColor = config.pointColor || '#ff6b6b'; // 맥박 애니메이션 포인트 컬러
 
-        function renderStockWidget() {
-          const targetArea = document.querySelector('.xans-product-detail') || document.querySelector('.xans-product-info');
-          if (!targetArea) return;
-          if (document.getElementById('ykinas-stock-widget-container')) return;
+    // [핵심] 호스트 쇼핑몰 DOM 구조 파편화 대응 (Cascade Pattern)
+    function findTargetPlacement() {
+      // 1순위: 총 결제금액 상단 (구매 전환율이 가장 높은 최적의 위치)
+      const priceArea = document.querySelector('.xans-product-detail .totalPrice') || document.querySelector('#totalPrice');
+      if (priceArea) return { element: priceArea, position: 'beforebegin' };
 
-          const container = document.createElement('div');
-          container.id = 'ykinas-stock-widget-container';
-          
-          // [Isolation] Shadow DOM: 호스트 쇼핑몰의 글로벌 CSS 오염 완벽 방지
-          const shadowRoot = container.attachShadow({ mode: 'open' });
-          shadowRoot.innerHTML = \`
-            <style>
-              .ykinas-stock-alert {
-                background-color: \${bgColor};
-                color: \${textColor};
-                padding: 12px 16px;
-                border-radius: 6px;
-                font-size: 14px;
-                font-weight: 600;
-                text-align: center;
-                margin: 20px 0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 8px;
-                box-sizing: border-box;
-                width: 100%;
-              }
-              .pulse { animation: pulse 1.5s infinite; }
-              @keyframes pulse { 
-                0% { opacity: 1; } 
-                50% { opacity: 0.4; } 
-                100% { opacity: 1; } 
-              }
-            </style>
-            <div class="ykinas-stock-alert">
-              <span class="pulse">⏳</span> 품절 임박! 현재 소량의 재고만 남아있습니다.
-            </div>
-          \`;
-          
-          targetArea.insertAdjacentElement('beforeend', container);
-        }
+      // 2순위: 상품 정보 영역 (infoArea) 하단
+      const infoArea = document.querySelector('.infoArea') || document.querySelector('.xans-product-info');
+      if (infoArea) return { element: infoArea, position: 'beforeend' };
 
-        // [Edge Case] 카페24 동적 렌더링(비동기 옵션 로드 등) 대비 DOM 변경 감지
-        const observer = new MutationObserver((mutations, obs) => {
-          if (document.querySelector('.xans-product-detail')) {
-            renderStockWidget();
-            obs.disconnect(); 
+      // 3순위: 상품 상세 전체 래퍼 하단 (최후의 보루)
+      const detailArea = document.querySelector('.xans-product-detail');
+      if (detailArea) return { element: detailArea, position: 'beforeend' };
+
+      return null; // 타겟을 찾지 못함 (예외 처리)
+    }
+
+    function renderStockWidget() {
+      if (document.getElementById('ykinas-stock-widget-container')) return;
+
+      const target = findTargetPlacement();
+      if (!target) return; // 주입할 위치가 없으면 안전하게 렌더링 취소
+
+      const container = document.createElement('div');
+      container.id = 'ykinas-stock-widget-container';
+      
+      // Shadow DOM으로 캡슐화하여 쇼핑몰 CSS와 완벽 격리
+      const shadowRoot = container.attachShadow({ mode: 'open' });
+      shadowRoot.innerHTML = \`
+        <style>
+          .ykinas-stock-badge {
+            display: inline-flex; 
+            align-items: center; 
+            padding: 14px 16px;
+            background-color: \${bgColor}; 
+            border: 1px solid \${borderColor};
+            color: \${textColor};
+            border-radius: 4px; 
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: -0.5px;
+            margin: 10px 0 20px 0; 
+            width: 100%; 
+            box-sizing: border-box; 
+            font-family: 'Pretendard', 'Malgun Gothic', sans-serif;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
           }
-        });
+          .ykinas-pulse {
+            width: 6px; 
+            height: 6px; 
+            background-color: \${pointColor};
+            border-radius: 50%; 
+            margin-right: 10px; 
+            animation: pulse 2s infinite;
+          }
+          @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 \${pointColor}80; }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px \${pointColor}00; }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 \${pointColor}00; }
+          }
+          .ykinas-text {
+            opacity: 0.9;
+          }
+        </style>
+        <div class="ykinas-stock-badge">
+          <span class="ykinas-pulse"></span>
+          <span class="ykinas-text">품절 임박! 현재 소량의 재고만 남아있습니다.</span>
+        </div>
+      \`;
+      
+      // 동적으로 찾은 위치에 안전하게 삽입
+      target.element.insertAdjacentElement(target.position, container);
+    }
 
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', renderStockWidget);
-        } else {
-          renderStockWidget();
-        }
-        
-        // 상품 상세 DOM이 늦게 그려지는 스킨을 위해 감시 시작
-        observer.observe(document.body, { childList: true, subtree: true });
-      })(window);
-    `;
+    const observer = new MutationObserver((mutations, obs) => {
+      if (findTargetPlacement()) {
+        renderStockWidget();
+        obs.disconnect(); 
+      }
+    });
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', renderStockWidget);
+    } else {
+      renderStockWidget();
+    }
+    
+    observer.observe(document.body, { childList: true, subtree: true });
+  })(window);
+`;
 
     return res.status(200).send(scriptContent);
   } catch (error) {
     console.error('[YKINAS API Error]', error);
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    return res.status(500).send('console.error("[YKINAS] Failed to load module.");');
+    return res.status(500).send('console.error("[YKINAS] Module load failed.");');
   }
 }
