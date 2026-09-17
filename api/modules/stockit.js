@@ -45,13 +45,17 @@ export default async function handler(req, res) {
     const inventoryCache = new Map();
 
     async function fetchVariantInventory(productNo, variantCode) {
+      if (CLIENT_ID === 'YOUR_FRONT_CLIENT_ID' || !FRONT_API_KEY) {
+         console.error('[YKINAS] Security Block: Invalid Client ID or Front API Key.');
+         return null;
+      }
+
       if (inventoryCache.has(variantCode)) {
         return inventoryCache.get(variantCode);
       }
 
       try {
         const authHeader = 'Basic ' + btoa(CLIENT_ID + ':' + FRONT_API_KEY);
-        // 보안을 위해 Admin API가 아닌 Front API 경로 사용
         const url = '/api/v2/products/' + productNo + '/variants/' + variantCode + '/inventories';
         
         const response = await fetch(url, {
@@ -65,14 +69,14 @@ export default async function handler(req, res) {
         });
 
         if (!response.ok) {
-          if(response.status === 429) console.error('[YKINAS] Rate Limit Exceeded!');
+          if (response.status === 401) console.error('[YKINAS] 401 Unauthorized: API Key mismatched.');
+          if (response.status === 429) console.error('[YKINAS] 429 Rate Limit Exceeded!');
           throw new Error('API Error: ' + response.status);
         }
         
         const data = await response.json();
         const qty = data.inventory.quantity;
         
-        // 캐시에 저장
         inventoryCache.set(variantCode, qty);
         return qty;
       } catch (error) {
