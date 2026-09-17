@@ -45,46 +45,47 @@ export default async function handler(req, res) {
         const inventoryCache = new Map();
 
         async function fetchVariantInventory(productNo, variantCode) {
-          if (!CLIENT_ID || !FRONT_API_KEY) {
-             console.error('[YKINAS] Security Block: Invalid Front API Key.');
-             return null;
-          }
+      if (!CLIENT_ID || !FRONT_API_KEY) {
+         console.error('[YKINAS] Security Block: Invalid Front API Key.');
+         return null;
+      }
 
-          if (inventoryCache.has(variantCode)) {
-            return inventoryCache.get(variantCode);
-          }
+      if (inventoryCache.has(variantCode)) {
+        return inventoryCache.get(variantCode);
+      }
 
-          try {
-            const authHeader = 'Basic ' + btoa(CLIENT_ID + ':' + FRONT_API_KEY);
-            // 핵심 수정: 상대 경로 대신 API 전용 게이트웨이(.cafe24api.com) 절대 경로 사용
-            const url = 'https://' + MALL_ID + '.cafe24api.com/api/v2/products/' + productNo + '/variants/' + variantCode + '/inventories';
-            
-            const response = await fetch(url, {
-              method: 'GET',
-              headers: {
-                'Authorization': authHeader,
-                'Content-Type': 'application/json',
-                'X-Cafe24-Api-Version': API_VERSION,
-                'X-Cafe24-Client-Id': CLIENT_ID
-              }
-            });
-
-            if (!response.ok) {
-              if (response.status === 401) console.error('[YKINAS] 401 Unauthorized: Verify Client ID & Front API Key in Developer Center.');
-              if (response.status === 429) console.error('[YKINAS] 429 Rate Limit Exceeded!');
-              throw new Error('API Error: ' + response.status);
-            }
-            
-            const data = await response.json();
-            const qty = data.inventory.quantity;
-            
-            inventoryCache.set(variantCode, qty);
-            return qty;
-          } catch (error) {
-            console.error('[YKINAS] Fetch error:', error);
-            return null;
+      try {
+        const authHeader = 'Basic ' + btoa(CLIENT_ID + ':' + FRONT_API_KEY);
+        
+        // [수정 핵심] Admin 도메인이 아닌 쇼핑몰 Front 도메인을 타도록 상대 경로 원복
+        const url = '/api/v2/products/' + productNo + '/variants/' + variantCode + '/inventories';
+        
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Authorization': authHeader,
+            'Content-Type': 'application/json',
+            'X-Cafe24-Api-Version': API_VERSION,
+            'X-Cafe24-Client-Id': CLIENT_ID
           }
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) console.error('[YKINAS] 401 Unauthorized: 키값 오류 또는 앱 미설치 상태입니다.');
+          if (response.status === 429) console.error('[YKINAS] 429 Rate Limit Exceeded!');
+          throw new Error('API Error: ' + response.status);
         }
+        
+        const data = await response.json();
+        const qty = data.inventory.quantity;
+        
+        inventoryCache.set(variantCode, qty);
+        return qty;
+      } catch (error) {
+        console.error('[YKINAS] Fetch error:', error);
+        return null;
+      }
+    }
 
         function renderDynamicStockWidget(quantity) {
           let tier = null;
