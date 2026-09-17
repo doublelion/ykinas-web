@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 export default async function handler(req, res) {
   const { mall_id } = req.query;
 
+  // [Edge Case] mall_id 누락 방어
   if (!mall_id) {
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
     return res.status(200).send('console.warn("[YKINAS] mall_id is missing.");');
@@ -17,46 +18,53 @@ export default async function handler(req, res) {
       .single();
 
     if (error) throw error;
+
+    // DB 설정값 폴백 처리
     const config = data?.modules_config?.stock_indicator || { enabled: false };
 
+    // [성능 최적화] Vercel Edge Cache 적용
     res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
     res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
 
     if (!config.enabled) {
-      return res.status(200).send('console.log("[YKINAS] Stock Indicator is disabled.");');
+      return res.status(200).send('console.log("[YKINAS] Stock Indicator Module is disabled.");');
     }
 
+    // SSR for JS: 클라이언트에 렌더링될 실제 바닐라 JS
     const scriptContent = `
       (function (global) {
+        // [Idempotency] 중복 실행 방어
         if (global.__YKINAS_STOCK_LOADED__) return;
         global.__YKINAS_STOCK_LOADED__ = true;
 
         const injectedConfig = ${JSON.stringify(config)};
         const CLIENT_ID = injectedConfig.clientId || '';
         const FRONT_API_KEY = injectedConfig.frontApiKey || ''; 
-        const API_VERSION = '2025-12-01'; // 카페24 최신 규격 고정
+        const API_VERSION = '2025-12-01'; // 최신 API 버전 고정
         const MALL_ID = '${mall_id}';
         
+        // 미니멀 UI 상태 정의
         const STOCK_TIERS = {
           CRITICAL: { max: 3, color: '#ff6b6b', text: '품절 임박! 재고가 얼마 남지 않았습니다.' },
           WARNING:  { max: 10, color: '#fcca23', text: '주문량 증가로 여유 재고가 소진되고 있습니다.' }
         };
 
+        // [Architecture] N+1 문제 방어를 위한 인메모리 캐시
         const inventoryCache = new Map();
 
         async function fetchVariantInventory(productNo, variantCode) {
           if (!CLIENT_ID || !FRONT_API_KEY) {
-             console.error('[YKINAS] Security Block: API Key가 없습니다.');
+             console.error('[YKINAS] Auth Block: Front API Key가 DB에 없습니다.');
              return null;
           }
 
           if (inventoryCache.has(variantCode)) {
-            return inventoryCache.get(variantCode);
+            return inventoryCache.get(variantCode); // Cache Hit
           }
 
           try {
             const authHeader = 'Basic ' + btoa(CLIENT_ID + ':' + FRONT_API_KEY);
-            // 핵심: 반드시 .cafe24api.com 게이트웨이를 사용해야 Front API 인증이 동작합니다.
+            // Cafe24 Front API 전용 게이트웨이 호출
             const url = 'https://' + MALL_ID + '.cafe24api.com/api/v2/products/' + productNo + '/variants/' + variantCode + '/inventories';
             
             const response = await fetch(url, {
@@ -70,19 +78,15 @@ export default async function handler(req, res) {
             });
 
             if (!response.ok) {
-              if (response.status === 401) {
-                console.error('[YKINAS] 401 Unauthorized: 개발자센터의 Front API Key 불일치 또는 앱 미설치 상태입니다.');
-              }
-              if (response.status === 429) {
-                console.error('[YKINAS] 429 Rate Limit Exceeded!');
-              }
+              if (response.status === 401) console.error('[YKINAS] 401 Unauthorized: 해당 테스트몰에 앱 설치가 필요합니다.');
+              if (response.status === 429) console.error('[YKINAS] 429 Rate Limit Exceeded!');
               throw new Error('API Error: ' + response.status);
             }
             
             const data = await response.json();
             const qty = data.inventory.quantity;
             
-            inventoryCache.set(variantCode, qty);
+            inventoryCache.set(variantCode, qty); // Cache Miss -> Set
             return qty;
           } catch (error) {
             console.error('[YKINAS] Fetch error:', error);
@@ -97,11 +101,13 @@ export default async function handler(req, res) {
           
           const existingContainer = document.getElementById('ykinas-stock-widget-container');
           
+          // 재고 넉넉함(10개 초과) 또는 완전 품절(0) 시 UI 숨김
           if (!tier) {
             if (existingContainer) existingContainer.style.display = 'none';
             return;
           }
 
+          // 최적 렌더링 위치 탐색 (Cascade Pattern)
           const targetArea = document.querySelector('.xans-product-detail .totalPrice') 
                           || document.querySelector('.xans-product-option');
                           
@@ -116,6 +122,7 @@ export default async function handler(req, res) {
           
           container.style.display = 'block';
           
+          // [Isolation] 스킨 CSS 오염 방지
           let shadowRoot = container.shadowRoot || container.attachShadow({ mode: 'open' });
           
           shadowRoot.innerHTML = \`
@@ -145,6 +152,7 @@ export default async function handler(req, res) {
           \`;
         }
 
+        // [Architecture] 무의미한 API 연사를 막는 Debouncing 
         let debounceTimer;
         function debouncedCheckOptions(productNo) {
           clearTimeout(debounceTimer);
@@ -168,6 +176,7 @@ export default async function handler(req, res) {
           const optionArea = document.querySelector('.xans-product-option');
           if (!optionArea) return;
 
+          // Event Delegation 방식을 통한 성능 최적화
           optionArea.addEventListener('change', () => debouncedCheckOptions(productNo), true);
           optionArea.addEventListener('click', () => debouncedCheckOptions(productNo), true);
         }
