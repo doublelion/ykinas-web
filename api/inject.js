@@ -1,86 +1,65 @@
+// api/inject.js
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
-
 export default async function handler(req, res) {
+  const { mall_id } = req.query;
+
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+
+  // [Edge Case] mall_id 누락 방어
+  if (!mall_id) {
+    return res.status(200).send('console.warn("[YKINAS] mall_id is missing.");');
+  }
+
   try {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=0, must-revalidate');
-    res.setHeader('X-Cafe24-Api-Version', '2025-12-01');
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    const clientReferer = req.headers['referer'] || '';
-    const clientMallId = req.query.mall_id;
-
-    // 모듈 권한 없음/에러 시 공통적으로 주입될 스크립트 (기존 로직 유지)
-    const sendDisabledScript = (reason) => {
-      return res.status(200).send(`
-        (function() {
-          console.warn('[YKINAS Modules] Disabled: ${reason}');
-          // SignIt 클린업
-          if (window.YkinasLogin) {
-            window.YkinasLogin.open = function() {};
-            window.YkinasLogin.close = function() {};
-          }
-          const existingHost = document.getElementById('ykinas-global-drawer-root');
-          if (existingHost) existingHost.remove();
-          const existingIframe = document.getElementById('ykinas_proxy_iframe');
-          if (existingIframe) existingIframe.remove();
-        })();
-      `);
-    };
-
-    if (!clientMallId || clientMallId === '{$mall_id}') {
-      return sendDisabledScript('Mall ID is missing or invalid placeholder.');
-    }
-
-    // DB 조회: 새롭게 추가된 modules_config(JSONB) 포함
+    // 라이선스 및 통합 설정(modules_config) 일괄 조회
     const { data: license, error } = await supabase
       .from('skin_licenses')
-      .select('id, is_active, modules_config, skin_allowed_domains ( domain )')
-      .eq('mall_id', clientMallId)
+      .select('is_active, modules_config')
+      .eq('mall_id', mall_id)
       .maybeSingle();
 
     if (error || !license || !license.is_active) {
-      return sendDisabledScript('Unauthorized or invalid license.');
+      return res.status(200).send('console.warn("[YKINAS] Invalid or inactive license.");');
     }
 
-    // 도메인 검증 로직 (기존 코드 완벽 유지)
-    const allowedDomains = license.skin_allowed_domains ? license.skin_allowed_domains.map(d => d.domain) : [];
-    const isDomainMatch = allowedDomains.length === 0 || allowedDomains.some(domain => clientReferer.includes(domain)) || clientReferer === '';
-
-    if (!isDomainMatch) {
-      return sendDisabledScript('Domain mismatch.');
-    }
-
+    // DB에서 조회된 모듈 설정들 (ex: { stockit: { enabled: true, ... }, signit: { ... } })
     const config = license.modules_config || {};
-    const baseUrl = 'https://ykinas-web.vercel.app/modules';
+    const baseUrl = 'https://ykinas-web.vercel.app/modules'; // 모듈들이 위치한 public/modules 폴더 경로
 
-    // 통합 로더 스크립트 생성 (브라우저에서 실행됨)
-    const injectedScript = `
+    // [성능 최적화] Vercel Edge Cache 적용
+    res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
+
+    // 🚀 진정한 통합 부트스트래퍼 스크립트 (클라이언트에 반환됨)
+    const loaderScript = `
       (function(global) {
+        // [Idempotency] 로더 중복 실행 방어
         if (global.__YKINAS_BOOTSTRAPPER_LOADED__) return;
         global.__YKINAS_BOOTSTRAPPER_LOADED__ = true;
 
         const mallConfig = ${JSON.stringify(config)};
         const baseUrl = '${baseUrl}';
 
+        // 개별 모듈 스크립트 동적 주입 함수
         function loadModule(moduleName, moduleConfig) {
           const script = document.createElement('script');
-          script.src = baseUrl + '/' + moduleName + '.js';
+          script.src = baseUrl + '/' + moduleName + '.js'; 
           script.defer = true;
-          // 개별 모듈로 설정값 전달
+          
+          // 각 모듈(stockit.js 등)이 사용할 수 있도록 설정값을 dataset에 안전하게 직렬화하여 전달
           script.dataset.config = JSON.stringify(moduleConfig);
+          
           script.onerror = function() {
             console.error('[YKINAS] Failed to load module: ' + moduleName);
           };
+          
           document.body.appendChild(script);
         }
 
-        // 활성화된 모듈만 자동 주입
+        // DB에 활성화(enabled: true)된 모듈만 순회하며 병렬 로드
         Object.keys(mallConfig).forEach(function(moduleName) {
           const moduleConfig = mallConfig[moduleName];
           if (moduleConfig && moduleConfig.enabled) {
@@ -90,9 +69,10 @@ export default async function handler(req, res) {
       })(window);
     `;
 
-    return res.status(200).send(injectedScript);
-  } catch (err) {
-    console.error(err);
-    return res.status(500).send('console.error("[YKINAS] Initialization error");');
+    return res.status(200).send(loaderScript);
+
+  } catch (error) {
+    console.error('[YKINAS API Error]', error);
+    return res.status(500).send('console.error("[YKINAS] Bootstrapper load failed.");');
   }
 }
