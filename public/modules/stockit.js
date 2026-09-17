@@ -2,11 +2,12 @@
 (function (global) {
   'use strict';
 
-  // [Idempotency] 개별 모듈 중복 실행 방어
+  // [Idempotency] 중복 실행 방어
   if (global.__YKINAS_STOCK_LOADED__) return;
   global.__YKINAS_STOCK_LOADED__ = true;
 
-  // 부트스트래퍼(inject.js)가 넘겨준 설정값 파싱
+  console.log('[YKINAS Stockit] 모듈 초기화 시작');
+
   const currentScript = document.currentScript;
   let config = {};
   try {
@@ -16,34 +17,36 @@
     return;
   }
 
-  // DB(modules_config)에서 가져온 인증 키
   const CLIENT_ID = config.clientId || '';
   const FRONT_API_KEY = config.frontApiKey || '';
-  const API_VERSION = '2025-12-01';
-  const MALL_ID = CAFE24API.MALL_ID || window.CAFE24?.MALL_ID || ''; // 카페24 전역 객체에서 자동 추출
+  const API_VERSION = '2025-12-01'; //
+  const MALL_ID = window.CAFE24API?.MALL_ID || window.CAFE24?.MALL_ID || '';
 
-  // 미니멀 UI 상태 정의
+  // 💡 [수정됨] 디버깅 및 테스트를 위해 SAFE 티어 추가 (항상 노출되도록)
   const STOCK_TIERS = {
     CRITICAL: { max: 3, color: '#ff6b6b', text: '품절 임박! 재고가 얼마 남지 않았습니다.' },
-    WARNING: { max: 10, color: '#fcca23', text: '주문량 증가로 여유 재고가 소진되고 있습니다.' }
+    WARNING: { max: 10, color: '#fcca23', text: '주문량 증가로 여유 재고가 소진되고 있습니다.' },
+    SAFE: { max: 99999, color: '#20c997', text: '[TEST] 재고가 여유 있습니다.' }
   };
 
-  // [Architecture] N+1 문제 방어를 위한 인메모리 캐시
   const inventoryCache = new Map();
 
   async function fetchVariantInventory(productNo, variantCode) {
     if (!CLIENT_ID || !FRONT_API_KEY || !MALL_ID) {
-      console.error('[YKINAS Stockit] Auth Block: API Key 또는 Mall ID가 누락되었습니다.');
+      console.error('[YKINAS Stockit] Auth Block: 인증키 또는 MALL_ID 누락');
       return null;
     }
 
     if (inventoryCache.has(variantCode)) {
-      return inventoryCache.get(variantCode); // Cache Hit
+      console.log(`[YKINAS Stockit] 캐시된 재고 불러옴: ${variantCode} -> ${inventoryCache.get(variantCode)}개`);
+      return inventoryCache.get(variantCode);
     }
 
     try {
       const authHeader = 'Basic ' + btoa(CLIENT_ID + ':' + FRONT_API_KEY);
-      const url = 'https://' + MALL_ID + '.cafe24api.com/api/v2/products/' + productNo + '/variants/' + variantCode + '/inventories';
+      const url = `https://${MALL_ID}.cafe24api.com/api/v2/products/${productNo}/variants/${variantCode}/inventories`;
+
+      console.log(`[YKINAS Stockit] Front API 호출 중... (품번:${productNo}, 옵션:${variantCode})`);
 
       const response = await fetch(url, {
         method: 'GET',
@@ -55,12 +58,13 @@
         }
       });
 
-      if (!response.ok) throw new Error('API Error: ' + response.status);
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
       const data = await response.json();
       const qty = data.inventory.quantity;
 
-      inventoryCache.set(variantCode, qty); // Cache Miss -> Set
+      console.log(`[YKINAS Stockit] API 응답 완료! 현재 재고: ${qty}개`);
+      inventoryCache.set(variantCode, qty);
       return qty;
     } catch (error) {
       console.error('[YKINAS Stockit] Fetch error:', error);
@@ -70,20 +74,19 @@
 
   function renderDynamicStockWidget(quantity) {
     let tier = null;
-    if (quantity > 0 && quantity <= STOCK_TIERS.CRITICAL.max) tier = STOCK_TIERS.CRITICAL;
-    else if (quantity > STOCK_TIERS.CRITICAL.max && quantity <= STOCK_TIERS.WARNING.max) tier = STOCK_TIERS.WARNING;
+    if (quantity <= STOCK_TIERS.CRITICAL.max) tier = STOCK_TIERS.CRITICAL;
+    else if (quantity <= STOCK_TIERS.WARNING.max) tier = STOCK_TIERS.WARNING;
+    else tier = STOCK_TIERS.SAFE; // 무조건 렌더링되도록 처리
 
     const existingContainer = document.getElementById('ykinas-stock-widget-container');
-
-    if (!tier) {
-      if (existingContainer) existingContainer.style.display = 'none';
-      return;
-    }
 
     const targetArea = document.querySelector('.xans-product-detail .totalPrice')
       || document.querySelector('.xans-product-option');
 
-    if (!targetArea) return;
+    if (!targetArea) {
+      console.warn('[YKINAS Stockit] 위젯을 삽입할 타겟(.totalPrice 또는 .xans-product-option)을 찾지 못했습니다.');
+      return;
+    }
 
     let container = existingContainer;
     if (!container) {
@@ -121,13 +124,17 @@
         <div class="ykinas-text">${tier.text} <span class="ykinas-qty">(${quantity}개)</span></div>
       </div>
     `;
+    console.log('[YKINAS Stockit] 위젯 렌더링 완료');
   }
 
   let debounceTimer;
   function debouncedCheckOptions(productNo) {
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(async () => {
+      // 💡 카페24는 옵션을 선택 완료해야 DOM에 option_box_id 가 생성됩니다.
       const inputs = document.querySelectorAll('input[name="option_box_id"], input[id^="option_box1_id"]');
+
+      console.log(`[YKINAS Stockit] DOM 업데이트 감지. 선택된 옵션 input 개수: ${inputs.length}`);
 
       inputs.forEach(async (input) => {
         const variantCode = input.value;
@@ -136,16 +143,25 @@
         const qty = await fetchVariantInventory(productNo, variantCode);
         if (qty !== null) renderDynamicStockWidget(qty);
       });
-    }, 300);
+    }, 300); // UI 생성 대기를 위해 0.3초 딜레이
   }
 
   function initModule() {
     const productNo = window.iProductNo || document.querySelector('meta[property="product:productId"]')?.content;
-    if (!productNo) return;
+    if (!productNo) {
+      console.warn('[YKINAS Stockit] 상품 번호(productNo)를 찾을 수 없습니다.');
+      return;
+    }
 
     const optionArea = document.querySelector('.xans-product-option');
-    if (!optionArea) return;
+    if (!optionArea) {
+      console.warn('[YKINAS Stockit] 옵션 영역(.xans-product-option)을 찾을 수 없습니다.');
+      return;
+    }
 
+    console.log(`[YKINAS Stockit] 이벤트 리스너 등록 완료 (상품번호: ${productNo}) - 옵션을 선택해보세요!`);
+
+    // 카페24 특성상 클릭이나 체인지 이벤트로 DOM 트리가 늦게 변할 수 있으므로 위임(Delegation) 사용
     optionArea.addEventListener('change', () => debouncedCheckOptions(productNo), true);
     optionArea.addEventListener('click', () => debouncedCheckOptions(productNo), true);
   }
