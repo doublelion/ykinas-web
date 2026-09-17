@@ -21,8 +21,7 @@
   const FRONT_API_KEY = config.frontApiKey || '';
   const API_VERSION = '2025-12-01'; //
   const MALL_ID = window.CAFE24API?.MALL_ID || window.CAFE24?.MALL_ID || '';
-
-  // 💡 [수정됨] 디버깅 및 테스트를 위해 SAFE 티어 추가 (항상 노출되도록)
+  // 💡 [수정] 프론트 키 삭제. 이제 서버가 알아서 합니다.
   const STOCK_TIERS = {
     CRITICAL: { max: 3, color: '#ff6b6b', text: '품절 임박! 재고가 얼마 남지 않았습니다.' },
     WARNING: { max: 10, color: '#fcca23', text: '주문량 증가로 여유 재고가 소진되고 있습니다.' },
@@ -43,27 +42,18 @@
     }
 
     try {
-      const authHeader = 'Basic ' + btoa(CLIENT_ID + ':' + FRONT_API_KEY);
-      const url = `https://${MALL_ID}.cafe24api.com/api/v2/products/${productNo}/variants/${variantCode}/inventories`;
+      const proxyUrl = `https://ykinas-web.vercel.app/api/stockit?mall_id=${MALL_ID}&product_no=${productNo}&variant_code=${variantCode}`;
 
-      console.log(`[YKINAS Stockit] Front API 호출 중... (품번:${productNo}, 옵션:${variantCode})`);
+      console.log(`[YKINAS Stockit] Backend Proxy 호출 중...`);
 
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Authorization': authHeader,
-          'Content-Type': 'application/json',
-          'X-Cafe24-Api-Version': API_VERSION,
-          'X-Cafe24-Client-Id': CLIENT_ID
-        }
-      });
+      const response = await fetch(proxyUrl, { method: 'GET' });
 
-      if (!response.ok) throw new Error(`API Error: ${response.status}`);
+      if (!response.ok) throw new Error(`Proxy Error: ${response.status}`);
 
       const data = await response.json();
-      const qty = data.inventory.quantity;
+      const qty = data.quantity;
 
-      console.log(`[YKINAS Stockit] API 응답 완료! 현재 재고: ${qty}개`);
+      console.log(`[YKINAS Stockit] 응답 완료! 현재 재고: ${qty}개`);
       inventoryCache.set(variantCode, qty);
       return qty;
     } catch (error) {
