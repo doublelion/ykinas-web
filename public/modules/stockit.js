@@ -1,4 +1,4 @@
-// public/modules/stockit.js (Full-stack Gidiper - Final Optimizer)
+// public/modules/stockit.js (Final Fix - 톤앤매너 및 차감 로직 최적화)
 (function (global) {
   'use strict';
   if (global.__YKINAS_STOCK_LOADED__) return;
@@ -6,11 +6,13 @@
 
   const MALL_ID = window.CAFE24API?.MALL_ID || window.CAFE24?.MALL_ID || '';
   
+  // 💡 [기획/디자인] 톤앤매너 수정 및 예외 상태(OVER_LIMIT) 추가
   const STOCK_TIERS = {
-    SOLDOUT: { max: 0, color: '#868e96', text: '상품이 모두 소진되었습니다.' },
+    SOLDOUT: { color: '#868e96', text: '현재 품절된 상품입니다.' },
+    OVER_LIMIT: { color: '#ff6b6b', text: '선택하신 수량이 최대 구매 가능 수량입니다.' },
     CRITICAL: { max: 3, color: '#ff6b6b', text: '품절 임박! 재고가 얼마 남지 않았습니다.' },
     WARNING: { max: 10, color: '#fcca23', text: '주문량 증가로 여유 재고가 소진되고 있습니다.' },
-    SAFE: { max: 99999, color: '#20c997', text: '[TEST] 재고가 여유 있습니다.' }
+    SAFE: { max: 99999, color: '#20c997', text: '재고가 여유롭게 준비되어 있습니다.' } 
   };
 
   let globalStockMap = {};
@@ -30,15 +32,31 @@
     }
   }
 
-  function renderDynamicStockWidget(quantity) {
+  function renderDynamicStockWidget(serverStock, userSelectedQty) {
     let tier = STOCK_TIERS.SAFE;
-    if (quantity <= 0) tier = STOCK_TIERS.SOLDOUT; // 음수 방지 포함
-    else if (quantity <= STOCK_TIERS.CRITICAL.max) tier = STOCK_TIERS.CRITICAL;
-    else if (quantity <= STOCK_TIERS.WARNING.max) tier = STOCK_TIERS.WARNING;
+    let displayQty = 0;
+    let isPulse = true;
+
+    // 💡 [프론트엔드 핵심 로직] 4가지 상태에 따른 완벽한 분기 처리
+    if (serverStock <= 0) {
+      // 1. 아예 재고가 없는 경우
+      tier = STOCK_TIERS.SOLDOUT;
+      displayQty = 0;
+      isPulse = false; // 품절 시 펄스 애니메이션 중지
+    } else if (userSelectedQty > serverStock) {
+      // 2. 남은 재고보다 많은 수량을 선택한 경우 (오해 방지)
+      tier = STOCK_TIERS.OVER_LIMIT;
+      displayQty = serverStock; // 실제 최대치 고정 노출
+      isPulse = true;
+    } else {
+      // 3. 정상적인 선택: 첫 1개는 차감하지 않고, 추가 수량부터 1개씩 차감
+      displayQty = serverStock - userSelectedQty + 1;
+      
+      if (displayQty <= STOCK_TIERS.CRITICAL.max) tier = STOCK_TIERS.CRITICAL;
+      else if (displayQty <= STOCK_TIERS.WARNING.max) tier = STOCK_TIERS.WARNING;
+    }
 
     let container = document.getElementById('ykinas-stock-widget-container');
-    
-    // 💡 [수정] 위젯 삽입 타겟을 totalPrice로 명시하고, 찾지 못하면 대체재 탐색
     const targetArea = document.getElementById('totalPrice') || document.querySelector('.totalPrice') || document.querySelector('.xans-product-detail');
 
     if (!targetArea) return;
@@ -46,7 +64,6 @@
     if (!container) {
       container = document.createElement('div');
       container.id = 'ykinas-stock-widget-container';
-      // 💡 [수정] totalPrice 요소의 '바로 위(beforebegin)'에 삽입하여 시선 흐름 최적화
       targetArea.insertAdjacentElement('beforebegin', container);
     }
     
@@ -59,21 +76,19 @@
           display: flex; align-items: center; padding: 12px 16px; 
           background-color: #fafafa; border: 1px solid #eeeeee; border-radius: 4px; 
           width: 100%; box-sizing: border-box; transition: all 0.2s ease-in-out; 
-          margin-top: 10px; /* 모바일 기본 마진 */
-          margin-bottom: 10px;
+          margin-top: 10px; margin-bottom: 10px;
         }
-        /* 💡 [수정] 데스크탑(768px 이상)일 때 margin-top 20px 적용 */
         @media (min-width: 768px) {
           .ykinas-stock-wrapper { margin-top: 20px; margin-bottom: 20px; }
         }
-        .ykinas-dot { width: 6px; height: 6px; background-color: ${tier.color}; border-radius: 50%; margin-right: 12px; ${quantity > 0 ? 'animation: pulse 2s infinite;' : ''} }
+        .ykinas-dot { width: 6px; height: 6px; background-color: ${tier.color}; border-radius: 50%; margin-right: 12px; ${isPulse ? 'animation: pulse 2s infinite;' : ''} }
         @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 ${tier.color}80; } 70% { transform: scale(1.2); box-shadow: 0 0 0 6px ${tier.color}00; } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 ${tier.color}00; } }
-        .ykinas-text { font-size: 13px; color: #555; font-family: sans-serif; }
+        .ykinas-text { font-size: 13px; color: #555; font-family: sans-serif; line-height: 1.4; }
         .ykinas-qty { font-weight: bold; color: #111; margin-left: 4px; }
       </style>
       <div class="ykinas-stock-wrapper">
         <div class="ykinas-dot"></div>
-        <div class="ykinas-text">${tier.text} <span class="ykinas-qty">(${Math.max(0, quantity)}개)</span></div>
+        <div class="ykinas-text">${tier.text} ${serverStock > 0 ? `<span class="ykinas-qty">(${displayQty}개)</span>` : ''}</div>
       </div>
     `;
   }
@@ -82,33 +97,28 @@
     const inputs = document.querySelectorAll('input[name="option_box_id"], input[id^="option_box1_id"]');
     const container = document.getElementById('ykinas-stock-widget-container');
     
-    // 1. 다중 옵션 리셋 대처: 옵션이 하나도 없으면 완벽히 숨김 처리
     if (inputs.length === 0) {
        if (container) container.style.display = 'none';
        return;
     }
 
-    // 2. 여러 옵션 중 가장 마지막에 상호작용한(최신) 옵션 기준
     const lastInput = inputs[inputs.length - 1];
     const variantCode = lastInput.value;
 
     if (variantCode && globalStockMap[variantCode] !== undefined) {
       const serverStock = globalStockMap[variantCode];
-      let userSelectedQty = 0; // 고객이 추가한 수량
+      let userSelectedQty = 1; // 💡 기본 수량 1로 초기화
 
-      // 3. 💡 [로직 추가] 카페24 DOM 구조를 타고 올라가 고객이 입력한 수량 파악
-      // 카페24 스킨별로 구조가 다르므로 tr, tbody, div 등 범용적인 부모 컨테이너 탐색
       const parentRow = lastInput.closest('tr, tbody, div.option_box_wrap, div.xans-product-option') || lastInput.parentElement;
       if (parentRow) {
         const qtyInput = parentRow.querySelector('input[id*="quantity"], input[name*="quantity"]');
         if (qtyInput) {
-          userSelectedQty = parseInt(qtyInput.value, 10) || 1; // 값을 읽거나 기본값 1
+          userSelectedQty = parseInt(qtyInput.value, 10) || 1;
         }
       }
 
-      // 4. 💡 [수량 0 만들기 로직] (서버 가용재고) - (고객 선택 수량) 계산하여 노출
-      const displayStock = serverStock - userSelectedQty;
-      renderDynamicStockWidget(displayStock);
+      // 두 값을 독립적으로 넘겨 render 함수 내에서 정확히 비교하도록 수정
+      renderDynamicStockWidget(serverStock, userSelectedQty);
     }
   }
 
@@ -120,7 +130,6 @@
 
     const observeTarget = document.querySelector('.xans-product-detail') || document.body;
     
-    // 1. DOM 옵션 박스 추가/삭제 실시간 감지
     const observer = new MutationObserver((mutations) => {
       let shouldUpdate = false;
       mutations.forEach(mutation => { if (mutation.type === 'childList') shouldUpdate = true; });
@@ -128,9 +137,7 @@
     });
     observer.observe(observeTarget, { childList: true, subtree: true });
 
-    // 2. 수량 증감 버튼 클릭 및 직접 입력 시 즉각 반응
     observeTarget.addEventListener('click', (e) => {
-      // 수량 증감 버튼류를 클릭했을 때 딜레이(50ms)를 주어 카페24 스크립트가 Input 값을 바꿀 시간을 벌어줌
       setTimeout(instantCheckOptions, 50);
     });
     observeTarget.addEventListener('input', (e) => {
