@@ -142,29 +142,48 @@
     }, 300); // UI 생성 대기를 위해 0.3초 딜레이
   }
 
-  function initModule() {
-    const productNo = window.iProductNo || document.querySelector('meta[property="product:productId"]')?.content;
-    if (!productNo) {
-      console.warn('[YKINAS Stockit] 상품 번호(productNo)를 찾을 수 없습니다.');
-      return;
+  let globalStockMap = {}; // 전체 재고 캐시
+
+  async function preFetchAllInventory(productNo) {
+    if (!MALL_ID) return;
+    const proxyUrl = `https://ykinas-web.vercel.app/api/stockit?mall_id=${MALL_ID}&product_no=${productNo}`;
+
+    try {
+      const response = await fetch(proxyUrl, { method: 'GET' });
+      if (response.ok) {
+        const data = await response.json();
+        globalStockMap = data.stockMap || {};
+        console.log('[YKINAS Stockit] 모든 옵션 재고 Pre-fetch 완료:', globalStockMap);
+      }
+    } catch (error) {
+      console.error('[YKINAS Stockit] Pre-fetch 에러:', error);
     }
-
-    const optionArea = document.querySelector('.xans-product-option');
-    if (!optionArea) {
-      console.warn('[YKINAS Stockit] 옵션 영역(.xans-product-option)을 찾을 수 없습니다.');
-      return;
-    }
-
-    console.log(`[YKINAS Stockit] 이벤트 리스너 등록 완료 (상품번호: ${productNo}) - 옵션을 선택해보세요!`);
-
-    // 카페24 특성상 클릭이나 체인지 이벤트로 DOM 트리가 늦게 변할 수 있으므로 위임(Delegation) 사용
-    optionArea.addEventListener('change', () => debouncedCheckOptions(productNo), true);
-    optionArea.addEventListener('click', () => debouncedCheckOptions(productNo), true);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initModule);
-  } else {
-    initModule();
+  // 기존 fetchVariantInventory를 대체하는 즉각 렌더링 함수
+  function instantCheckOptions() {
+    const inputs = document.querySelectorAll('input[name="option_box_id"], input[id^="option_box1_id"]');
+    inputs.forEach((input) => {
+      const variantCode = input.value;
+      if (variantCode && globalStockMap[variantCode] !== undefined) {
+        // 💡 네트워크 호출 없이 즉시 렌더링
+        renderDynamicStockWidget(globalStockMap[variantCode]);
+      }
+    });
+  }
+
+  function initModule() {
+    const productNo = window.iProductNo || document.querySelector('meta[property="product:productId"]')?.content;
+    if (!productNo) return;
+
+    const optionArea = document.querySelector('.xans-product-option');
+    if (!optionArea) return;
+
+    // 1. 페이지 로드 즉시 비동기로 전체 재고 가져오기
+    preFetchAllInventory(productNo);
+
+    // 2. 옵션 클릭 시 딜레이 없이 즉시 UI 업데이트
+    optionArea.addEventListener('change', instantCheckOptions, true);
+    optionArea.addEventListener('click', () => setTimeout(instantCheckOptions, 50), true); // UI 생성 직후 렌더링
   }
 })(window);
