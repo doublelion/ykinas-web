@@ -84,7 +84,27 @@ serve(async (req: Request) => {
 
     if (dbError) throw dbError;
 
-    const successHtml = "[" + mall_id + "] Cafe24 인증이 완료되었습니다. 창을 닫아주세요.";
+    const successHtml = `
+  <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; background:#f9fafb; margin:0; }
+        .box { text-align:center; padding: 30px; background:#fff; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-top: 4px solid #10b981; }
+        h2 { color:#111; margin-top:0; font-size: 20px; }
+        p { color:#4b5563; font-size: 14px; line-height: 1.5; }
+        .mall-id { font-weight: bold; color: #10b981; }
+      </style>
+    </head>
+    <body>
+      <div class="box">
+        <h2>앱 연동 완료</h2>
+        <p><span class="mall-id">[${mall_id}]</span> 상점의 데이터 접근 권한이 승인되었습니다.</p>
+        <p style="font-size:12px; color:#9ca3af; margin-top:20px;">보안 정책으로 인해 창이 자동으로 닫히지 않습니다.<br>직접 탭을 닫고 쇼핑몰 관리자로 돌아가주세요.</p>
+      </div>
+    </body>
+  </html>
+`;
 return new Response(successHtml, { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 200 });
 
 } catch (error: any) {
