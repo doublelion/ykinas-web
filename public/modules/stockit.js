@@ -1,8 +1,11 @@
-// public/modules/stockit.js (Full-stack Gidiper - Layout & Margin Override Complete)
+// public/modules/stockit.js (Full-stack Gidiper - Telemetry & Robust Extraction)
 (function (global) {
   'use strict';
   if (global.__YKINAS_STOCK_LOADED__) return;
   global.__YKINAS_STOCK_LOADED__ = true;
+
+  // 💡 1단계 관문: 스크립트가 정상 주입되었는지 확인하는 녹색 인디케이터
+  console.log('%c[YKINAS Stockit] 🚀 Module Initializing...', 'color: #20c997; font-weight: bold; font-size: 12px;');
 
   const MALL_ID = window.CAFE24API?.MALL_ID || window.CAFE24?.MALL_ID || '';
 
@@ -16,42 +19,36 @@
 
   let globalStockMap = {};
 
-  // 💡 [프론트엔드 핵심] 바깥쪽 카페24 #totalProducts 마진을 강제 0으로 오버라이드하는 스타일 주입
   function injectGlobalOverrideStyle() {
     const overrideStyleId = 'ykinas-stock-global-override';
     if (!document.getElementById(overrideStyleId)) {
       const styleEl = document.createElement('style');
       styleEl.id = overrideStyleId;
-      styleEl.innerHTML = `
-        .xans-product-detail .infoArea #totalProducts {
-          margin-bottom: 0 !important;
-        }
-      `;
+      styleEl.innerHTML = `.xans-product-detail .infoArea #totalProducts { margin-bottom: 0 !important; }`;
       document.head.appendChild(styleEl);
     }
   }
 
-  // public/modules/stockit.js 내부 Fetch 함수 교체
   async function preFetchAllInventory(productNo) {
     if (!MALL_ID) return;
     const proxyUrl = `https://ykinas-web.vercel.app/api/stockit?mall_id=${MALL_ID}&product_no=${productNo}`;
 
     try {
+      console.log(`[YKINAS Stockit] 📡 서버에 재고 데이터 요청 중... (상품번호: ${productNo})`);
       const response = await fetch(proxyUrl, { method: 'GET' });
+      const contentType = response.headers.get("content-type") || "";
 
-      // 💡 [핵심 방어 로직] 응답 헤더가 JSON일 때만 파싱 시도
-      const contentType = response.headers.get("content-type");
-      if (response.ok && contentType && contentType.includes("application/json")) {
+      if (response.ok && contentType.includes("application/json")) {
         const data = await response.json();
         globalStockMap = data.stockMap || {};
+        // 💡 2단계 관문: 서버에서 성공적으로 받아온 재고 맵핑 데이터 노출
+        console.log('%c[YKINAS Stockit] 📦 데이터 로드 성공:', 'color: #3b82f6; font-weight: bold;', globalStockMap);
         instantCheckOptions();
       } else {
-        // JSON이 아니거나 4xx/5xx 에러인 경우 조용히 무시 (Silent Fail)
-        console.warn('[YKINAS Stockit] 재고 데이터를 불러오지 못했거나 권한이 없습니다.');
+        console.warn(`[YKINAS Stockit] ⚠️ API 거부 또는 JSON 에러. 상태코드: ${response.status}`);
       }
     } catch (error) {
-      // 네트워크 단절 등 치명적 에러 발생 시에도 UI 렌더링에 영향을 주지 않음
-      console.warn('[YKINAS Stockit] Fetch Error 발생');
+      console.error('[YKINAS Stockit] 🚨 네트워크 페칭 에러:', error);
     }
   }
 
@@ -61,13 +58,9 @@
     let isPulse = true;
 
     if (serverStock <= 0) {
-      tier = STOCK_TIERS.SOLDOUT;
-      displayQty = 0;
-      isPulse = false;
+      tier = STOCK_TIERS.SOLDOUT; displayQty = 0; isPulse = false;
     } else if (userSelectedQty > serverStock) {
-      tier = STOCK_TIERS.OVER_LIMIT;
-      displayQty = serverStock;
-      isPulse = true;
+      tier = STOCK_TIERS.OVER_LIMIT; displayQty = serverStock; isPulse = true;
     } else {
       displayQty = serverStock - userSelectedQty + 1;
       if (displayQty <= STOCK_TIERS.CRITICAL.max) tier = STOCK_TIERS.CRITICAL;
@@ -85,35 +78,20 @@
       targetArea.insertAdjacentElement('beforebegin', container);
     }
 
-    // 위젯 노출 시 전역 마진 오버라이드 활성화
     injectGlobalOverrideStyle();
     container.style.display = 'block';
 
     let shadowRoot = container.shadowRoot || container.attachShadow({ mode: 'open' });
     shadowRoot.innerHTML = `
       <style>
-        .ykinas-stock-wrapper { 
-          display: flex; align-items: center; padding: 12px 16px; 
-          background-color: #fafafa; border: 1px solid #eeeeee; border-radius: 4px; 
-          width: 100%; box-sizing: border-box; transition: all 0.2s ease-in-out; 
-          margin-top: 10px; margin-bottom: 10px;
-        }
-        /* 💡 [수정] 데스크탑(768px 이상) margin-top: 0, margin-bottom: 40px 적용 */
-        @media (min-width: 768px) {
-          .ykinas-stock-wrapper { 
-            margin-top: 0; 
-            margin-bottom: 40px; 
-          }
-        }
+        .ykinas-stock-wrapper { display: flex; align-items: center; padding: 12px 16px; background-color: #fafafa; border: 1px solid #eeeeee; border-radius: 4px; width: 100%; box-sizing: border-box; transition: all 0.2s ease-in-out; margin-top: 10px; margin-bottom: 10px; }
+        @media (min-width: 768px) { .ykinas-stock-wrapper { margin-top: 0; margin-bottom: 40px; } }
         .ykinas-dot { width: 6px; height: 6px; background-color: ${tier.color}; border-radius: 50%; margin-right: 12px; ${isPulse ? 'animation: pulse 2s infinite;' : ''} }
         @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 ${tier.color}80; } 70% { transform: scale(1.2); box-shadow: 0 0 0 6px ${tier.color}00; } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 ${tier.color}00; } }
         .ykinas-text { font-size: 13px; color: #555; font-family: sans-serif; line-height: 1.4; }
         .ykinas-qty { font-weight: bold; color: #111; margin-left: 4px; }
       </style>
-      <div class="ykinas-stock-wrapper">
-        <div class="ykinas-dot"></div>
-        <div class="ykinas-text">${tier.text} ${serverStock > 0 ? `<span class="ykinas-qty">(${displayQty}개)</span>` : ''}</div>
-      </div>
+      <div class="ykinas-stock-wrapper"><div class="ykinas-dot"></div><div class="ykinas-text">${tier.text} ${serverStock > 0 ? `<span class="ykinas-qty">(${displayQty}개)</span>` : ''}</div></div>
     `;
   }
 
@@ -129,16 +107,18 @@
     const lastInput = inputs[inputs.length - 1];
     const targetVariantCode = lastInput.value;
 
+    // 💡 3단계 관문: 고객이 선택한 옵션 코드 추적
+    console.log(`[YKINAS Stockit] 🎯 선택된 타겟 옵션 코드:`, targetVariantCode);
+
     if (!targetVariantCode || globalStockMap[targetVariantCode] === undefined) {
+      console.warn(`[YKINAS Stockit] ⚠️ 주의: 선택된 옵션 코드(${targetVariantCode})가 서버 재고 데이터에 없습니다.`);
       if (container) container.style.display = 'none';
       return;
     }
 
     let totalUserQtyForTarget = 0;
-
     inputs.forEach((input, index) => {
       if (input.value !== targetVariantCode) return;
-
       let qty = 1;
       const idMatch = input.id ? input.id.match(/option_box(\d+)_id/) : null;
       if (idMatch) {
@@ -151,21 +131,28 @@
       totalUserQtyForTarget += qty;
     });
 
-    const serverStock = globalStockMap[targetVariantCode];
-    renderDynamicStockWidget(serverStock, totalUserQtyForTarget);
+    renderDynamicStockWidget(globalStockMap[targetVariantCode], totalUserQtyForTarget);
   }
 
   function initModule() {
-    const productNo = window.iProductNo || document.querySelector('meta[property="product:productId"]')?.content;
-    if (!productNo) return;
+    // 💡 강력한 상품번호 파싱: 전역변수 -> 메타태그 -> URL 정규식 순서로 3중 추적
+    let productNo = window.iProductNo || document.querySelector('meta[property="product:productId"]')?.content;
+    if (!productNo) {
+      const match = window.location.pathname.match(/\/product\/[^\/]+\/(\d+)/);
+      if (match) productNo = match[1];
+    }
+
+    if (!productNo) {
+      console.error('[YKINAS Stockit] ❌ 상품 번호를 찾을 수 없어 모듈을 종료합니다.');
+      return;
+    }
 
     preFetchAllInventory(productNo);
 
     const observeTarget = document.querySelector('.xans-product-detail') || document.body;
-
     const observer = new MutationObserver((mutations) => {
       let shouldUpdate = false;
-      mutations.forEach(mutation => { if (mutation.type === 'childList') shouldUpdate = true; });
+      mutations.forEach(m => { if (m.type === 'childList') shouldUpdate = true; });
       if (shouldUpdate) instantCheckOptions();
     });
     observer.observe(observeTarget, { childList: true, subtree: true });
