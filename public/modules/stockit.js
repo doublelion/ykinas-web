@@ -23,6 +23,7 @@
   const MALL_ID = window.CAFE24API?.MALL_ID || window.CAFE24?.MALL_ID || '';
   // 💡 [수정] 프론트 키 삭제. 이제 서버가 알아서 합니다.
   const STOCK_TIERS = {
+    SOLDOUT: { max: 0, color: '#868e96', text: '상품이 모두 소진되었습니다.' }, // 💡 0개 전용 티어 추가
     CRITICAL: { max: 3, color: '#ff6b6b', text: '품절 임박! 재고가 얼마 남지 않았습니다.' },
     WARNING: { max: 10, color: '#fcca23', text: '주문량 증가로 여유 재고가 소진되고 있습니다.' },
     SAFE: { max: 99999, color: '#20c997', text: '[TEST] 재고가 여유 있습니다.' }
@@ -68,9 +69,10 @@
 
   function renderDynamicStockWidget(quantity) {
     let tier = null;
-    if (quantity <= STOCK_TIERS.CRITICAL.max) tier = STOCK_TIERS.CRITICAL;
+    if (quantity === 0) tier = STOCK_TIERS.SOLDOUT;
+    else if (quantity <= STOCK_TIERS.CRITICAL.max) tier = STOCK_TIERS.CRITICAL;
     else if (quantity <= STOCK_TIERS.WARNING.max) tier = STOCK_TIERS.WARNING;
-    else tier = STOCK_TIERS.SAFE; // 무조건 렌더링되도록 처리
+    else tier = STOCK_TIERS.SAFE;
 
     const existingContainer = document.getElementById('ykinas-stock-widget-container');
 
