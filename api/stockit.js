@@ -1,33 +1,40 @@
-// api/stockit.js (Vercel Serverless Function 예시)
+// api/stockit.js (Vercel Serverless Function)
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
+// 공통 CORS 헤더
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
 export default async function handler(req, res) {
-  // 1. CORS 설정 (프론트엔드 호출 허용)
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  const { mall_id, product_no, variant_code } = req.query;
-
-  if (!mall_id || !product_no || !variant_code) {
-    return res.status(400).json({ error: 'Missing required parameters' });
+  // 1. OPTIONS 요청(Preflight) 처리
+  if (req.method === 'OPTIONS') {
+    return res.status(200).set(corsHeaders).end();
   }
 
   try {
-    // 2. Supabase에서 해당 mall_id의 Access Token 조회 (테이블명은 실제 환경에 맞게 수정)
+    const { mall_id, product_no, variant_code } = req.query;
+
+    if (!mall_id || !product_no || !variant_code) {
+      return res.status(400).set(corsHeaders).json({ error: '파라미터 누락' });
+    }
+
+    // 2. 통합 토큰 조회 (Stockit과 아름관광 폼이 공유하는 토큰)
     const { data: storeData, error: dbError } = await supabase
-      .from('cafe24_tokens') // 또는 skin_licenses 등 토큰이 저장된 테이블
+      .from('skin_licenses') // 토큰이 저장된 실제 테이블명
       .select('access_token')
       .eq('mall_id', mall_id)
       .single();
 
     if (dbError || !storeData?.access_token) {
-      return res.status(401).json({ error: 'No valid token found for this mall.' });
+      return res.status(401).set(corsHeaders).json({ error: '인증 토큰 없음' });
     }
 
-    // 3. 카페24 Admin API 호출 (재고 조회)
+    // 3. 카페24 재고 API 호출 (지정된 API 버전 사용)
     const cafe24Url = `https://${mall_id}.cafe24api.com/api/v2/admin/products/${product_no}/variants/${variant_code}/inventory`;
     
     const cafe24Res = await fetch(cafe24Url, {
@@ -40,17 +47,19 @@ export default async function handler(req, res) {
     });
 
     if (!cafe24Res.ok) {
-      // 401 에러라면 토큰이 만료된 것일 수 있음 (cron-refresh-tokens 작동 확인 필요)
-      return res.status(cafe24Res.status).json({ error: `Cafe24 API Error: ${cafe24Res.statusText}` });
+      const errorText = await cafe24Res.text();
+      // 권한 누락 시 여기서 403 에러가 잡힙니다.
+      return res.status(cafe24Res.status).set(corsHeaders).json({ error: errorText });
     }
 
     const cafe24Data = await cafe24Res.json();
-    
-    // 4. 프론트로 필요한 데이터만 정제하여 응답
     const quantity = cafe24Data.inventory?.inventory_quantity || 0;
-    return res.status(200).json({ quantity });
+    
+    return res.status(200).set(corsHeaders).json({ quantity });
 
   } catch (error) {
-    return res.status(500).json({ error: 'Internal Server Error' });
+    // 서버 내부 에러가 발생해도 CORS 헤더를 담아 프론트가 500 에러를 정확히 읽게 함
+    console.error('[Stockit API Error]', error);
+    return res.status(500).set(corsHeaders).json({ error: '서버 내부 오류 발생' });
   }
 }
