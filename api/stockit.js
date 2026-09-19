@@ -1,4 +1,4 @@
-// api/stockit.js (Vercel Serverless Function - Data Mapping Fix)
+// api/stockit.js (Vercel Serverless Function - Multi-type Parser Applied)
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
   try {
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
     
-    // 1. JSONB 라이선스 및 도메인 검증 (완벽 작동 중)
+    // 1. JSONB 라이선스 및 도메인 검증
     const { data: license, error: licenseError } = await supabase
       .from('skin_licenses')
       .select('is_active, modules_config, skin_allowed_domains(domain)')
@@ -38,14 +38,13 @@ export default async function handler(req, res) {
     const { data: tokenData } = await supabase.from('cafe24_auth_tokens').select('access_token').eq('mall_id', mall_id).single();
     if (!tokenData) return res.status(401).json({ error: 'UNAUTHORIZED' });
 
-    // ✅ 수정된 코드 (embed=inventories 추가하여 옵션별 실시간 재고를 정확히 추출)
+    // Cafe24 Admin API 호출 (inventories Embed)
     const cafe24Res = await fetch(`https://${mall_id}.cafe24api.com/api/v2/admin/products/${product_no}/variants?embed=inventories`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
         'Content-Type': 'application/json',
-        // 사전에 정의된 안정적인 API 버전을 명시적으로 사용합니다.
-        'X-Cafe24-Api-Version': '2025-12-01' 
+        'X-Cafe24-Api-Version': '2025-12-01'
       }
     });
 
@@ -54,19 +53,36 @@ export default async function handler(req, res) {
     const cafe24Data = await cafe24Res.json();
     const variants = cafe24Data.variants || [];
 
-    // 💡 3. 강력한 폴백(Fallback) 파서 (기존과 동일하게 유지)
+    // 💡 3. E2E 대응 강력한 폴백(Fallback) 다중 타입 파서
     const stockMap = {};
     variants.forEach(variant => {
       if (!variant.variant_code) return;
       
       let qty = 0;
-      if (variant.inventories && variant.inventories.length > 0) {
-        qty = variant.inventories[0].available_inventory ?? variant.inventories[0].quantity ?? 0;
+
+      // 버전이나 옵션에 따라 'inventories'(배열/객체) 또는 'inventory'(객체)로 다르게 올 수 있음
+      const invData = variant.inventories || variant.inventory;
+
+      if (invData) {
+        if (Array.isArray(invData) && invData.length > 0) {
+          // Case A: 배열로 내려올 때
+          qty = invData[0].available_inventory ?? invData[0].quantity ?? 0;
+        } else if (typeof invData === 'object' && !Array.isArray(invData)) {
+          // Case B: 단일 객체로 내려올 때 (기존에 여기서 length 검사에 막혀 우회되었음)
+          qty = invData.available_inventory ?? invData.quantity ?? 0;
+        }
       } else {
+        // Case C: Embed 데이터가 없을 때 자체 quantity 참조
         qty = variant.available_inventory ?? variant.quantity ?? 0;
       }
+
+      // 💡 [비즈니스 로직 방어] 진열안함(F) 이거나 판매안함(F)인 품목은 실제 DB상 재고가 있어도 0으로 강제 처리
+      if (variant.display === 'F' || variant.selling === 'F') {
+        qty = 0;
+      }
       
-      stockMap[variant.variant_code] = qty;
+      // 프론트엔드 연산을 위해 안전한 정수형(Number)으로 변환 후 할당
+      stockMap[variant.variant_code] = parseInt(qty, 10) || 0;
     });
 
     return res.status(200).json({ success: true, stockMap });
