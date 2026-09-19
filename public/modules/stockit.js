@@ -48,7 +48,11 @@
 
       const response = await fetch(proxyUrl, { method: 'GET' });
 
-      if (!response.ok) throw new Error(`Proxy Error: ${response.status}`);
+      if (!response.ok) {
+        // 401 인증 에러 시 캐싱하지 않고 조기 종료 (재시도 방지)
+        console.error(`[YKINAS Stockit] Backend Proxy Error: ${response.status}`);
+        return null;
+      }
 
       const data = await response.json();
       const qty = data.quantity;

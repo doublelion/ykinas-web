@@ -1,55 +1,56 @@
-// api/stockit.js (Vercel Serverless Function - Proxy)
+// api/stockit.js (Vercel Serverless Function 예시)
 import { createClient } from '@supabase/supabase-js';
 
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
 export default async function handler(req, res) {
-  // CORS 허용 (위젯이 브라우저에서 찌를 수 있도록)
+  // 1. CORS 설정 (프론트엔드 호출 허용)
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const { mall_id, product_no, variant_code } = req.query;
 
   if (!mall_id || !product_no || !variant_code) {
-    return res.status(400).json({ error: 'Missing parameters' });
+    return res.status(400).json({ error: 'Missing required parameters' });
   }
 
   try {
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-
-    // 1. 이미 저장되어 있는 카페24 Admin Access Token 조회
-    const { data: auth, error } = await supabase
-      .from('cafe24_auth_tokens')
+    // 2. Supabase에서 해당 mall_id의 Access Token 조회 (테이블명은 실제 환경에 맞게 수정)
+    const { data: storeData, error: dbError } = await supabase
+      .from('cafe24_tokens') // 또는 skin_licenses 등 토큰이 저장된 테이블
       .select('access_token')
       .eq('mall_id', mall_id)
-      .maybeSingle();
+      .single();
 
-    if (error || !auth || !auth.access_token) {
-      return res.status(401).json({ error: 'No admin token found in DB' });
+    if (dbError || !storeData?.access_token) {
+      return res.status(401).json({ error: 'No valid token found for this mall.' });
     }
 
-    // 2. 백엔드에서 안전하게 카페24 Admin API 호출
-    const url = `https://${mall_id}.cafe24api.com/api/v2/products/${product_no}/variants/${variant_code}/inventories`;
-
-    const response = await fetch(url, {
+    // 3. 카페24 Admin API 호출 (재고 조회)
+    const cafe24Url = `https://${mall_id}.cafe24api.com/api/v2/admin/products/${product_no}/variants/${variant_code}/inventory`;
+    
+    const cafe24Res = await fetch(cafe24Url, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${auth.access_token}`, // 강력한 어드민 토큰 사용
+        'Authorization': `Bearer ${storeData.access_token}`,
         'Content-Type': 'application/json',
-        'X-Cafe24-Api-Version': '2025-12-01'
+        'X-Cafe24-Api-Version': '2025-12-01' 
       }
     });
 
-    if (!response.ok) {
-      console.error(`[Cafe24 API Error] ${response.status}`);
-      return res.status(response.status).json({ error: 'Cafe24 API request failed' });
+    if (!cafe24Res.ok) {
+      // 401 에러라면 토큰이 만료된 것일 수 있음 (cron-refresh-tokens 작동 확인 필요)
+      return res.status(cafe24Res.status).json({ error: `Cafe24 API Error: ${cafe24Res.statusText}` });
     }
 
-    const data = await response.json();
-
-    // 3. 민감한 정보는 다 버리고 딱 '재고 수량'만 프론트엔드로 반환
-    return res.status(200).json({ quantity: data.inventory.quantity });
+    const cafe24Data = await cafe24Res.json();
+    
+    // 4. 프론트로 필요한 데이터만 정제하여 응답
+    const quantity = cafe24Data.inventory?.inventory_quantity || 0;
+    return res.status(200).json({ quantity });
 
   } catch (error) {
-    console.error('[Proxy Error]', error);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 }
