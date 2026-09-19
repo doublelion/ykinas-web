@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
   const { mall_id } = req.query;
   const referer = req.headers.referer || req.headers.origin || '';
-  
+
   let requestDomain = '';
   try {
     requestDomain = new URL(referer).hostname; // 예: "ecudemo388727.cafe24.com"
@@ -38,8 +38,13 @@ export default async function handler(req, res) {
   const isDomainAllowed = licenseData?.skin_allowed_domains.some(d => d.domain === requestDomain || requestDomain.includes(d.domain));
   const hasAccess = licenseData?.is_active && licenseData?.has_stockit_module && isDomainAllowed;
 
-  if (error || !hasAccess) {
-    return res.status(200).send(`console.error('[YKINAS] 인가되지 않은 도메인(${requestDomain})이거나 유효한 라이선스가 없습니다.');`);
+  // ✅ 올바른 방식 (데이터 API 방식)
+  if (!hasAccess) {
+    // 상태 코드 403(Forbidden)과 함께 순수 JSON 객체 반환
+    return res.status(403).json({
+      error: 'Unauthorized',
+      message: '권한이 없거나 등록되지 않은 도메인입니다.'
+    });
   }
 
   // 3. 검증 통과 시에만 실제 Stockit 모듈 코드(Payload)를 읽어서 반환

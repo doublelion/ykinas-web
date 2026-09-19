@@ -5,13 +5,13 @@
   global.__YKINAS_STOCK_LOADED__ = true;
 
   const MALL_ID = window.CAFE24API?.MALL_ID || window.CAFE24?.MALL_ID || '';
-  
+
   const STOCK_TIERS = {
     SOLDOUT: { color: '#868e96', text: '현재 품절된 상품입니다.' },
     OVER_LIMIT: { color: '#ff6b6b', text: '선택하신 수량이 최대 구매 가능 수량입니다.' },
     CRITICAL: { max: 3, color: '#ff6b6b', text: '품절 임박! 재고가 얼마 남지 않았습니다.' },
     WARNING: { max: 10, color: '#fcca23', text: '주문량 증가로 여유 재고가 소진되고 있습니다.' },
-    SAFE: { max: 99999, color: '#20c997', text: '재고가 여유롭게 준비되어 있습니다.' } 
+    SAFE: { max: 99999, color: '#20c997', text: '재고가 여유롭게 준비되어 있습니다.' }
   };
 
   let globalStockMap = {};
@@ -31,18 +31,27 @@
     }
   }
 
+  // public/modules/stockit.js 내부 Fetch 함수 교체
   async function preFetchAllInventory(productNo) {
     if (!MALL_ID) return;
     const proxyUrl = `https://ykinas-web.vercel.app/api/stockit?mall_id=${MALL_ID}&product_no=${productNo}`;
+
     try {
       const response = await fetch(proxyUrl, { method: 'GET' });
-      if (response.ok) {
+
+      // 💡 [핵심 방어 로직] 응답 헤더가 JSON일 때만 파싱 시도
+      const contentType = response.headers.get("content-type");
+      if (response.ok && contentType && contentType.includes("application/json")) {
         const data = await response.json();
         globalStockMap = data.stockMap || {};
-        instantCheckOptions(); 
+        instantCheckOptions();
+      } else {
+        // JSON이 아니거나 4xx/5xx 에러인 경우 조용히 무시 (Silent Fail)
+        console.warn('[YKINAS Stockit] 재고 데이터를 불러오지 못했거나 권한이 없습니다.');
       }
     } catch (error) {
-      console.error('[YKINAS Stockit] Pre-fetch Error:', error);
+      // 네트워크 단절 등 치명적 에러 발생 시에도 UI 렌더링에 영향을 주지 않음
+      console.warn('[YKINAS Stockit] Fetch Error 발생');
     }
   }
 
@@ -54,10 +63,10 @@
     if (serverStock <= 0) {
       tier = STOCK_TIERS.SOLDOUT;
       displayQty = 0;
-      isPulse = false; 
+      isPulse = false;
     } else if (userSelectedQty > serverStock) {
       tier = STOCK_TIERS.OVER_LIMIT;
-      displayQty = serverStock; 
+      displayQty = serverStock;
       isPulse = true;
     } else {
       displayQty = serverStock - userSelectedQty + 1;
@@ -75,7 +84,7 @@
       container.id = 'ykinas-stock-widget-container';
       targetArea.insertAdjacentElement('beforebegin', container);
     }
-    
+
     // 위젯 노출 시 전역 마진 오버라이드 활성화
     injectGlobalOverrideStyle();
     container.style.display = 'block';
@@ -111,10 +120,10 @@
   function instantCheckOptions() {
     const inputs = Array.from(document.querySelectorAll('input[name="option_box_id"], input[id^="option_box"][id$="_id"]'));
     const container = document.getElementById('ykinas-stock-widget-container');
-    
+
     if (inputs.length === 0) {
-       if (container) container.style.display = 'none';
-       return;
+      if (container) container.style.display = 'none';
+      return;
     }
 
     const lastInput = inputs[inputs.length - 1];
@@ -153,7 +162,7 @@
     preFetchAllInventory(productNo);
 
     const observeTarget = document.querySelector('.xans-product-detail') || document.body;
-    
+
     const observer = new MutationObserver((mutations) => {
       let shouldUpdate = false;
       mutations.forEach(mutation => { if (mutation.type === 'childList') shouldUpdate = true; });
