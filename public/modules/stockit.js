@@ -42,15 +42,12 @@
     }
 
     try {
-      const proxyUrl = `https://ykinas-web.vercel.app/api/stockit?mall_id=${MALL_ID}&product_no=${productNo}&variant_code=${variantCode}`;
-
-      console.log(`[YKINAS Stockit] Backend Proxy 호출 중...`);
-
       const response = await fetch(proxyUrl, { method: 'GET' });
 
       if (!response.ok) {
-        // 401 인증 에러 시 캐싱하지 않고 조기 종료 (재시도 방지)
-        console.error(`[YKINAS Stockit] Backend Proxy Error: ${response.status}`);
+        // 404 등 실패 시 백엔드가 내려준 JSON 상세 에러 메시지를 파싱하여 출력
+        const errorData = await response.json();
+        console.error(`[YKINAS Stockit] Backend Proxy Error (${response.status}):`, errorData.error);
         return null;
       }
 
