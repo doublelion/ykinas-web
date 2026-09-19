@@ -1,8 +1,7 @@
-// api/stockit.js (Vercel Serverless Function)
+// api/stockit.js (Vercel Serverless Function - E2E Complete Version)
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
-  // CORS 및 헤더 설정 (JSON 표준 반환)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -25,39 +24,68 @@ export default async function handler(req, res) {
 
   try {
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-    
-    // 💡 [핵심] JSONB 모듈 설정(modules_config)과 허용 도메인을 함께 조회
-    const { data: license, error } = await supabase
+
+    // [1단계] 라이선스, JSONB 설정, 도메인 검증
+    const { data: license, error: licenseError } = await supabase
       .from('skin_licenses')
       .select('is_active, modules_config, skin_allowed_domains(domain)')
       .eq('mall_id', mall_id)
       .maybeSingle();
 
-    // 1차 방어: 라이선스 활성 여부
-    if (error || !license || !license.is_active) {
+    if (licenseError || !license || !license.is_active) {
       return res.status(403).json({ error: 'FORBIDDEN', message: '유효하지 않은 라이선스입니다.' });
     }
 
-    // 2차 방어: 도메인 화이트리스트 검증
-    const isDomainMatched = license.skin_allowed_domains?.some(d => 
+    const isDomainMatched = license.skin_allowed_domains?.some(d =>
       requestHost === d.domain || requestHost.endsWith('.' + d.domain)
     );
     if (requestHost && !isDomainMatched) {
       return res.status(403).json({ error: 'FORBIDDEN', message: '등록되지 않은 도메인입니다.' });
     }
 
-    // 💡 3차 방어: 차세대 모듈 JSONB 설정 검사 (has_stockit_module 대체)
     const config = license.modules_config || {};
     if (!config.stockit || config.stockit.enabled !== true) {
       return res.status(403).json({ error: 'FORBIDDEN', message: 'Stockit 모듈이 비활성화 상태입니다.' });
     }
 
-    // ====================================================================
-    // ✅ 인가 통과! 이 아래부터는 기존 카페24 토큰 갱신 및 재고 조회 로직 유지
-    // ====================================================================
-    
-    // const tokenData = await ... (기존 카페24 API 호출 로직)
-    // return res.status(200).json({ success: true, stockMap: { ... } });
+    // [2단계] 카페24 액세스 토큰 획득
+    const { data: tokenData, error: tokenError } = await supabase
+      .from('cafe24_auth_tokens')
+      .select('access_token')
+      .eq('mall_id', mall_id)
+      .single();
+
+    if (tokenError || !tokenData) {
+      return res.status(401).json({ error: 'UNAUTHORIZED', message: '인증 토큰이 없습니다.' });
+    }
+
+    // [3단계] 카페24 실시간 재고 데이터 페칭 (축약 해제 및 복원)
+    const cafe24Res = await fetch(`https://${mall_id}.cafe24api.com/api/v2/admin/products/${product_no}/variants?embed=inventories`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${tokenData.access_token}`,
+        'Content-Type': 'application/json',
+        'X-Cafe24-Api-Version': '2025-12-01'
+      }
+    });
+
+    if (!cafe24Res.ok) {
+      throw new Error(`Cafe24 API Error: ${cafe24Res.status}`);
+    }
+
+    const cafe24Data = await cafe24Res.json();
+    const variants = cafe24Data.variants || [];
+
+    // [4단계] 옵션 코드 기준 가용 재고량(Available Inventory) 매핑
+    const stockMap = {};
+    variants.forEach(variant => {
+      if (variant.variant_code && variant.inventories && variant.inventories.length > 0) {
+        stockMap[variant.variant_code] = variant.inventories[0].available_inventory || 0;
+      }
+    });
+
+    // 최종 결과 JSON 반환
+    return res.status(200).json({ success: true, stockMap });
 
   } catch (err) {
     console.error('[YKINAS API Error]', err);
