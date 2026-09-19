@@ -1,51 +1,53 @@
-// api/stockit.js (Vercel Backend - 전체 옵션 일괄 조회 및 정제)
+// api/inject.js (Vercel Serverless Function - 동적 스크립트 주입기)
 import { createClient } from '@supabase/supabase-js';
+import fs from 'fs';
+import path from 'path';
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Origin', '*'); // 스크립트 호출 자체는 열어두되, 내용을 통제
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
+  const { mall_id } = req.query;
+  const referer = req.headers.referer || req.headers.origin || '';
+  
+  let requestDomain = '';
   try {
-    // 💡 variant_code를 받지 않고 product_no 단위로 전체를 조회합니다.
-    const { mall_id, product_no } = req.query; 
-    if (!mall_id || !product_no) return res.status(400).json({ error: '필수 파라미터 누락' });
+    requestDomain = new URL(referer).hostname; // 예: "ecudemo388727.cafe24.com"
+  } catch (e) {
+    return res.status(200).send(`console.warn('[YKINAS] 비정상적인 접근입니다.');`);
+  }
 
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-    const { data: storeData } = await supabase.from('cafe24_auth_tokens').select('access_token').eq('mall_id', mall_id).single();
+  if (!mall_id) {
+    return res.status(200).send(`console.error('[YKINAS] mall_id가 누락되었습니다.');`);
+  }
 
-    if (!storeData?.access_token) return res.status(401).json({ error: '인증 토큰 없음' });
+  const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    // 💡 품목 리스트 전체 조회 (embed=inventories 제외 가능, variants 객체 안에 quantity가 기본 포함됨)
-    const cafe24Url = `https://${mall_id}.cafe24api.com/api/v2/admin/products/${product_no}/variants`;
-    
-    const cafe24Res = await fetch(cafe24Url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${storeData.access_token}`,
-        'Content-Type': 'application/json',
-        'X-Cafe24-Api-Version': '2025-12-01' 
-      }
-    });
+  // 1. 라이선스 및 도메인 교차 검증 (보안 핵심)
+  const { data: licenseData, error } = await supabase
+    .from('skin_licenses')
+    .select(`
+      is_active,
+      has_stockit_module,
+      skin_allowed_domains ( domain )
+    `)
+    .eq('mall_id', mall_id)
+    .single();
 
-    if (!cafe24Res.ok) return res.status(cafe24Res.status).json({ error: 'Cafe24 API Error' });
+  // 2. 권한이 없거나, 승인된 도메인 목록에 요청 도메인이 없는 경우 차단
+  const isDomainAllowed = licenseData?.skin_allowed_domains.some(d => d.domain === requestDomain || requestDomain.includes(d.domain));
+  const hasAccess = licenseData?.is_active && licenseData?.has_stockit_module && isDomainAllowed;
 
-    const cafe24Data = await cafe24Res.json();
-    const variants = cafe24Data.variants || [];
-    
-    // 💡 프론트엔드가 즉시 읽을 수 있는 Key-Value Map 생성
-    const stockMap = {};
-    variants.forEach(variant => {
-      // 💡 [버그 해결] 공식 문서 스펙인 variant.quantity를 참조하여 정확한 연산 수행
-      const currentQty = variant.quantity ?? 0;
-      const safetyQty = variant.safety_inventory ?? 0;
-      stockMap[variant.variant_code] = Math.max(0, currentQty - safetyQty);
-    });
+  if (error || !hasAccess) {
+    return res.status(200).send(`console.error('[YKINAS] 인가되지 않은 도메인(${requestDomain})이거나 유효한 라이선스가 없습니다.');`);
+  }
 
-    return res.status(200).json({ stockMap });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
+  // 3. 검증 통과 시에만 실제 Stockit 모듈 코드(Payload)를 읽어서 반환
+  try {
+    const filePath = path.join(process.cwd(), 'public', 'modules', 'stockit.js');
+    const moduleCode = fs.readFileSync(filePath, 'utf8');
+    return res.status(200).send(moduleCode);
+  } catch (err) {
+    return res.status(500).send(`console.error('[YKINAS] 내부 서버 오류');`);
   }
 }
