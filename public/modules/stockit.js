@@ -98,46 +98,50 @@
   // public/modules/stockit.js 내부에 있는 instantCheckOptions 함수만 아래 코드로 교체합니다.
 
   function instantCheckOptions() {
-    // 💡 옵션 코드가 담긴 hidden input들만 정확히 추출
-    const inputs = Array.from(document.querySelectorAll('input[name="option_box_id"], input[id^="option_box"][id$="_id"]'));
+    // 1. 상품 상세 영역으로 스코프 제한 (다른 추천상품 위젯 등의 간섭 원천 차단)
+    const detailArea = document.querySelector('.xans-product-detail') || document;
+    
+    // 💡 [핵심 교정 1] 카페24의 껍데기 input을 제외하고, 실제 사용자가 추가한 '옵션 행(option_box1_id...)'만 추출
+    const addedOptions = Array.from(detailArea.querySelectorAll('input[id^="option_box"][id$="_id"]'))
+      .filter(input => input.id !== 'option_box_id'); 
+
     const container = document.getElementById('ykinas-stock-widget-container');
+    let targetVariantCode = null;
+    let totalUserQtyForTarget = 1;
 
-    if (inputs.length === 0) {
-      if (container) container.style.display = 'none';
-      return;
+    if (addedOptions.length > 0) {
+      // 💡 [핵심 교정 2] 멀티 옵션: 항상 배열의 가장 마지막(최하단에 방금 추가된) 옵션을 최우선 타겟으로 설정
+      const lastOption = addedOptions[addedOptions.length - 1];
+      targetVariantCode = lastOption.value;
+      totalUserQtyForTarget = 0;
+
+      // 타겟과 동일한 옵션 코드를 가진 행들의 수량을 모두 찾아 합산 (계산 로직 복원)
+      addedOptions.forEach(input => {
+        if (input.value === targetVariantCode) {
+          const idMatch = input.id.match(/option_box(\d+)_id/);
+          if (idMatch) {
+            const qtyInput = document.getElementById(`option_box${idMatch[1]}_quantity`);
+            if (qtyInput) totalUserQtyForTarget += parseInt(qtyInput.value, 10) || 1;
+          }
+        }
+      });
+    } else {
+      // 단일 옵션 (옵션이 없는 기본 상품)의 경우 방어 로직
+      const baseInput = detailArea.querySelector('input[name="option_box_id"]');
+      if (baseInput && baseInput.value) {
+        targetVariantCode = baseInput.value;
+        const qtyInput = detailArea.querySelector('input[id*="quantity"], input[name*="quantity"]');
+        if (qtyInput) totalUserQtyForTarget = parseInt(qtyInput.value, 10) || 1;
+      }
     }
-
-    // 💡 제안해주신 대로 항상 '가장 마지막(최근)에 추가된 옵션'을 메인 타겟으로 고정
-    const lastInput = inputs[inputs.length - 1];
-    const targetVariantCode = lastInput.value;
 
     if (!targetVariantCode || globalStockMap[targetVariantCode] === undefined) {
       if (container) container.style.display = 'none';
       return;
     }
 
-    let totalUserQtyForTarget = 0;
-
-    // 💡 화면에 있는 타겟 옵션의 수량을 모두 찾아 합산 (동일 옵션 중복 추가 대비)
-    inputs.forEach((input, index) => {
-      if (input.value !== targetVariantCode) return; // 타겟 옵션이 아니면 패스
-
-      let qty = 1;
-      // 1. 고유 ID 정규식 매칭 (가장 정확한 방법: option_box1_id -> option_box1_quantity)
-      const idMatch = input.id ? input.id.match(/option_box(\d+)_id/) : null;
-      if (idMatch) {
-        const qtyInput = document.getElementById(`option_box${idMatch[1]}_quantity`);
-        if (qtyInput) qty = parseInt(qtyInput.value, 10) || 1;
-      } else {
-        // 2. 인덱스 기반 대체 매칭
-        const qtyInputs = document.querySelectorAll('input[id*="quantity"], input[name*="quantity_opt"]');
-        if (qtyInputs[index]) qty = parseInt(qtyInputs[index].value, 10) || 1;
-      }
-      totalUserQtyForTarget += qty;
-    });
-
-    const serverStock = globalStockMap[targetVariantCode];
-    renderDynamicStockWidget(serverStock, totalUserQtyForTarget);
+    // 추출된 서버 재고와 유저 선택 총수량을 전달 -> renderDynamicStockWidget 내부에서 (-n + 1) 계산 수행
+    renderDynamicStockWidget(globalStockMap[targetVariantCode], totalUserQtyForTarget);
   }
 
   function initModule() {

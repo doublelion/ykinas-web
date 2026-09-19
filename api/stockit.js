@@ -38,12 +38,14 @@ export default async function handler(req, res) {
     const { data: tokenData } = await supabase.from('cafe24_auth_tokens').select('access_token').eq('mall_id', mall_id).single();
     if (!tokenData) return res.status(401).json({ error: 'UNAUTHORIZED' });
 
-    const cafe24Res = await fetch(`https://${mall_id}.cafe24api.com/api/v2/admin/products/${product_no}/variants`, {
+    // ✅ 수정된 코드 (embed=inventories 추가하여 옵션별 실시간 재고를 정확히 추출)
+    const cafe24Res = await fetch(`https://${mall_id}.cafe24api.com/api/v2/admin/products/${product_no}/variants?embed=inventories`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
         'Content-Type': 'application/json',
-        'X-Cafe24-Api-Version': '2025-12-01'
+        // 사전에 정의된 안정적인 API 버전을 명시적으로 사용합니다.
+        'X-Cafe24-Api-Version': '2025-12-01' 
       }
     });
 
@@ -52,13 +54,12 @@ export default async function handler(req, res) {
     const cafe24Data = await cafe24Res.json();
     const variants = cafe24Data.variants || [];
 
-    // 💡 3. [핵심 수정] 어떤 형태의 JSON이 오든 재고를 뜯어내는 강력한 폴백(Fallback) 파서
+    // 💡 3. 강력한 폴백(Fallback) 파서 (기존과 동일하게 유지)
     const stockMap = {};
     variants.forEach(variant => {
       if (!variant.variant_code) return;
       
       let qty = 0;
-      // embed 유무, API 버전 차이에 따른 필드명 방어적 탐색
       if (variant.inventories && variant.inventories.length > 0) {
         qty = variant.inventories[0].available_inventory ?? variant.inventories[0].quantity ?? 0;
       } else {
