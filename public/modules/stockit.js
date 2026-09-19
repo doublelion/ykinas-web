@@ -31,7 +31,7 @@
   const inventoryCache = new Map();
 
   async function fetchVariantInventory(productNo, variantCode) {
-    if (!CLIENT_ID || !FRONT_API_KEY || !MALL_ID) {
+    if (!CLIENT_ID || !MALL_ID) {
       console.error('[YKINAS Stockit] Auth Block: 인증키 또는 MALL_ID 누락');
       return null;
     }
@@ -41,13 +41,16 @@
       return inventoryCache.get(variantCode);
     }
 
+    // 💡 [수정] 누락되었던 proxyUrl 변수 선언을 다시 추가합니다.
+    const proxyUrl = `https://ykinas-web.vercel.app/api/stockit?mall_id=${MALL_ID}&product_no=${productNo}&variant_code=${variantCode}`;
+
     try {
       const response = await fetch(proxyUrl, { method: 'GET' });
 
       if (!response.ok) {
-        // 404 등 실패 시 백엔드가 내려준 JSON 상세 에러 메시지를 파싱하여 출력
-        const errorData = await response.json();
-        console.error(`[YKINAS Stockit] Backend Proxy Error (${response.status}):`, errorData.error);
+        // 404 발생 시, 존재하지 않는 품목(미생성 조합)이므로 조용히 처리(Silent Fail)
+        const errorData = await response.json().catch(() => ({}));
+        console.warn(`[YKINAS Stockit] 품목 미생성 또는 찾을 수 없음 (404) - 위젯을 렌더링하지 않습니다. [코드: ${variantCode}]`);
         return null;
       }
 
