@@ -1,4 +1,4 @@
-// api/stockit.js (Vercel Backend)
+// api/stockit.js (Vercel Backend 최종본)
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: '유효한 액세스 토큰 없음' });
     }
 
-    // 💡 [해결 핵심] API 명세서에 따라 끝자리를 'inventory'에서 'inventories'로 변경
+    // 공식 문서 기준 정확한 엔드포인트: /inventories
     const cafe24Url = `https://${mall_id}.cafe24api.com/api/v2/admin/products/${product_no}/variants/${variant_code}/inventories`;
     
     const cafe24Res = await fetch(cafe24Url, {
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       headers: {
         'Authorization': `Bearer ${storeData.access_token}`,
         'Content-Type': 'application/json',
-        'X-Cafe24-Api-Version': '2025-12-01'
+        'X-Cafe24-Api-Version': '2025-12-01' 
       }
     });
 
@@ -46,11 +46,18 @@ export default async function handler(req, res) {
 
     const cafe24Data = await cafe24Res.json();
     
-    // 💡 응답 객체가 inventory 또는 inventories 일 경우를 모두 대비한 안전한 데이터 추출
+    // 💡 공식 문서 스펙 완벽 반영: inventory(단수)와 inventories(복수) 래퍼 객체 모두 방어
     const targetObj = cafe24Data.inventory || cafe24Data.inventories || {};
-    const quantity = targetObj.inventory_quantity ?? 0;
+    
+    // 💡 현재고(inventory_quantity)와 안전재고(safety_inventory) 추출
+    const currentQty = targetObj.inventory_quantity ?? 0;
+    const safetyQty = targetObj.safety_inventory ?? 0;
+    
+    // 💡 [비즈니스 로직] 실 판매 가능 수량 계산 (안전재고 차감, 음수 방지)
+    const availableQuantity = Math.max(0, currentQty - safetyQty);
 
-    return res.status(200).json({ quantity });
+    // 프론트엔드로는 계산이 끝난 '최종 가용 수량'만 내려줌
+    return res.status(200).json({ quantity: availableQuantity });
 
   } catch (error) {
     console.error('[Stockit API Error]', error.message);
