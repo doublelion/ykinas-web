@@ -2,16 +2,12 @@
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
-  // 1. CORS 헤더를 표준 setHeader 방식으로 최상단에 주입
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  // 1. CORS 헤더를 Vercel(Node.js) 표준 방식으로 개별 세팅 (절대 .set() 사용 금지)
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
-  );
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  // 2. Preflight OPTIONS 요청 즉시 종료
+  // OPTIONS Preflight 요청 처리
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -20,6 +16,7 @@ export default async function handler(req, res) {
     const { mall_id, product_no, variant_code } = req.query;
 
     if (!mall_id || !product_no || !variant_code) {
+      // .set() 없이 순수하게 status와 json만 사용
       return res.status(400).json({ error: '필수 파라미터 누락' });
     }
 
@@ -32,7 +29,6 @@ export default async function handler(req, res) {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 3. DB에서 해당 상점의 최신 토큰 조회
     const { data: storeData, error: dbError } = await supabase
       .from('cafe24_auth_tokens')
       .select('access_token')
@@ -40,10 +36,9 @@ export default async function handler(req, res) {
       .single();
 
     if (dbError || !storeData?.access_token) {
-      return res.status(401).json({ error: '유효한 액세스 토큰을 찾을 수 없습니다.' });
+      return res.status(401).json({ error: '유효한 액세스 토큰 없음' });
     }
 
-    // 4. 카페24 Admin API 재고 조회
     const cafe24Url = `https://${mall_id}.cafe24api.com/api/v2/admin/products/${product_no}/variants/${variant_code}/inventory`;
     
     const cafe24Res = await fetch(cafe24Url, {
@@ -63,10 +58,12 @@ export default async function handler(req, res) {
     const cafe24Data = await cafe24Res.json();
     const quantity = cafe24Data.inventory?.inventory_quantity ?? 0;
 
+    // 정상 응답
     return res.status(200).json({ quantity });
 
   } catch (error) {
-    console.error('[YKINAS API Error]', error.message);
+    console.error('[Stockit API Error]', error.message);
+    // 500 에러 처리 시에도 .set() 제거
     return res.status(500).json({ error: error.message });
   }
 }
