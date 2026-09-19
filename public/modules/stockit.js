@@ -1,4 +1,4 @@
-// public/modules/stockit.js (Full-stack Gidiper - Absolute ID Matching)
+// public/modules/stockit.js (Full-stack Gidiper - Layout & Margin Override Complete)
 (function (global) {
   'use strict';
   if (global.__YKINAS_STOCK_LOADED__) return;
@@ -15,6 +15,21 @@
   };
 
   let globalStockMap = {};
+
+  // 💡 [프론트엔드 핵심] 바깥쪽 카페24 #totalProducts 마진을 강제 0으로 오버라이드하는 스타일 주입
+  function injectGlobalOverrideStyle() {
+    const overrideStyleId = 'ykinas-stock-global-override';
+    if (!document.getElementById(overrideStyleId)) {
+      const styleEl = document.createElement('style');
+      styleEl.id = overrideStyleId;
+      styleEl.innerHTML = `
+        .xans-product-detail .infoArea #totalProducts {
+          margin-bottom: 0 !important;
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
+  }
 
   async function preFetchAllInventory(productNo) {
     if (!MALL_ID) return;
@@ -61,6 +76,8 @@
       targetArea.insertAdjacentElement('beforebegin', container);
     }
     
+    // 위젯 노출 시 전역 마진 오버라이드 활성화
+    injectGlobalOverrideStyle();
     container.style.display = 'block';
 
     let shadowRoot = container.shadowRoot || container.attachShadow({ mode: 'open' });
@@ -72,8 +89,12 @@
           width: 100%; box-sizing: border-box; transition: all 0.2s ease-in-out; 
           margin-top: 10px; margin-bottom: 10px;
         }
+        /* 💡 [수정] 데스크탑(768px 이상) margin-top: 0, margin-bottom: 40px 적용 */
         @media (min-width: 768px) {
-          .ykinas-stock-wrapper { margin-top: 20px; margin-bottom: 20px; }
+          .ykinas-stock-wrapper { 
+            margin-top: 0; 
+            margin-bottom: 40px; 
+          }
         }
         .ykinas-dot { width: 6px; height: 6px; background-color: ${tier.color}; border-radius: 50%; margin-right: 12px; ${isPulse ? 'animation: pulse 2s infinite;' : ''} }
         @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 ${tier.color}80; } 70% { transform: scale(1.2); box-shadow: 0 0 0 6px ${tier.color}00; } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 ${tier.color}00; } }
@@ -88,7 +109,6 @@
   }
 
   function instantCheckOptions() {
-    // 💡 옵션 코드가 담긴 hidden input들만 정확히 추출
     const inputs = Array.from(document.querySelectorAll('input[name="option_box_id"], input[id^="option_box"][id$="_id"]'));
     const container = document.getElementById('ykinas-stock-widget-container');
     
@@ -97,7 +117,6 @@
        return;
     }
 
-    // 💡 제안해주신 대로 항상 '가장 마지막(최근)에 추가된 옵션'을 메인 타겟으로 고정
     const lastInput = inputs[inputs.length - 1];
     const targetVariantCode = lastInput.value;
 
@@ -108,18 +127,15 @@
 
     let totalUserQtyForTarget = 0;
 
-    // 💡 화면에 있는 타겟 옵션의 수량을 모두 찾아 합산 (동일 옵션 중복 추가 대비)
     inputs.forEach((input, index) => {
-      if (input.value !== targetVariantCode) return; // 타겟 옵션이 아니면 패스
+      if (input.value !== targetVariantCode) return;
 
       let qty = 1;
-      // 1. 고유 ID 정규식 매칭 (가장 정확한 방법: option_box1_id -> option_box1_quantity)
       const idMatch = input.id ? input.id.match(/option_box(\d+)_id/) : null;
       if (idMatch) {
         const qtyInput = document.getElementById(`option_box${idMatch[1]}_quantity`);
         if (qtyInput) qty = parseInt(qtyInput.value, 10) || 1;
       } else {
-        // 2. 인덱스 기반 대체 매칭
         const qtyInputs = document.querySelectorAll('input[id*="quantity"], input[name*="quantity_opt"]');
         if (qtyInputs[index]) qty = parseInt(qtyInputs[index].value, 10) || 1;
       }
@@ -145,7 +161,6 @@
     });
     observer.observe(observeTarget, { childList: true, subtree: true });
 
-    // 수량 변경 버튼(+, -) 및 직접 입력 시 갱신
     observeTarget.addEventListener('click', () => setTimeout(instantCheckOptions, 50));
     observeTarget.addEventListener('input', (e) => {
       if (e.target.tagName === 'INPUT' && (e.target.id.includes('quantity') || e.target.name.includes('quantity'))) {
