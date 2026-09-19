@@ -1,4 +1,4 @@
-// public/modules/stockit.js (Full-stack Gidiper - Active Target & Multi-option Optimizer)
+// public/modules/stockit.js (Full-stack Gidiper - Absolute ID Matching)
 (function (global) {
   'use strict';
   if (global.__YKINAS_STOCK_LOADED__) return;
@@ -87,9 +87,9 @@
     `;
   }
 
-  // 💡 [핵심 수정] activeVariantCode 인자를 받아 고객이 현재 조작 중인 옵션을 우선 처리
-  function instantCheckOptions(activeVariantCode = null) {
-    const inputs = Array.from(document.querySelectorAll('input[name="option_box_id"], input[id^="option_box1_id"]'));
+  function instantCheckOptions() {
+    // 💡 옵션 코드가 담긴 hidden input들만 정확히 추출
+    const inputs = Array.from(document.querySelectorAll('input[name="option_box_id"], input[id^="option_box"][id$="_id"]'));
     const container = document.getElementById('ykinas-stock-widget-container');
     
     if (inputs.length === 0) {
@@ -97,35 +97,37 @@
        return;
     }
 
-    // 💡 화면에 있는 동일한 옵션들의 수량을 모두 합산하는 맵 생성
-    const selectedQuantities = {};
-    let latestVariantCode = null;
+    // 💡 제안해주신 대로 항상 '가장 마지막(최근)에 추가된 옵션'을 메인 타겟으로 고정
+    const lastInput = inputs[inputs.length - 1];
+    const targetVariantCode = lastInput.value;
 
-    inputs.forEach(input => {
-      const vCode = input.value;
-      if (!vCode) return;
-      latestVariantCode = vCode; // 기본적으로 맨 마지막에 추가된 옵션 기억
+    if (!targetVariantCode || globalStockMap[targetVariantCode] === undefined) {
+      if (container) container.style.display = 'none';
+      return;
+    }
 
-      const parentRow = input.closest('tr, tbody, div.option_box_wrap, div.xans-product-option') || input.parentElement;
+    let totalUserQtyForTarget = 0;
+
+    // 💡 화면에 있는 타겟 옵션의 수량을 모두 찾아 합산 (동일 옵션 중복 추가 대비)
+    inputs.forEach((input, index) => {
+      if (input.value !== targetVariantCode) return; // 타겟 옵션이 아니면 패스
+
       let qty = 1;
-      if (parentRow) {
-        const qtyInput = parentRow.querySelector('input[id*="quantity"], input[name*="quantity"]');
+      // 1. 고유 ID 정규식 매칭 (가장 정확한 방법: option_box1_id -> option_box1_quantity)
+      const idMatch = input.id ? input.id.match(/option_box(\d+)_id/) : null;
+      if (idMatch) {
+        const qtyInput = document.getElementById(`option_box${idMatch[1]}_quantity`);
         if (qtyInput) qty = parseInt(qtyInput.value, 10) || 1;
+      } else {
+        // 2. 인덱스 기반 대체 매칭
+        const qtyInputs = document.querySelectorAll('input[id*="quantity"], input[name*="quantity_opt"]');
+        if (qtyInputs[index]) qty = parseInt(qtyInputs[index].value, 10) || 1;
       }
-      // 동일 품목이 여러 행일 경우 합산 처리
-      selectedQuantities[vCode] = (selectedQuantities[vCode] || 0) + qty;
+      totalUserQtyForTarget += qty;
     });
 
-    // 💡 고객이 방금 클릭한 옵션이 있으면 그것을 타겟으로, 없으면 맨 마지막 옵션을 타겟으로 설정
-    const targetVariantCode = activeVariantCode || latestVariantCode;
-
-    if (targetVariantCode && globalStockMap[targetVariantCode] !== undefined) {
-      const serverStock = globalStockMap[targetVariantCode];
-      const userQty = selectedQuantities[targetVariantCode];
-      renderDynamicStockWidget(serverStock, userQty);
-    } else {
-      if (container) container.style.display = 'none';
-    }
+    const serverStock = globalStockMap[targetVariantCode];
+    renderDynamicStockWidget(serverStock, totalUserQtyForTarget);
   }
 
   function initModule() {
@@ -136,36 +138,18 @@
 
     const observeTarget = document.querySelector('.xans-product-detail') || document.body;
     
-    // DOM 변화 감지 (새 옵션 추가/삭제 시 실행)
     const observer = new MutationObserver((mutations) => {
       let shouldUpdate = false;
       mutations.forEach(mutation => { if (mutation.type === 'childList') shouldUpdate = true; });
-      // 옵션이 추가되거나 삭제될 때는 특정 타겟 없이 최신 DOM 기준으로 재계산
       if (shouldUpdate) instantCheckOptions();
     });
     observer.observe(observeTarget, { childList: true, subtree: true });
 
-    // 💡 [핵심 수정] 사용자가 특정 옵션의 수량 버튼을 클릭했을 때, 해당 옵션의 코드를 추적하여 전달
-    observeTarget.addEventListener('click', (e) => {
-      const parentRow = e.target.closest('tr, tbody, div.option_box_wrap');
-      let activeCode = null;
-      if (parentRow) {
-        const hiddenInput = parentRow.querySelector('input[name="option_box_id"], input[id^="option_box1_id"]');
-        if (hiddenInput) activeCode = hiddenInput.value;
-      }
-      setTimeout(() => instantCheckOptions(activeCode), 50);
-    });
-
-    // 💡 [핵심 수정] 사용자가 특정 옵션의 수량을 직접 키보드로 입력했을 때 추적
+    // 수량 변경 버튼(+, -) 및 직접 입력 시 갱신
+    observeTarget.addEventListener('click', () => setTimeout(instantCheckOptions, 50));
     observeTarget.addEventListener('input', (e) => {
       if (e.target.tagName === 'INPUT' && (e.target.id.includes('quantity') || e.target.name.includes('quantity'))) {
-        const parentRow = e.target.closest('tr, tbody, div.option_box_wrap');
-        let activeCode = null;
-        if (parentRow) {
-          const hiddenInput = parentRow.querySelector('input[name="option_box_id"], input[id^="option_box1_id"]');
-          if (hiddenInput) activeCode = hiddenInput.value;
-        }
-        instantCheckOptions(activeCode);
+        instantCheckOptions();
       }
     });
   }
