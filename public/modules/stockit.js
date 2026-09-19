@@ -1,4 +1,4 @@
-// public/modules/stockit.js (Final Fix - 톤앤매너 및 차감 로직 최적화)
+// public/modules/stockit.js (Full-stack Gidiper - Active Target & Multi-option Optimizer)
 (function (global) {
   'use strict';
   if (global.__YKINAS_STOCK_LOADED__) return;
@@ -6,7 +6,6 @@
 
   const MALL_ID = window.CAFE24API?.MALL_ID || window.CAFE24?.MALL_ID || '';
   
-  // 💡 [기획/디자인] 톤앤매너 수정 및 예외 상태(OVER_LIMIT) 추가
   const STOCK_TIERS = {
     SOLDOUT: { color: '#868e96', text: '현재 품절된 상품입니다.' },
     OVER_LIMIT: { color: '#ff6b6b', text: '선택하신 수량이 최대 구매 가능 수량입니다.' },
@@ -37,21 +36,16 @@
     let displayQty = 0;
     let isPulse = true;
 
-    // 💡 [프론트엔드 핵심 로직] 4가지 상태에 따른 완벽한 분기 처리
     if (serverStock <= 0) {
-      // 1. 아예 재고가 없는 경우
       tier = STOCK_TIERS.SOLDOUT;
       displayQty = 0;
-      isPulse = false; // 품절 시 펄스 애니메이션 중지
+      isPulse = false; 
     } else if (userSelectedQty > serverStock) {
-      // 2. 남은 재고보다 많은 수량을 선택한 경우 (오해 방지)
       tier = STOCK_TIERS.OVER_LIMIT;
-      displayQty = serverStock; // 실제 최대치 고정 노출
+      displayQty = serverStock; 
       isPulse = true;
     } else {
-      // 3. 정상적인 선택: 첫 1개는 차감하지 않고, 추가 수량부터 1개씩 차감
       displayQty = serverStock - userSelectedQty + 1;
-      
       if (displayQty <= STOCK_TIERS.CRITICAL.max) tier = STOCK_TIERS.CRITICAL;
       else if (displayQty <= STOCK_TIERS.WARNING.max) tier = STOCK_TIERS.WARNING;
     }
@@ -93,8 +87,9 @@
     `;
   }
 
-  function instantCheckOptions() {
-    const inputs = document.querySelectorAll('input[name="option_box_id"], input[id^="option_box1_id"]');
+  // 💡 [핵심 수정] activeVariantCode 인자를 받아 고객이 현재 조작 중인 옵션을 우선 처리
+  function instantCheckOptions(activeVariantCode = null) {
+    const inputs = Array.from(document.querySelectorAll('input[name="option_box_id"], input[id^="option_box1_id"]'));
     const container = document.getElementById('ykinas-stock-widget-container');
     
     if (inputs.length === 0) {
@@ -102,23 +97,34 @@
        return;
     }
 
-    const lastInput = inputs[inputs.length - 1];
-    const variantCode = lastInput.value;
+    // 💡 화면에 있는 동일한 옵션들의 수량을 모두 합산하는 맵 생성
+    const selectedQuantities = {};
+    let latestVariantCode = null;
 
-    if (variantCode && globalStockMap[variantCode] !== undefined) {
-      const serverStock = globalStockMap[variantCode];
-      let userSelectedQty = 1; // 💡 기본 수량 1로 초기화
+    inputs.forEach(input => {
+      const vCode = input.value;
+      if (!vCode) return;
+      latestVariantCode = vCode; // 기본적으로 맨 마지막에 추가된 옵션 기억
 
-      const parentRow = lastInput.closest('tr, tbody, div.option_box_wrap, div.xans-product-option') || lastInput.parentElement;
+      const parentRow = input.closest('tr, tbody, div.option_box_wrap, div.xans-product-option') || input.parentElement;
+      let qty = 1;
       if (parentRow) {
         const qtyInput = parentRow.querySelector('input[id*="quantity"], input[name*="quantity"]');
-        if (qtyInput) {
-          userSelectedQty = parseInt(qtyInput.value, 10) || 1;
-        }
+        if (qtyInput) qty = parseInt(qtyInput.value, 10) || 1;
       }
+      // 동일 품목이 여러 행일 경우 합산 처리
+      selectedQuantities[vCode] = (selectedQuantities[vCode] || 0) + qty;
+    });
 
-      // 두 값을 독립적으로 넘겨 render 함수 내에서 정확히 비교하도록 수정
-      renderDynamicStockWidget(serverStock, userSelectedQty);
+    // 💡 고객이 방금 클릭한 옵션이 있으면 그것을 타겟으로, 없으면 맨 마지막 옵션을 타겟으로 설정
+    const targetVariantCode = activeVariantCode || latestVariantCode;
+
+    if (targetVariantCode && globalStockMap[targetVariantCode] !== undefined) {
+      const serverStock = globalStockMap[targetVariantCode];
+      const userQty = selectedQuantities[targetVariantCode];
+      renderDynamicStockWidget(serverStock, userQty);
+    } else {
+      if (container) container.style.display = 'none';
     }
   }
 
@@ -130,19 +136,36 @@
 
     const observeTarget = document.querySelector('.xans-product-detail') || document.body;
     
+    // DOM 변화 감지 (새 옵션 추가/삭제 시 실행)
     const observer = new MutationObserver((mutations) => {
       let shouldUpdate = false;
       mutations.forEach(mutation => { if (mutation.type === 'childList') shouldUpdate = true; });
+      // 옵션이 추가되거나 삭제될 때는 특정 타겟 없이 최신 DOM 기준으로 재계산
       if (shouldUpdate) instantCheckOptions();
     });
     observer.observe(observeTarget, { childList: true, subtree: true });
 
+    // 💡 [핵심 수정] 사용자가 특정 옵션의 수량 버튼을 클릭했을 때, 해당 옵션의 코드를 추적하여 전달
     observeTarget.addEventListener('click', (e) => {
-      setTimeout(instantCheckOptions, 50);
+      const parentRow = e.target.closest('tr, tbody, div.option_box_wrap');
+      let activeCode = null;
+      if (parentRow) {
+        const hiddenInput = parentRow.querySelector('input[name="option_box_id"], input[id^="option_box1_id"]');
+        if (hiddenInput) activeCode = hiddenInput.value;
+      }
+      setTimeout(() => instantCheckOptions(activeCode), 50);
     });
+
+    // 💡 [핵심 수정] 사용자가 특정 옵션의 수량을 직접 키보드로 입력했을 때 추적
     observeTarget.addEventListener('input', (e) => {
       if (e.target.tagName === 'INPUT' && (e.target.id.includes('quantity') || e.target.name.includes('quantity'))) {
-        instantCheckOptions();
+        const parentRow = e.target.closest('tr, tbody, div.option_box_wrap');
+        let activeCode = null;
+        if (parentRow) {
+          const hiddenInput = parentRow.querySelector('input[name="option_box_id"], input[id^="option_box1_id"]');
+          if (hiddenInput) activeCode = hiddenInput.value;
+        }
+        instantCheckOptions(activeCode);
       }
     });
   }
