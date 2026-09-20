@@ -11,8 +11,17 @@ serve(async (req: Request) => {
       throw new Error("Cafe24 인증 에러 (" + oauthError + "): " + oauthDesc);
     }
 
-    const code = url.searchParams.get("code");
-    const mall_id = url.searchParams.get("mall_id"); 
+    // 💡 [핵심 교정] mall_id가 없으면 state 값에서 쇼핑몰 아이디를 추출합니다.
+    let mall_id = url.searchParams.get("mall_id") || url.searchParams.get("state"); 
+
+    // 잘못된 state 값 방어 로직
+    if (mall_id === "install") {
+      throw new Error("인가 URL의 state 파라미터에 'install' 대신 실제 쇼핑몰 아이디를 넣어주세요.");
+    }
+
+    if (!code || !mall_id) {
+      throw new Error("Invalid request: 권한 증명 코드(code)나 mall_id 파라미터가 없습니다.");
+    }
     const state = url.searchParams.get("state"); // 필요 시에만 사용
     
     // 환경변수 또는 하드코딩된 키 값 세팅
@@ -22,10 +31,6 @@ serve(async (req: Request) => {
     const supabaseRef = Deno.env.get("SUPABASE_REF") || "ipgzyckubwakijerxcpc";
     const redirectUri = "https://" + supabaseRef + ".supabase.co/functions/v1/cafe24-auth-callback";
 
-    if (!code || !mall_id) {
-      // 💡 [교정 1] 에러 메시지 텍스트를 실제 검증 중인 mall_id로 정확하게 수정
-      throw new Error("Invalid request: 권한 증명 코드(code)나 mall_id 파라미터가 없습니다.");
-    }
 
     // 💡 [교정 2] tokenUrl과 apiUrl의 중복 선언을 하나로 통합
     const tokenUrl = `https://${mall_id}.cafe24api.com/api/v2/oauth/token`;
