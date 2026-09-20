@@ -1,10 +1,13 @@
 // public/modules/stockit.js (Full-stack Gidiper - Telemetry & Robust Extraction)
 (function (global) {
-  'use strict';
+ 'use strict';
+  
+  // 💡 [핵심 교정] 관리자 페이지(Admin/Appstore)에서 스크립트가 로드되었을 경우 즉시 실행 차단
+  if (global.location.pathname.includes('/admin/')) return; 
+
   if (global.__YKINAS_STOCK_LOADED__) return;
   global.__YKINAS_STOCK_LOADED__ = true;
 
-  // 💡 1단계 관문: 스크립트가 정상 주입되었는지 확인하는 녹색 인디케이터
   console.log('%c[YKINAS Stockit] 🚀 Module Initializing...', 'color: #20c997; font-weight: bold; font-size: 12px;');
 
   const MALL_ID = window.CAFE24API?.MALL_ID || window.CAFE24?.MALL_ID || '';
