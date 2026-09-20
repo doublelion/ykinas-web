@@ -100,10 +100,10 @@
   function instantCheckOptions() {
     // 1. 상품 상세 영역으로 스코프 제한 (다른 추천상품 위젯 등의 간섭 원천 차단)
     const detailArea = document.querySelector('.xans-product-detail') || document;
-    
+
     // 💡 [핵심 교정 1] 카페24의 껍데기 input을 제외하고, 실제 사용자가 추가한 '옵션 행(option_box1_id...)'만 추출
     const addedOptions = Array.from(detailArea.querySelectorAll('input[id^="option_box"][id$="_id"]'))
-      .filter(input => input.id !== 'option_box_id'); 
+      .filter(input => input.id !== 'option_box_id');
 
     const container = document.getElementById('ykinas-stock-widget-container');
     let targetVariantCode = null;
@@ -168,10 +168,32 @@
     observer.observe(observeTarget, { childList: true, subtree: true });
 
     observeTarget.addEventListener('click', () => setTimeout(instantCheckOptions, 50));
+    // (기존) observeTarget.addEventListener('input', (e) => { ... }) 부분을 아래로 교체
     observeTarget.addEventListener('input', (e) => {
-      if (e.target.tagName === 'INPUT' && (e.target.id.includes('quantity') || e.target.name.includes('quantity'))) {
-        instantCheckOptions();
+      
+      // 💡 옵셔널 체이닝(?.)을 사용하여 e 또는 e.target이 undefined일 때의 크래시 원천 차단
+      const target = e?.target;
+      if (!target) return;
+
+      if (target.tagName === 'INPUT' && (target.id?.includes('quantity') || target.name?.includes('quantity'))) {
+        // 즉시 실행하지 않고 마이크로태스크 큐로 넘겨 카페24 내장 스크립트와의 실행 순서 충돌 방지
+        setTimeout(() => {
+          try {
+            instantCheckOptions();
+          } catch (err) {
+            console.warn('[YKINAS Stockit] Option check deferred:', err);
+          }
+        }, 0);
       }
+    });
+
+    observeTarget.addEventListener('click', (e) => {
+      if (!e?.target) return;
+      setTimeout(() => {
+        try {
+          instantCheckOptions();
+        } catch (err) { }
+      }, 50);
     });
   }
 
