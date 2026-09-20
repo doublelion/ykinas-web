@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  
+
   // 💡 [핵심 교정 1] 결제 시 실시간 재고 반영을 위한 강력한 캐시 방어
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -18,14 +18,14 @@ export default async function handler(req, res) {
 
   let requestHost = '';
   if (referer) {
-    try { requestHost = new URL(referer).hostname; } catch (e) {}
+    try { requestHost = new URL(referer).hostname; } catch (e) { }
   }
 
   if (!mall_id || !product_no) return res.status(400).json({ error: 'BAD_REQUEST', message: '파라미터 누락' });
 
   try {
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-    
+
     const { data: license, error: licenseError } = await supabase
       .from('skin_licenses')
       .select('is_active, modules_config, skin_allowed_domains(domain)')
@@ -33,11 +33,11 @@ export default async function handler(req, res) {
       .maybeSingle();
 
     if (licenseError || !license || !license.is_active) return res.status(403).json({ error: 'FORBIDDEN' });
-    
+
     const isDomainMatched = license.skin_allowed_domains?.some(d => requestHost === d.domain || requestHost.endsWith('.' + d.domain));
     // 개발/테스트 환경 예외 처리를 위해 referer가 없는 경우 느슨한 허용(또는 차단) 정책 적용 가능
     if (requestHost && !isDomainMatched) return res.status(403).json({ error: 'FORBIDDEN' });
-    
+
     const config = license.modules_config || {};
     if (!config.stockit || config.stockit.enabled !== true) return res.status(403).json({ error: 'FORBIDDEN' });
 
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
     const stockMap = {};
     variants.forEach(variant => {
       if (!variant.variant_code) return;
-      
+
       let qty = 0;
       const invData = variant.inventories || variant.inventory;
 
@@ -79,16 +79,18 @@ export default async function handler(req, res) {
       // 💡 [핵심 교정 3] 비즈니스 로직 적용: 순수 재고 - 안전 재고 = 실 판매가능 재고
       const safety = variant.safety_inventory || 0;
       qty = Math.max(0, qty - safety);
-      
-      // 💡 [핵심 교정 4] T/F vs true/false 혼용 완벽 대응 및 진열/판매 상태 검증
-      const isDisplay = variant.display === 'T' || variant.display === true;
-      const isSelling = variant.selling === 'T' || variant.selling === true;
+
+      // 💡 [수정된 핵심 교정 4] undefined 방어 로직 추가
+      // API 응답에 display/selling 속성이 아예 없다면(undefined), 차단하지 않고 true로 간주합니다.
+      const isDisplay = variant.display === undefined || variant.display === 'T' || variant.display === true;
+      const isSelling = variant.selling === undefined || variant.selling === 'T' || variant.selling === true;
+
       if (!isDisplay || !isSelling) qty = 0;
 
       // 💡 [핵심 교정 5] 재고관리 사용 안함('F')일 경우 무제한(99999) 처리
       const useInventory = variant.use_inventory === 'T' || variant.use_inventory === true;
       if (!useInventory && variant.use_inventory !== undefined) qty = 99999;
-      
+
       stockMap[variant.variant_code] = parseInt(qty, 10) || 0;
     });
 
