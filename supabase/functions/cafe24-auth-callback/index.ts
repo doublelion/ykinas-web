@@ -12,7 +12,8 @@ serve(async (req: Request) => {
     }
 
     const code = url.searchParams.get("code");
-    const mall_id = url.searchParams.get("state"); 
+    const mall_id = url.searchParams.get("mall_id"); 
+    const state = url.searchParams.get("state"); // 필요 시에만 사용
     
     // 환경변수 또는 하드코딩된 키 값 세팅
     const clientId = Deno.env.get("CAFE24_CLIENT_ID") || "WNy6KQv4Hd7orrA9ifubBA"; 
@@ -22,18 +23,22 @@ serve(async (req: Request) => {
     const redirectUri = "https://" + supabaseRef + ".supabase.co/functions/v1/cafe24-auth-callback";
 
     if (!code || !mall_id) {
-      throw new Error("Invalid request: 권한 증명 코드(code)나 state 파라미터가 없습니다.");
+      // 💡 [교정 1] 에러 메시지 텍스트를 실제 검증 중인 mall_id로 정확하게 수정
+      throw new Error("Invalid request: 권한 증명 코드(code)나 mall_id 파라미터가 없습니다.");
     }
 
+    // 💡 [교정 2] tokenUrl과 apiUrl의 중복 선언을 하나로 통합
+    const tokenUrl = `https://${mall_id}.cafe24api.com/api/v2/oauth/token`;
+    
     const tokenParams = new URLSearchParams();
     tokenParams.append("grant_type", "authorization_code");
     tokenParams.append("code", code);
     tokenParams.append("redirect_uri", redirectUri);
 
     const basicAuth = btoa(clientId + ":" + clientSecret);
-    const apiUrl = "https://" + mall_id + ".cafe24api.com/api/v2/oauth/token";
 
-    const tokenResponse = await fetch(apiUrl, {
+    // apiUrl 변수를 삭제하고, 단일화된 tokenUrl을 fetch에 바로 사용
+    const tokenResponse = await fetch(tokenUrl, {
       method: "POST",
       headers: {
         "Authorization": "Basic " + basicAuth,
