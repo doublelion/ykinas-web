@@ -1,9 +1,9 @@
 // public/modules/stockit.js (Full-stack Gidiper - Telemetry & Robust Extraction)
 (function (global) {
- 'use strict';
-  
+  'use strict';
+
   // 💡 [핵심 교정] 관리자 페이지(Admin/Appstore)에서 스크립트가 로드되었을 경우 즉시 실행 차단
-  if (global.location.pathname.includes('/admin/')) return; 
+  if (global.location.pathname.includes('/admin/')) return;
 
   if (global.__YKINAS_STOCK_LOADED__) return;
   global.__YKINAS_STOCK_LOADED__ = true;
@@ -147,19 +147,58 @@
     renderDynamicStockWidget(globalStockMap[targetVariantCode], totalUserQtyForTarget);
   }
 
-  function initModule() {
-    // 💡 강력한 상품번호 파싱: 전역변수 -> 메타태그 -> URL 정규식 순서로 3중 추적
-    let productNo = window.iProductNo || document.querySelector('meta[property="product:productId"]')?.content;
-    if (!productNo) {
-      const match = window.location.pathname.match(/\/product\/[^\/]+\/(\d+)/);
-      if (match) productNo = match[1];
-    }
+  // 💡 [교체 영역] 7중 Fallback 상품번호 파서 및 안전 초기화 로직
+  function extractProductNo() {
+    // 1. 카페24 전역 변수
+    if (window.iProductNo) return String(window.iProductNo);
+    if (window.CAFE24?.GLOBAL_DATADIC?.product_no) return String(window.CAFE24.GLOBAL_DATADIC.product_no);
 
+    // 2. URL 쿼리 파라미터 (?product_no= 형태)
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryNo = urlParams.get('product_no');
+    if (queryNo) return queryNo;
+
+    // 3. DOM 폼 내부 hidden input
+    const hiddenInput = document.querySelector('input[name="product_no"], #product_no');
+    if (hiddenInput && hiddenInput.value) return hiddenInput.value;
+
+    // 4. OpenGraph 메타 태그
+    const metaTag = document.querySelector('meta[property="product:productId"]');
+    if (metaTag && metaTag.content) return metaTag.content;
+
+    // 5. SEO 친화적 URL Path (/product/상품명/번호/...)
+    const match = window.location.pathname.match(/\/product\/[^\/]+\/(\d+)/);
+    if (match && match[1]) return match[1];
+
+    // 6. 단순 Path 끝자리 매칭 (/product/번호)
+    const simpleMatch = window.location.pathname.match(/\/product\/.*?(\d+)/);
+    if (simpleMatch && simpleMatch[1]) return simpleMatch[1];
+
+    return null;
+  }
+
+  function initModule() {
+    // 상세 페이지 영역이 전혀 없다면 에러 없이 조용히 종료
+    const isProductPage = window.location.pathname.includes('/product/') ||
+      window.location.search.includes('product_no=') ||
+      !!document.querySelector('.xans-product-detail');
+    if (!isProductPage) return;
+
+    let productNo = extractProductNo();
+
+    // 카페24 DOM/변수 바인딩 지연 시 100ms 뒤 1회 재시도 (비동기 방어)
     if (!productNo) {
-      console.error('[YKINAS Stockit] ❌ 상품 번호를 찾을 수 없어 모듈을 종료합니다.');
+      setTimeout(() => {
+        productNo = extractProductNo();
+        if (productNo) startStockit(productNo);
+      }, 100);
       return;
     }
 
+    startStockit(productNo);
+  }
+
+  function startStockit(productNo) {
     preFetchAllInventory(productNo);
 
     const observeTarget = document.querySelector('.xans-product-detail') || document.body;
@@ -170,42 +209,27 @@
     });
     observer.observe(observeTarget, { childList: true, subtree: true });
 
-    observeTarget.addEventListener('click', () => setTimeout(instantCheckOptions, 50));
-    // (기존) observeTarget.addEventListener('input', (e) => { ... }) 부분을 아래로 교체
     observeTarget.addEventListener('input', (e) => {
-      // 💡 [추가된 2줄] 카페24 내장 레거시 jQuery(mCustomScrollbar 등) 크래시 방어
       window.event = window.event || e;
       if (!e && !window.event) return;
-
-      // 옵셔널 체이닝 대신 명시적 타겟 추출로 구형 브라우저 안정성 강화
       const target = e.target || window.event.srcElement;
       if (!target) return;
 
       if (target.tagName === 'INPUT' && (target.id?.includes('quantity') || target.name?.includes('quantity'))) {
         setTimeout(() => {
-          try {
-            instantCheckOptions();
-          } catch (err) {
-            console.warn('[YKINAS Stockit] Option check deferred:', err);
-          }
+          try { instantCheckOptions(); } catch (err) { }
         }, 0);
       }
     });
 
     observeTarget.addEventListener('click', (e) => {
-      // 💡 [추가된 2줄] 클릭 이벤트에서도 동일한 레거시 방어 로직 적용
       window.event = window.event || e;
       if (!e && !window.event) return;
-
       const target = e.target || window.event.srcElement;
       if (!target) return;
 
       setTimeout(() => {
-        try {
-          instantCheckOptions();
-        } catch (err) {
-          console.warn('[YKINAS Stockit] Click check deferred:', err);
-        }
+        try { instantCheckOptions(); } catch (err) { }
       }, 50);
     });
   }

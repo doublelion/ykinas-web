@@ -10,7 +10,7 @@ serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 만료일이 3일 이내로 남은 토큰들만 타겟팅하여 조회
+    // 만료일이 3일 이내로 임박한 토큰들만 선별하여 갱신
     const threeDaysLater = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
     const { data: tokens, error } = await supabase
       .from("cafe24_auth_tokens")
