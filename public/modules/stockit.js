@@ -170,13 +170,15 @@
     observeTarget.addEventListener('click', () => setTimeout(instantCheckOptions, 50));
     // (기존) observeTarget.addEventListener('input', (e) => { ... }) 부분을 아래로 교체
     observeTarget.addEventListener('input', (e) => {
-      
-      // 💡 옵셔널 체이닝(?.)을 사용하여 e 또는 e.target이 undefined일 때의 크래시 원천 차단
-      const target = e?.target;
+      // 💡 [추가된 2줄] 카페24 내장 레거시 jQuery(mCustomScrollbar 등) 크래시 방어
+      window.event = window.event || e;
+      if (!e && !window.event) return;
+
+      // 옵셔널 체이닝 대신 명시적 타겟 추출로 구형 브라우저 안정성 강화
+      const target = e.target || window.event.srcElement;
       if (!target) return;
 
       if (target.tagName === 'INPUT' && (target.id?.includes('quantity') || target.name?.includes('quantity'))) {
-        // 즉시 실행하지 않고 마이크로태스크 큐로 넘겨 카페24 내장 스크립트와의 실행 순서 충돌 방지
         setTimeout(() => {
           try {
             instantCheckOptions();
@@ -188,11 +190,19 @@
     });
 
     observeTarget.addEventListener('click', (e) => {
-      if (!e?.target) return;
+      // 💡 [추가된 2줄] 클릭 이벤트에서도 동일한 레거시 방어 로직 적용
+      window.event = window.event || e;
+      if (!e && !window.event) return;
+
+      const target = e.target || window.event.srcElement;
+      if (!target) return;
+
       setTimeout(() => {
         try {
           instantCheckOptions();
-        } catch (err) { }
+        } catch (err) {
+          console.warn('[YKINAS Stockit] Click check deferred:', err);
+        }
       }, 50);
     });
   }
