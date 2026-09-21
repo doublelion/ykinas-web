@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // 💡 [교정 1] 프론트엔드에서 넘어오는 shop_no 파라미터 수신 (기본값 1)
+  // 💡 [교정 1] 프론트엔드에서 넘겨주는 shop_no 파라미터 수신 (누락 방지)
   const { mall_id, product_no, shop_no } = req.query;
   const currentShopNo = shop_no || '1'; 
   const referer = req.headers.referer || req.headers.origin || '';
@@ -26,7 +26,6 @@ export default async function handler(req, res) {
   try {
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    // 라이선스 검증 유지
     const { data: license, error: licenseError } = await supabase
       .from('skin_licenses')
       .select('is_active, modules_config, skin_allowed_domains(domain)')
@@ -34,6 +33,7 @@ export default async function handler(req, res) {
       .maybeSingle();
 
     if (licenseError || !license || !license.is_active) return res.status(403).json({ error: 'FORBIDDEN' });
+
     const isDomainMatched = license.skin_allowed_domains?.some(d => requestHost === d.domain || requestHost.endsWith('.' + d.domain));
     if (requestHost && !isDomainMatched) return res.status(403).json({ error: 'FORBIDDEN' });
 
@@ -43,13 +43,13 @@ export default async function handler(req, res) {
     const { data: tokenData } = await supabase.from('cafe24_auth_tokens').select('access_token').eq('mall_id', mall_id).single();
     if (!tokenData) return res.status(401).json({ error: 'UNAUTHORIZED' });
 
-    // 💡 [교정 2] 카페24 API 호출 시 shop_no 명시
+    // 💡 [교정 2] 카페24 API 호출 시 멀티쇼핑몰 번호(shop_no)를 명확히 주입
     const cafe24Res = await fetch(`https://${mall_id}.cafe24api.com/api/v2/admin/products/${product_no}/variants?shop_no=${currentShopNo}&embed=inventories`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
         'Content-Type': 'application/json',
-        'X-Cafe24-Api-Version': '2025-12-01'
+        'X-Cafe24-Api-Version': '2025-12-01' 
       }
     });
 
@@ -57,42 +57,31 @@ export default async function handler(req, res) {
 
     const cafe24Data = await cafe24Res.json();
     const variants = cafe24Data.variants || [];
-    const stockMap = {};
 
+    const stockMap = {};
     variants.forEach(variant => {
       if (!variant.variant_code) return;
 
-      // 💡 [교정 3] 인벤토리 객체 안전 추출 (Array or Object)
+      // 다중 타입(Array/Object) 파싱 방어
       let invObj = {};
       if (variant.inventories && Array.isArray(variant.inventories)) invObj = variant.inventories[0] || {};
       else if (variant.inventory && typeof variant.inventory === 'object') invObj = variant.inventory;
       else if (variant.inventories && typeof variant.inventories === 'object') invObj = variant.inventories;
 
-      // 💡 [교정 4] 원시 수량 추출
-      const rawQty = parseInt(invObj.available_inventory ?? invObj.quantity ?? variant.available_inventory ?? variant.quantity ?? 0, 10);
-      const safety = parseInt(invObj.safety_inventory ?? variant.safety_inventory ?? 0, 10);
+      // 💡 [교정 3] 카페24의 available_inventory는 이미 안전재고 연산이 끝난 '실제 판매가능 수량'입니다.
+      // 따라서 qty - safety 같은 이중 차감 로직을 완전히 삭제하고 원시값을 그대로 사용합니다.
+      let realQty = parseInt(invObj.available_inventory ?? invObj.quantity ?? variant.available_inventory ?? variant.quantity ?? 0, 10);
 
-      let realQty = 0;
-      // 💡 [교정 5] 이중 차감 버그 해결
-      const hasAvailableInv = invObj.available_inventory !== undefined || variant.available_inventory !== undefined;
-      if (hasAvailableInv) {
-        realQty = rawQty; // 이미 안전재고가 빠진 실제 판매 가능 수량
-      } else {
-        realQty = Math.max(0, rawQty - safety); // 수량만 내려왔을 경우에만 직접 차감
-      }
+      // 진열 및 판매 상태 검증 (값이 없으면 true로 간주)
+      const isDisplay = variant.display === undefined || variant.display === 'T' || variant.display === true;
+      const isSelling = variant.selling === undefined || variant.selling === 'T' || variant.selling === true;
 
-      // 💡 [교정 6] 재고 관리 '사용 안함(F)' 처리 (깊은 탐색)
+      if (!isDisplay || !isSelling) realQty = 0;
+
+      // 💡 [교정 4] 재고관리 '사용 안함(F)' 처리
       const useInv = invObj.use_inventory ?? variant.use_inventory;
       if (useInv === 'F' || useInv === false) {
-        realQty = 99999;
-      }
-
-      // 💡 [교정 7] 진열/판매 상태 ('F'면 무조건 품절 처리)
-      const isDisplay = variant.display === 'T' || variant.display === true || variant.display === undefined;
-      const isSelling = variant.selling === 'T' || variant.selling === true || variant.selling === undefined;
-
-      if (!isDisplay || !isSelling) {
-        realQty = 0;
+        realQty = 99999; // 무제한 판매
       }
 
       stockMap[variant.variant_code] = realQty;
