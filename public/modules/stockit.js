@@ -34,17 +34,21 @@
 
   async function preFetchAllInventory(productNo) {
     if (!MALL_ID) return;
-    const proxyUrl = `https://ykinas-web.vercel.app/api/stockit?mall_id=${MALL_ID}&product_no=${productNo}`;
+
+    // 💡 [핵심 추가] 카페24 글로벌 객체에서 현재 쇼핑몰 번호(shop_no) 추출 (기본값 1)
+    const SHOP_NO = window.CAFE24?.GLOBAL_DATADIC?.shop_no || window.CAFE24API?.SHOP_NO || '1';
+
+    // 💡 URL에 shop_no 쿼리 파라미터 탑재
+    const proxyUrl = `https://ykinas-web.vercel.app/api/stockit?mall_id=${MALL_ID}&shop_no=${SHOP_NO}&product_no=${productNo}`;
 
     try {
-      console.log(`[YKINAS Stockit] 📡 서버에 재고 데이터 요청 중... (상품번호: ${productNo})`);
+      console.log(`[YKINAS Stockit] 📡 서버에 재고 데이터 요청 중... (상품번호: ${productNo}, 샵: ${SHOP_NO})`);
       const response = await fetch(proxyUrl, { method: 'GET' });
       const contentType = response.headers.get("content-type") || "";
 
       if (response.ok && contentType.includes("application/json")) {
         const data = await response.json();
         globalStockMap = data.stockMap || {};
-        // 💡 2단계 관문: 서버에서 성공적으로 받아온 재고 맵핑 데이터 노출
         console.log('%c[YKINAS Stockit] 📦 데이터 로드 성공:', 'color: #3b82f6; font-weight: bold;', globalStockMap);
         instantCheckOptions();
       } else {

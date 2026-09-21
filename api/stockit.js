@@ -5,15 +5,15 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-
-  // 💡 [핵심 교정 1] 결제 시 실시간 재고 반영을 위한 강력한 캐시 방어
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const { mall_id, product_no } = req.query;
+  // 💡 [교정 1] 프론트엔드에서 넘어오는 shop_no 파라미터 수신 (기본값 1)
+  const { mall_id, product_no, shop_no } = req.query;
+  const currentShopNo = shop_no || '1'; 
   const referer = req.headers.referer || req.headers.origin || '';
 
   let requestHost = '';
@@ -26,6 +26,7 @@ export default async function handler(req, res) {
   try {
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+    // 라이선스 검증 유지
     const { data: license, error: licenseError } = await supabase
       .from('skin_licenses')
       .select('is_active, modules_config, skin_allowed_domains(domain)')
@@ -33,9 +34,7 @@ export default async function handler(req, res) {
       .maybeSingle();
 
     if (licenseError || !license || !license.is_active) return res.status(403).json({ error: 'FORBIDDEN' });
-
     const isDomainMatched = license.skin_allowed_domains?.some(d => requestHost === d.domain || requestHost.endsWith('.' + d.domain));
-    // 개발/테스트 환경 예외 처리를 위해 referer가 없는 경우 느슨한 허용(또는 차단) 정책 적용 가능
     if (requestHost && !isDomainMatched) return res.status(403).json({ error: 'FORBIDDEN' });
 
     const config = license.modules_config || {};
@@ -44,12 +43,13 @@ export default async function handler(req, res) {
     const { data: tokenData } = await supabase.from('cafe24_auth_tokens').select('access_token').eq('mall_id', mall_id).single();
     if (!tokenData) return res.status(401).json({ error: 'UNAUTHORIZED' });
 
-    const cafe24Res = await fetch(`https://${mall_id}.cafe24api.com/api/v2/admin/products/${product_no}/variants?embed=inventories`, {
+    // 💡 [교정 2] 카페24 API 호출 시 shop_no 명시
+    const cafe24Res = await fetch(`https://${mall_id}.cafe24api.com/api/v2/admin/products/${product_no}/variants?shop_no=${currentShopNo}&embed=inventories`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
         'Content-Type': 'application/json',
-        'X-Cafe24-Api-Version': '2025-12-01' // 히스토리 기반 명시적 버전
+        'X-Cafe24-Api-Version': '2025-12-01'
       }
     });
 
@@ -57,41 +57,45 @@ export default async function handler(req, res) {
 
     const cafe24Data = await cafe24Res.json();
     const variants = cafe24Data.variants || [];
-
     const stockMap = {};
+
     variants.forEach(variant => {
       if (!variant.variant_code) return;
 
-      let qty = 0;
-      const invData = variant.inventories || variant.inventory;
+      // 💡 [교정 3] 인벤토리 객체 안전 추출 (Array or Object)
+      let invObj = {};
+      if (variant.inventories && Array.isArray(variant.inventories)) invObj = variant.inventories[0] || {};
+      else if (variant.inventory && typeof variant.inventory === 'object') invObj = variant.inventory;
+      else if (variant.inventories && typeof variant.inventories === 'object') invObj = variant.inventories;
 
-      // 💡 [핵심 교정 2] 다중 타입(Array/Object) 파싱 방어
-      if (invData) {
-        if (Array.isArray(invData) && invData.length > 0) {
-          qty = invData[0].available_inventory ?? invData[0].quantity ?? 0;
-        } else if (typeof invData === 'object' && !Array.isArray(invData)) {
-          qty = invData.available_inventory ?? invData.quantity ?? 0;
-        }
+      // 💡 [교정 4] 원시 수량 추출
+      const rawQty = parseInt(invObj.available_inventory ?? invObj.quantity ?? variant.available_inventory ?? variant.quantity ?? 0, 10);
+      const safety = parseInt(invObj.safety_inventory ?? variant.safety_inventory ?? 0, 10);
+
+      let realQty = 0;
+      // 💡 [교정 5] 이중 차감 버그 해결
+      const hasAvailableInv = invObj.available_inventory !== undefined || variant.available_inventory !== undefined;
+      if (hasAvailableInv) {
+        realQty = rawQty; // 이미 안전재고가 빠진 실제 판매 가능 수량
       } else {
-        qty = variant.available_inventory ?? variant.quantity ?? 0;
+        realQty = Math.max(0, rawQty - safety); // 수량만 내려왔을 경우에만 직접 차감
       }
 
-      // 💡 [핵심 교정 3] 비즈니스 로직 적용: 순수 재고 - 안전 재고 = 실 판매가능 재고
-      const safety = variant.safety_inventory || 0;
-      qty = Math.max(0, qty - safety);
+      // 💡 [교정 6] 재고 관리 '사용 안함(F)' 처리 (깊은 탐색)
+      const useInv = invObj.use_inventory ?? variant.use_inventory;
+      if (useInv === 'F' || useInv === false) {
+        realQty = 99999;
+      }
 
-      // 💡 [수정된 핵심 교정 4] undefined 방어 로직 추가
-      // API 응답에 display/selling 속성이 아예 없다면(undefined), 차단하지 않고 true로 간주합니다.
-      const isDisplay = variant.display === undefined || variant.display === 'T' || variant.display === true;
-      const isSelling = variant.selling === undefined || variant.selling === 'T' || variant.selling === true;
+      // 💡 [교정 7] 진열/판매 상태 ('F'면 무조건 품절 처리)
+      const isDisplay = variant.display === 'T' || variant.display === true || variant.display === undefined;
+      const isSelling = variant.selling === 'T' || variant.selling === true || variant.selling === undefined;
 
-      if (!isDisplay || !isSelling) qty = 0;
+      if (!isDisplay || !isSelling) {
+        realQty = 0;
+      }
 
-      // 💡 [핵심 교정 5] 재고관리 사용 안함('F')일 경우 무제한(99999) 처리
-      const useInventory = variant.use_inventory === 'T' || variant.use_inventory === true;
-      if (!useInventory && variant.use_inventory !== undefined) qty = 99999;
-
-      stockMap[variant.variant_code] = parseInt(qty, 10) || 0;
+      stockMap[variant.variant_code] = realQty;
     });
 
     return res.status(200).json({ success: true, stockMap });
