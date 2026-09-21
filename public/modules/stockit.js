@@ -22,6 +22,42 @@
 
   let globalStockMap = {};
   let currentTargetVariant = null;
+  // 💡 1. 캡처링 인터셉터 함수 내부 정의
+  function attachCapturingInterceptor() {
+    document.addEventListener('click', (e) => {
+      const target = e.target;
+      const isQtyUpBtn = target.closest('a[href*="quantityUp"], img[alt*="수량증가"], .up, .qtyUp');
+      if (!isQtyUpBtn) return;
+
+      const qtyInput = target.closest('tr, .option_wrap, li')?.querySelector('input[id*="quantity"]');
+      if (!qtyInput) return;
+
+      const currentQty = parseInt(qtyInput.value, 10);
+      // 옵션 추출 로직 (단일 상품 / 옵션 상품 분기 대응)
+      let variantCode = null;
+      const detailArea = document.querySelector('.xans-product-detail') || document;
+      const addedOptions = Array.from(detailArea.querySelectorAll('input[id^="option_box"][id$="_id"]')).filter(input => input.id !== 'option_box_id');
+
+      if (addedOptions.length > 0) {
+        variantCode = addedOptions[addedOptions.length - 1].value;
+      } else {
+        const baseInput = detailArea.querySelector('input[name="option_box_id"]');
+        if (baseInput) variantCode = baseInput.value;
+      }
+
+      const maxStock = globalStockMap[variantCode];
+
+      // 💡 선제적 차단 및 커스텀 UI 강제 업데이트
+      if (maxStock !== undefined && currentQty >= maxStock) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        console.log('[YKINAS Stockit] 최대 구매 수량 도달 - 카페24 네이티브 알럿 차단 완료');
+        renderDynamicStockWidget(maxStock, currentQty + 1);
+      }
+    }, true); // UseCapture: true (가장 먼저 실행)
+  }
+
 
   // 💡 [핵심 추가] 부트스트래퍼 관점의 네이티브 Alert 인터셉터
   function injectNativeAlertInterceptor() {
@@ -225,6 +261,10 @@
 
   function startStockit(productNo) {
     preFetchAllInventory(productNo);
+
+    attachCapturingInterceptor();
+
+    
     injectNativeAlertInterceptor(); // 인터셉터 주입
 
     const observeTarget = document.querySelector('.xans-product-detail') || document.body;
