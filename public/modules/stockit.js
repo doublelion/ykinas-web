@@ -21,6 +21,35 @@
   };
 
   let globalStockMap = {};
+  let currentTargetVariant = null;
+
+  // 💡 [핵심 추가] 부트스트래퍼 관점의 네이티브 Alert 인터셉터
+  function injectNativeAlertInterceptor() {
+    if (global.__NEXUS_ALERT_INTERCEPTED__) return;
+    global.__NEXUS_ALERT_INTERCEPTED__ = true;
+
+    const originalAlert = global.alert;
+    global.alert = function (message) {
+      // 카페24 네이티브 초과 알럿 감지
+      if (typeof message === 'string' && message.includes('재고수량 보다 많습니다')) {
+
+        // 1. Event Bus를 통한 브로드캐스트 (타 모듈 확장 대비)
+        const event = new CustomEvent('nexus:stock-over-limit');
+        document.dispatchEvent(event);
+
+        // 2. 강제로 OVER_LIMIT UI 렌더링 (원래 재고 + 1을 인위적으로 주입)
+        if (currentTargetVariant && globalStockMap[currentTargetVariant] !== undefined) {
+          const maxStock = globalStockMap[currentTargetVariant];
+          renderDynamicStockWidget(maxStock, maxStock + 1);
+        }
+
+        // 선택 옵션: 기존 팝업을 안 띄우고 싶다면 여기서 return; (단, 스킨 호환성 테스트 필요)
+        // return; 
+      }
+      return originalAlert.apply(this, arguments);
+    };
+  }
+
 
   function injectGlobalOverrideStyle() {
     const overrideStyleId = 'ykinas-stock-global-override';
@@ -105,24 +134,17 @@
   // public/modules/stockit.js 내부에 있는 instantCheckOptions 함수만 아래 코드로 교체합니다.
 
   function instantCheckOptions() {
-    // 1. 상품 상세 영역으로 스코프 제한 (다른 추천상품 위젯 등의 간섭 원천 차단)
     const detailArea = document.querySelector('.xans-product-detail') || document;
-
-    // 💡 [핵심 교정 1] 카페24의 껍데기 input을 제외하고, 실제 사용자가 추가한 '옵션 행(option_box1_id...)'만 추출
     const addedOptions = Array.from(detailArea.querySelectorAll('input[id^="option_box"][id$="_id"]'))
       .filter(input => input.id !== 'option_box_id');
 
-    const container = document.getElementById('ykinas-stock-widget-container');
     let targetVariantCode = null;
     let totalUserQtyForTarget = 1;
 
     if (addedOptions.length > 0) {
-      // 💡 [핵심 교정 2] 멀티 옵션: 항상 배열의 가장 마지막(최하단에 방금 추가된) 옵션을 최우선 타겟으로 설정
       const lastOption = addedOptions[addedOptions.length - 1];
       targetVariantCode = lastOption.value;
       totalUserQtyForTarget = 0;
-
-      // 타겟과 동일한 옵션 코드를 가진 행들의 수량을 모두 찾아 합산 (계산 로직 복원)
       addedOptions.forEach(input => {
         if (input.value === targetVariantCode) {
           const idMatch = input.id.match(/option_box(\d+)_id/);
@@ -133,7 +155,6 @@
         }
       });
     } else {
-      // 단일 옵션 (옵션이 없는 기본 상품)의 경우 방어 로직
       const baseInput = detailArea.querySelector('input[name="option_box_id"]');
       if (baseInput && baseInput.value) {
         targetVariantCode = baseInput.value;
@@ -142,12 +163,12 @@
       }
     }
 
-    if (!targetVariantCode || globalStockMap[targetVariantCode] === undefined) {
-      if (container) container.style.display = 'none';
-      return;
-    }
+    // 전역 변수에 현재 활성화된 옵션 코드 저장 (인터셉터에서 사용)
+    currentTargetVariant = targetVariantCode;
 
-    // 추출된 서버 재고와 유저 선택 총수량을 전달 -> renderDynamicStockWidget 내부에서 (-n + 1) 계산 수행
+    if (!targetVariantCode || globalStockMap[targetVariantCode] === undefined) return;
+
+    // 정상적인 수량 변경 렌더링
     renderDynamicStockWidget(globalStockMap[targetVariantCode], totalUserQtyForTarget);
   }
 
@@ -204,6 +225,7 @@
 
   function startStockit(productNo) {
     preFetchAllInventory(productNo);
+    injectNativeAlertInterceptor(); // 인터셉터 주입
 
     const observeTarget = document.querySelector('.xans-product-detail') || document.body;
     const observer = new MutationObserver((mutations) => {
@@ -235,6 +257,12 @@
       setTimeout(() => {
         try { instantCheckOptions(); } catch (err) { }
       }, 50);
+    });
+
+    // 💡 인터셉터에서 발생시킨 커스텀 이벤트 리스닝
+    document.addEventListener('nexus:stock-over-limit', () => {
+      console.warn('[YKINAS Stockit] 최대 구매 수량 도달 감지됨. UI를 강제 업데이트합니다.');
+      // UI 복구를 위해 3초 뒤 다시 원래 상태(CRITICAL 등)로 되돌리는 시각적 피드백 옵션 추가 가능
     });
   }
 
