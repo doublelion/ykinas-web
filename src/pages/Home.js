@@ -106,8 +106,6 @@ const faqs = [
     a: '요구되는 기능과 페이지 수에 따라 상이하지만, 일반적인 커머스 사이트의 경우 평균 3~4주 정도 소요됩니다. 정확한 일정은 상담 시 프로젝트 범위에 맞춰 안내해 드립니다.',
   },
 ];
-
-
 // ==========================================
 // 포트폴리오 프리뷰 카드
 // ==========================================
@@ -684,187 +682,54 @@ function Home() {
           HIGH-END CANVAS HERO
       ================================================= */}
 
-      <header className="hero-slider-section">
+      <header className="hero-mesh-section">
 
-        <Swiper
-          modules={[
-            Autoplay,
-            Pagination,
-            EffectFade
-          ]}
-          effect="fade"
-          fadeEffect={{
-            crossFade: true
-          }}
-          speed={1200}
-          autoplay={{
-            delay: 6000,
-            disableOnInteraction: false,
-            pauseOnMouseEnter: false
-          }}
-          pagination={{
-            clickable: true
-          }}
-          loop={true}
-          className="hero-swiper"
-        >
-
-          {/* =================================================
-        SLIDE 01
-        DIGITAL / WEB CONSTRUCTION
-    ================================================= */}
-
-          <SwiperSlide>
-
-            <section className="hero-mesh-section">
-
-              <MeshCanvas />
-
-              <div className="hero-glow" />
-
-              <div className="hero-content">
-
-                <span className="sub-tag">
-                  HIGH-END WEB CONSTRUCTION B2B
-                </span>
-
-                <h1>
-                  DIGITAL<span className="accent">.</span>
-                </h1>
-
-                <p className="desc">
-                  기업의 격(格)을 증명하는
-                  <br />
-                  하이엔드 웹사이트 구축, YKINAS
-                </p>
-
-                <p className="sub-desc">
-                  당신의 웹사이트는 24시간 일하는
-                  <br />
-                  가장 유능한 영업 사원이어야 합니다.
-                </p>
-
-                <div className="hero-btns">
-
-                  <Button
-                    text="프로젝트 문의하기"
-                    onClick={() =>
-                      navigate('/contact')
-                    }
-                  />
-
-                </div>
-
-              </div>
-
-            </section>
-
-          </SwiperSlide>
+        <canvas
+          ref={canvasRef}
+          className="mesh-canvas"
+          aria-hidden="true"
+        />
 
 
-          {/* =================================================
-        SLIDE 02
-        LAUNCH / COMMERCE
-    ================================================= */}
+        {/* Canvas 위 오버레이 */}
 
-          <SwiperSlide>
-
-            <section className="hero hero-launch">
-
-              <div
-                className="hero__bg"
-                aria-hidden="true"
-              />
-
-              <div
-                className="hero__beams"
-                aria-hidden="true"
-              >
-                <span className="beam beam--1" />
-                <span className="beam beam--2" />
-
-                <span className="frame frame--1" />
-                <span className="frame frame--2" />
-              </div>
+        <div className="hero-glow" />
 
 
-              <div className="hero__inner">
+        {/* Hero Content */}
 
-                <p className="eyebrow eyebrow--soft">
-                  Brand Commerce, Engineered
-                </p>
+        <div className="hero-content">
 
-
-                <h1 className="hero__title glow-text">
-                  LAUNCH
-                  <span className="accent">
-                    .
-                  </span>
-                </h1>
+          <span className="sub-tag">
+            HIGH-END WEB CONSTRUCTION B2B
+          </span>
 
 
-                <div className="hero__copy">
-
-                  <p className="hero__lead">
-                    브랜드의 시작을 설계하는 커머스 구축
-                  </p>
+          <h1>
+            DIGITAL.
+          </h1>
 
 
-                  <p className="hero__sub">
-                    단순한 웹사이트가 아닙니다.
-                    고객의 지갑을 열게 만드는
-                    <span className="soft">
-                      '잘 팔리는'
-                    </span>
-                    커머스의 시작,
-                    <strong>
-                      YKINAS
-                    </strong>
-                    가 함께합니다.
-                  </p>
+          <p className="desc">
+            기업의 격(格)을 증명하는
+            <br />
+            하이엔드 웹사이트 구축, YKINAS
+          </p>
 
 
-                  <div className="hero__cta">
-
-                    <button
-                      type="button"
-                      className="btn btn--primary"
-                      onClick={() =>
-                        navigate('/contact')
-                      }
-                    >
-                      견적 상담받기
-                      <span className="arrow">
-                        →
-                      </span>
-                    </button>
+          <p className="sub-desc">
+            당신의 웹사이트는 24시간 일하는
+            <br className="mobile-only" />
+            가장 유능한 영업 사원이어야 합니다.
+          </p>
 
 
-                    <button
-                      type="button"
-                      className="btn btn--ghost-text"
-                      onClick={() => {
-                        document
-                          .getElementById('process')
-                          ?.scrollIntoView({
-                            behavior: 'smooth'
-                          });
-                      }}
-                    >
-                      작업 프로세스 보기
-                    </button>
+          <Button
+            text="프로젝트 문의하기"
+            onClick={handleInquiry}
+          />
 
-                  </div>
-
-                </div>
-
-              </div>
-
-            </section>
-
-          </SwiperSlide>
-
-        </Swiper>
+        </div>
 
       </header>
 
