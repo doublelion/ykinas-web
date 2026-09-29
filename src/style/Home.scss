@@ -969,3 +969,118 @@
   font-weight: 800;
   display: inline-block;
 }
+
+// ==========================================
+// HERO · SLIDE MOTION
+// ==========================================
+
+@keyframes heroTextUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes heroBeamIn {
+  from {
+    opacity: 0;
+    transform: translateX(80px) rotate(-28deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) rotate(-28deg);
+  }
+}
+
+@keyframes heroFrameIn {
+  from {
+    opacity: 0;
+    transform: scale(1.08) rotate(-18deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(-18deg);
+  }
+}
+
+
+// ==========================================
+// ACTIVE SLIDE
+// ==========================================
+
+.hero-slider-section {
+
+  .swiper-slide-active {
+
+    .hero__eyebrow {
+      animation: heroTextUp 0.8s $ease-ykinas both;
+      animation-delay: 0.15s;
+    }
+
+    .hero__title {
+      animation: heroTextUp 0.9s $ease-ykinas both;
+      animation-delay: 0.3s;
+    }
+
+    .hero__lead {
+      animation: heroTextUp 0.9s $ease-ykinas both;
+      animation-delay: 0.45s;
+    }
+
+    .hero__sub {
+      animation: heroTextUp 0.9s $ease-ykinas both;
+      animation-delay: 0.6s;
+    }
+
+    .hero__cta,
+    .hero__cta-row {
+      animation: heroTextUp 0.9s $ease-ykinas both;
+      animation-delay: 0.75s;
+    }
+
+    .hero__beams {
+
+      .beam--1 {
+        animation: heroBeamIn 1.2s ease both;
+      }
+
+      .beam--2 {
+        animation: heroBeamIn 1.5s ease both;
+        animation-delay: 0.15s;
+      }
+
+      .frame--1 {
+        animation: heroFrameIn 1.5s ease both;
+      }
+
+      .frame--2 {
+        animation: heroFrameIn 1.8s ease both;
+        animation-delay: 0.15s;
+      }
+    }
+  }
+}
+
+// ==========================================
+// SECTION SCROLL REVEAL
+// ==========================================
+
+.motion-reveal {
+  opacity: 0;
+  transform: translateY(50px);
+  transition:
+    opacity 0.9s ease,
+    transform 0.9s $ease-ykinas;
+
+  &.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

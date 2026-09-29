@@ -64,6 +64,139 @@ const HERO_SLIDES = [
   },
 ];
 
+
+// ==========================================
+// HERO 1 · Network Mesh
+// ==========================================
+const HeroMesh = () => {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const reduceMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    ).matches;
+
+    if (reduceMotion) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let nodes = [];
+    let animationFrame = null;
+
+    const LINK_DISTANCE = 150;
+    const MAX_NODES = 90;
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+
+      width = rect.width;
+      height = rect.height;
+
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const count = Math.min(
+        MAX_NODES,
+        Math.max(
+          25,
+          Math.round((width * height) / 16000)
+        )
+      );
+
+      nodes = Array.from({ length: count }, () => ({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.35,
+        vy: (Math.random() - 0.5) * 0.35,
+      }));
+    };
+
+    const frame = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      for (const node of nodes) {
+        node.x += node.vx;
+        node.y += node.vy;
+
+        if (node.x < 0 || node.x > width) {
+          node.vx *= -1;
+        }
+
+        if (node.y < 0 || node.y > height) {
+          node.vy *= -1;
+        }
+      }
+
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i];
+          const b = nodes[j];
+
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const distance = Math.hypot(dx, dy);
+
+          if (distance >= LINK_DISTANCE) continue;
+
+          const alpha =
+            (1 - distance / LINK_DISTANCE) * 0.45;
+
+          ctx.strokeStyle = `rgba(53, 230, 210, ${alpha})`;
+          ctx.lineWidth = 0.7;
+
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+      }
+
+      ctx.fillStyle = 'rgba(127, 244, 232, 0.75)';
+
+      for (const node of nodes) {
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      animationFrame = requestAnimationFrame(frame);
+    };
+
+    resize();
+    window.addEventListener('resize', resize);
+
+    animationFrame = requestAnimationFrame(frame);
+
+    return () => {
+      window.removeEventListener('resize', resize);
+
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="hero__mesh"
+      aria-hidden="true"
+    />
+  );
+};
+
+
 // ==========================================
 // [개별 컴포넌트 분리] 포트폴리오 프리뷰 카드
 // ==========================================
@@ -132,6 +265,46 @@ function Home() {
   const navigate = useNavigate();
   const [previewProjects, setPreviewProjects] = useState([]);
   const [latestTemplate, setLatestTemplate] = useState(null);
+
+  useEffect(() => {
+    const reduceMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    ).matches;
+
+    const elements = document.querySelectorAll(
+      '.home-container .motion-reveal'
+    );
+
+    if (reduceMotion) {
+      elements.forEach((el) => {
+        el.classList.add('is-visible');
+      });
+
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+
+          entry.target.classList.add('is-visible');
+          obs.unobserve(entry.target);
+        });
+      },
+      {
+        threshold: 0.15,
+        rootMargin: '0px 0px -60px 0px',
+      }
+    );
+
+    elements.forEach((element) => {
+      observer.observe(element);
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
 
   useEffect(() => {
     // 최신 포트폴리오 2개 페칭
