@@ -14,9 +14,98 @@ import Button from '../components/Button';
 
 import { useNavigate } from 'react-router-dom';
 
+import {
+  Swiper,
+  SwiperSlide
+} from 'swiper/react';
+
+import {
+  Autoplay,
+  Pagination,
+  EffectFade
+} from 'swiper/modules';
+
+import 'swiper/css';
+import 'swiper/css/pagination';
+import 'swiper/css/effect-fade';
+
 import '../style/Home.scss';
 
 
+const painPoints = [
+  '남들과 똑같은 템플릿형 쇼핑몰로는 브랜드 가치를 보여주기 어렵습니다.',
+  '트래픽이 몰리거나 특가 세일을 열 때, 서버가 버틸지 늘 걱정됩니다.',
+  '제작 업체와 소통이 안 돼서 일정만 한없이 지연되고 있습니다.',
+  '만들고 끝이 아니라, SEO(검색엔진최적화)까지 고려한 세팅이 필요합니다.',
+];
+
+const strengths = [
+  {
+    no: '01',
+    title: '브랜드 맞춤형 UI/UX 설계',
+    body: '공장형으로 찍어내는 홈페이지가 아닙니다. 브랜드의 아이덴티티와 타겟 고객의 동선을 분석해 이탈률은 낮추고 구매 전환율은 높이는 맞춤형 디자인을 설계합니다.',
+    metric: '+38%',
+    metricLabel: '평균 구매 전환율 상승',
+  },
+  {
+    no: '02',
+    title: '안정적인 커머스 · 타임세일/재고 최적화',
+    body: '대규모 트래픽에도 끊김 없는 안정적인 서버 구축. 복잡한 타임세일 로직과 실시간 재고 연동 시스템 등 비즈니스에 꼭 필요한 커스텀 기능을 완벽하게 구현합니다.',
+    metric: '99.9%',
+    metricLabel: '피크 트래픽 서버 안정성',
+  },
+  {
+    no: '03',
+    title: '반응형 웹 & 모바일 최적화',
+    body: 'PC·태블릿·모바일 어떤 환경에서 접속해도 깨짐 없는 완벽한 비율의 해상도와 최상의 로딩 속도를 자랑합니다. 모바일 커머스 시대에 최적화된 경험을 제공합니다.',
+    metric: '0.9s',
+    metricLabel: '모바일 평균 로딩 속도',
+  },
+];
+
+const processSteps = [
+  {
+    no: '1',
+    title: '상담 / 문의',
+    body: '현재 비즈니스 상황과 원하시는 방향성을 심도 있게 파악하고, 최적의 개발 방향을 컨설팅해 드립니다.'
+  },
+  {
+    no: '2',
+    title: '결제 진행',
+    body: '투명하고 합리적인 견적을 안내해 드리며, 크몽의 안전 결제 시스템을 통해 계약을 진행합니다.'
+  },
+  {
+    no: '3',
+    title: '일정 안내',
+    body: '전체 프로젝트 타임라인과 마일스톤을 공유해, 작업 진행 상황을 투명하게 확인하실 수 있습니다.'
+  },
+  {
+    no: '4',
+    title: '홈페이지 초안 제작',
+    body: '협의된 기획안을 바탕으로 트렌디한 디자인과 탄탄한 퍼블리싱이 적용된 1차 결과물을 제작합니다.'
+  },
+  {
+    no: '5',
+    title: '검토 / 수정',
+    body: '초안을 함께 꼼꼼히 검토하고, 피드백을 적극 반영해 퀄리티를 극대화하는 디테일 수정을 거칩니다.'
+  },
+  {
+    no: '6',
+    title: 'SEO 최적화 · 인수인계',
+    body: '구글·네이버 검색 노출을 위한 SEO 세팅을 완료하고, 직접 관리하기 편하도록 관리자 페이지를 인계합니다.'
+  },
+];
+
+const faqs = [
+  {
+    q: '도메인과 호스팅도 알아서 해주시나요?',
+    a: '네. 처음 홈페이지를 만드시는 분들도 어려움이 없도록 도메인 연결부터 호스팅 세팅까지 원스톱으로 도와드립니다. 이후 관리 방법까지 함께 안내해 드립니다.',
+  },
+  {
+    q: '제작 기간은 얼마나 걸리나요?',
+    a: '요구되는 기능과 페이지 수에 따라 상이하지만, 일반적인 커머스 사이트의 경우 평균 3~4주 정도 소요됩니다. 정확한 일정은 상담 시 프로젝트 범위에 맞춰 안내해 드립니다.',
+  },
+];
 // ==========================================
 // 포트폴리오 프리뷰 카드
 // ==========================================
@@ -593,54 +682,187 @@ function Home() {
           HIGH-END CANVAS HERO
       ================================================= */}
 
-      <header className="hero-mesh-section">
+      <header className="hero-slider-section">
 
-        <canvas
-          ref={canvasRef}
-          className="mesh-canvas"
-          aria-hidden="true"
-        />
+        <Swiper
+          modules={[
+            Autoplay,
+            Pagination,
+            EffectFade
+          ]}
+          effect="fade"
+          fadeEffect={{
+            crossFade: true
+          }}
+          speed={1200}
+          autoplay={{
+            delay: 6000,
+            disableOnInteraction: false,
+            pauseOnMouseEnter: false
+          }}
+          pagination={{
+            clickable: true
+          }}
+          loop={true}
+          className="hero-swiper"
+        >
+
+          {/* =================================================
+        SLIDE 01
+        DIGITAL / WEB CONSTRUCTION
+    ================================================= */}
+
+          <SwiperSlide>
+
+            <section className="hero-mesh-section">
+
+              <MeshCanvas />
+
+              <div className="hero-glow" />
+
+              <div className="hero-content">
+
+                <span className="sub-tag">
+                  HIGH-END WEB CONSTRUCTION B2B
+                </span>
+
+                <h1>
+                  DIGITAL<span className="accent">.</span>
+                </h1>
+
+                <p className="desc">
+                  기업의 격(格)을 증명하는
+                  <br />
+                  하이엔드 웹사이트 구축, YKINAS
+                </p>
+
+                <p className="sub-desc">
+                  당신의 웹사이트는 24시간 일하는
+                  <br />
+                  가장 유능한 영업 사원이어야 합니다.
+                </p>
+
+                <div className="hero-btns">
+
+                  <Button
+                    text="프로젝트 문의하기"
+                    onClick={() =>
+                      navigate('/contact')
+                    }
+                  />
+
+                </div>
+
+              </div>
+
+            </section>
+
+          </SwiperSlide>
 
 
-        {/* Canvas 위 오버레이 */}
+          {/* =================================================
+        SLIDE 02
+        LAUNCH / COMMERCE
+    ================================================= */}
 
-        <div className="hero-glow" />
+          <SwiperSlide>
 
+            <section className="hero hero-launch">
 
-        {/* Hero Content */}
+              <div
+                className="hero__bg"
+                aria-hidden="true"
+              />
 
-        <div className="hero-content">
+              <div
+                className="hero__beams"
+                aria-hidden="true"
+              >
+                <span className="beam beam--1" />
+                <span className="beam beam--2" />
 
-          <span className="sub-tag">
-            HIGH-END WEB CONSTRUCTION B2B
-          </span>
-
-
-          <h1>
-            DIGITAL.
-          </h1>
-
-
-          <p className="desc">
-            기업의 격(格)을 증명하는
-            <br />
-            하이엔드 웹사이트 구축, YKINAS
-          </p>
-
-
-          <p className="sub-desc">
-            당신의 웹사이트는 24시간 일하는
-            <br className="mobile-only" />
-            가장 유능한 영업 사원이어야 합니다.
-          </p>
+                <span className="frame frame--1" />
+                <span className="frame frame--2" />
+              </div>
 
 
-          <Button
-            text="프로젝트 문의하기"
-            onClick={handleInquiry}
-          />
+              <div className="hero__inner">
 
-        </div>
+                <p className="eyebrow eyebrow--soft">
+                  Brand Commerce, Engineered
+                </p>
+
+
+                <h1 className="hero__title glow-text">
+                  LAUNCH
+                  <span className="accent">
+                    .
+                  </span>
+                </h1>
+
+
+                <div className="hero__copy">
+
+                  <p className="hero__lead">
+                    브랜드의 시작을 설계하는 커머스 구축
+                  </p>
+
+
+                  <p className="hero__sub">
+                    단순한 웹사이트가 아닙니다.
+                    고객의 지갑을 열게 만드는
+                    <span className="soft">
+                      '잘 팔리는'
+                    </span>
+                    커머스의 시작,
+                    <strong>
+                      YKINAS
+                    </strong>
+                    가 함께합니다.
+                  </p>
+
+
+                  <div className="hero__cta">
+
+                    <button
+                      type="button"
+                      className="btn btn--primary"
+                      onClick={() =>
+                        navigate('/contact')
+                      }
+                    >
+                      견적 상담받기
+                      <span className="arrow">
+                        →
+                      </span>
+                    </button>
+
+
+                    <button
+                      type="button"
+                      className="btn btn--ghost-text"
+                      onClick={() => {
+                        document
+                          .getElementById('process')
+                          ?.scrollIntoView({
+                            behavior: 'smooth'
+                          });
+                      }}
+                    >
+                      작업 프로세스 보기
+                    </button>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </section>
+
+          </SwiperSlide>
+
+        </Swiper>
 
       </header>
 
