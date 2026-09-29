@@ -1,12 +1,11 @@
 @use '../style/variables' as *;
 
+// 테마 스타일 주입
 @include inject-ykinas-theme;
 
-
 // ==========================================
-// 1. 애니메이션
+// 1. 애니메이션 정의
 // ==========================================
-
 @keyframes slideUpFade {
   from {
     opacity: 0;
@@ -29,1003 +28,218 @@
   }
 }
 
-
 // ==========================================
-// 2. Home
+// 2. 홈 컨테이너 및 섹션 스타일
 // ==========================================
-
 .home-container {
   background-color: var(--bg-color);
   color: var(--text-color);
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
 
-
-  // =========================================================
-  // YKINAS HERO SLIDER
-  // =========================================================
-
+  // --- 히어로 스와이퍼 섹션 (높이 및 블렌딩 보정) ---
   .hero-slider-section {
-    width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-
-    overflow: hidden;
-
-    .swiper {
-      width: 100%;
-      height: 85vh;
-      min-height: 680px;
-    }
-
-    .swiper-slide {
-      height: 100%;
-      overflow: hidden;
-    }
-
-    // Pagination
-    .swiper-pagination {
-      bottom: 2rem;
-      z-index: 20;
-    }
-
-    .swiper-pagination-bullet {
-      width: 24px;
-      height: 2px;
-      margin: 0 5px !important;
-
-      border-radius: 0;
-
-      background: rgba(255, 255, 255, 0.3);
-
-      opacity: 1;
-
-      transition:
-        width 0.35s ease,
-        background 0.35s ease;
-    }
-
-    .swiper-pagination-bullet-active {
-      width: 48px;
-      background: $ykinas-cyan;
-      box-shadow: 0 0 12px rgba(53, 230, 210, 0.45);
-    }
-  }
-
-
-  // =========================================================
-  // HERO COMMON
-  // =========================================================
-
-  .hero-mesh-section,
-  .hero-launch {
-    position: relative;
-
     width: 100%;
-    height: 100%;
-    min-height: 680px;
-
+    // 1. 시원하게 꽉 차는 높이 설정
+    height: 85vh;
+    position: relative;
     overflow: hidden;
+    background-color: #000; // 이미지 로드 전 배경
 
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    @media (max-width: 1024px) {
+      height: 70vh;
+    }
 
-    isolation: isolate;
+    @media (max-width: 768px) {
+      height: 60vh;
+    }
 
-    background: #04141a;
-  }
-
-
-  // =========================================================
-  // DIGITAL HERO
-  // =========================================================
-
-  .hero-mesh-section {
-
-    // -----------------------------------------
-    // Deep teal background
-    // -----------------------------------------
-
-    background:
-      radial-gradient(120% 90% at 78% 18%,
-        rgba(53, 230, 210, 0.18),
-        transparent 55%),
-      radial-gradient(90% 80% at 8% 90%,
-        rgba(34, 184, 201, 0.16),
-        transparent 60%),
-      radial-gradient(circle at 50% 45%,
-        rgba(53, 230, 210, 0.08),
-        transparent 42%),
-      linear-gradient(135deg,
-        #04141a 0%,
-        #062b32 48%,
-        #0a4b52 100%);
-
-
-    // -----------------------------------------
-    // Canvas
-    // -----------------------------------------
-
-    .mesh-canvas {
-      position: absolute;
-
-      inset: 0;
-
-      display: block;
-
+    // Swiper 루트 요소
+    .hero-swiper {
       width: 100%;
-      height: 100%;
-
-      z-index: 0;
-
-      pointer-events: none;
-
-      opacity: 0.85;
-    }
-
-
-    // -----------------------------------------
-    // 중앙 Glow
-    // -----------------------------------------
-
-    .hero-glow {
-      position: absolute;
-
-      inset: 0;
-
-      z-index: 1;
-
-      pointer-events: none;
-
-      background:
-        radial-gradient(55% 55% at 50% 50%,
-          rgba(53, 230, 210, 0.13),
-          transparent 70%);
-
-      opacity: 0.9;
-    }
-
-
-    // -----------------------------------------
-    // Beam
-    // -----------------------------------------
-
-    &::before,
-    &::after {
-      content: '';
-
-      position: absolute;
-
-      z-index: 1;
-
-      width: 70%;
-      height: 1px;
-
-      pointer-events: none;
-
-      background:
-        linear-gradient(90deg,
-          transparent,
-          rgba(53, 230, 210, 0.45),
-          transparent);
-
-      box-shadow:
-        0 0 24px rgba(53, 230, 210, 0.35);
-    }
-
-    &::before {
-      left: -10%;
-      top: 34%;
-
-      transform: rotate(-18deg);
-    }
-
-    &::after {
-      right: -15%;
-      top: 62%;
-
-      transform: rotate(-18deg);
-
-      opacity: 0.5;
-    }
-
-
-    // -----------------------------------------
-    // Content
-    // -----------------------------------------
-
-    .hero-content {
-      position: relative;
-
-      z-index: 5;
-
-      width: 100%;
-      max-width: 1200px;
-
-      padding: 0 2rem;
-
-      text-align: center;
-
-      color: #fff;
-    }
-
-
-    // -----------------------------------------
-    // DIGITAL.
-    // -----------------------------------------
-
-    .sub-tag {
-      display: block;
-
-      margin-bottom: 1.8rem;
-
-      font-family: 'Archivo', 'Noto Sans KR', sans-serif;
-
-      font-size: clamp(0.68rem,
-          1vw,
-          0.95rem);
-
-      font-weight: 700;
-
-      letter-spacing: 0.4em;
-
-      line-height: 1.5;
-
-      color: rgba(127, 244, 232, 0.8);
-
-      text-transform: uppercase;
-    }
-
-
-    h1 {
-      position: relative;
-
-      margin: 0 0 2rem;
-
-      font-family: 'Archivo', 'Noto Sans KR', sans-serif;
-
-      font-size: clamp(4.5rem,
-          11vw,
-          9rem);
-
-      font-weight: 900;
-
-      line-height: 0.82;
-
-      letter-spacing: -0.07em;
-
-      color: #fff;
-
-      text-shadow:
-        0 0 18px rgba(53, 230, 210, 0.18),
-        0 0 60px rgba(53, 230, 210, 0.08);
-    }
-
-
-    // -----------------------------------------
-    // Main Description
-    // -----------------------------------------
-
-    .desc {
-      max-width: 900px;
-
-      margin: 0 auto 1.5rem;
-
-      font-family: 'Noto Sans KR', sans-serif;
-
-      font-size: clamp(1.5rem,
-          3vw,
-          2.8rem);
-
-      font-weight: 700;
-
-      line-height: 1.35;
-
-      letter-spacing: -0.045em;
-
-      color: #fff;
-    }
-
-
-    // -----------------------------------------
-    // Sub Description
-    // -----------------------------------------
-
-    .sub-desc {
-      max-width: 760px;
-
-      margin: 0 auto 3rem;
-
-      font-size: clamp(0.95rem,
-          1.5vw,
-          1.2rem);
-
-      font-weight: 400;
-
-      line-height: 1.7;
-
-      letter-spacing: -0.02em;
-
-      color: rgba(234, 252, 251, 0.62);
-    }
-
-
-    // -----------------------------------------
-    // CTA
-    // -----------------------------------------
-
-    .hero-cta {
-      display: flex;
-
-      justify-content: center;
-      align-items: center;
-
-      flex-wrap: wrap;
-
-      gap: 1rem;
-    }
-
-
-    .hero-btn {
-      display: inline-flex;
-
-      align-items: center;
-      justify-content: center;
-
-      min-width: 180px;
-
-      padding: 1rem 2rem;
-
-      border-radius: 999px;
-
-      font-family: 'Archivo', 'Noto Sans KR', sans-serif;
-
-      font-size: 0.85rem;
-
-      font-weight: 800;
-
-      letter-spacing: 0.06em;
-
-      text-transform: uppercase;
-
-      transition:
-        transform 0.25s ease,
-        background-color 0.25s ease,
-        border-color 0.25s ease,
-        box-shadow 0.25s ease;
-    }
-
-
-    .hero-btn--primary {
-      background: #35e6d2;
-
-      color: #04141a;
-
-      box-shadow:
-        0 0 24px rgba(53, 230, 210, 0.45);
-    }
-
-    .hero-btn--primary:hover {
-      background: #7ff4e8;
-
-      transform: translateY(-2px);
-
-      box-shadow:
-        0 0 36px rgba(53, 230, 210, 0.65);
-    }
-
-
-    .hero-btn--ghost {
-      border: 1px solid rgba(53, 230, 210, 0.4);
-
-      color: #fff;
-
-      background: rgba(255, 255, 255, 0.02);
-
-      backdrop-filter: blur(10px);
-    }
-
-    .hero-btn--ghost:hover {
-      border-color: rgba(53, 230, 210, 0.75);
-
-      background: rgba(53, 230, 210, 0.06);
-
-      transform: translateY(-2px);
-    }
-
-
-    // -----------------------------------------
-    // Decorative Frame
-    // -----------------------------------------
-
-    .hero-frame {
-      position: absolute;
-
-      z-index: 2;
-
-      pointer-events: none;
-
-      border: 1px solid rgba(53, 230, 210, 0.25);
-
-      transform: rotate(-18deg);
-
-      border-radius: 1.5rem;
-    }
-
-    .hero-frame--1 {
-      right: 5rem;
-      top: 6rem;
-
-      width: 10rem;
-      height: 10rem;
-    }
-
-    .hero-frame--2 {
-      left: 4rem;
-      bottom: 5rem;
-
-      width: 14rem;
-      height: 6rem;
-
-      opacity: 0.5;
-    }
-  }
-
-
-  // =========================================================
-  // LAUNCH HERO
-  // =========================================================
-
-  .hero-launch {
-
-    background:
-      radial-gradient(120% 90% at 78% 18%,
-        rgba(53, 230, 210, 0.28),
-        transparent 55%),
-      radial-gradient(90% 80% at 8% 90%,
-        rgba(34, 184, 201, 0.22),
-        transparent 60%),
-      linear-gradient(135deg,
-        #04141a 0%,
-        #062b32 48%,
-        #0a4b52 100%);
-
-
-    // -----------------------------------------
-    // Decorative Beams
-    // -----------------------------------------
-
-    .hero__beams {
-      position: absolute;
-
-      inset: 0;
-
-      z-index: 0;
-
-      opacity: 0.65;
-
-      pointer-events: none;
-    }
-
-
-    .beam {
-      position: absolute;
-
-      height: 1px;
-
-      transform: rotate(-18deg);
-    }
-
-
-    .beam--1 {
-      left: -2.5rem;
-
-      top: 33%;
-
-      width: 60%;
-
-      background:
-        linear-gradient(90deg,
-          transparent,
-          rgba(53, 230, 210, 0.7),
-          transparent);
-
-      box-shadow:
-        0 0 24px rgba(53, 230, 210, 0.55);
-    }
-
-
-    .beam--2 {
-      right: 0;
-
-      top: 50%;
-
-      width: 55%;
-
-      background:
-        linear-gradient(90deg,
-          transparent,
-          rgba(127, 244, 232, 0.6),
-          transparent);
-    }
-
-
-    // -----------------------------------------
-    // Frames
-    // -----------------------------------------
-
-    .frame {
-      position: absolute;
-
-      transform: rotate(-18deg);
-
-      pointer-events: none;
-    }
-
-
-    .frame--1 {
-      right: 2rem;
-
-      top: 6rem;
-
-      width: 10rem;
-      height: 10rem;
-
-      border:
-        1px solid rgba(53, 230, 210, 0.4);
-
-      border-radius: 2rem;
-    }
-
-
-    .frame--2 {
-      right: 6rem;
-
-      bottom: 4rem;
-
-      width: 14rem;
-      height: 6rem;
-
-      border:
-        1px solid rgba(53, 230, 210, 0.25);
-
-      border-radius: 1.5rem;
-    }
-
-
-    // -----------------------------------------
-    // Content
-    // -----------------------------------------
-
-    .hero__inner {
-      position: relative;
-
-      z-index: 5;
-
-      width: 100%;
-      max-width: 1200px;
-
-      padding: 4rem 2rem 7rem;
-
-      margin: 0 auto;
-    }
-
-
-    .hero__eyebrow {
-      font-family: 'Archivo', 'Noto Sans KR', sans-serif;
-
-      font-size: 0.85rem;
-
-      font-weight: 700;
-
-      text-transform: uppercase;
-
-      letter-spacing: 0.4em;
-
-      color: #7ff4e8;
-    }
-
-
-    .hero__title {
-      margin: 1.5rem 0 0;
-
-      font-family: 'Archivo', 'Noto Sans KR', sans-serif;
-
-      font-weight: 900;
-
-      font-size: clamp(4rem,
-          16vw,
-          11rem);
-
-      line-height: 0.82;
-
-      letter-spacing: -0.06em;
-
-      color: #fff;
-
-      text-shadow:
-        0 0 18px rgba(53, 230, 210, 0.15);
-    }
-
-
-    .hero__copy {
-      max-width: 720px;
-
-      margin-top: 2rem;
-    }
-
-
-    .hero__lead {
-      margin: 0;
-
-      font-family: 'Noto Sans KR', sans-serif;
-
-      font-weight: 800;
-
-      font-size: clamp(1.5rem,
-          3.5vw,
-          2.25rem);
-
-      line-height: 1.3;
-
-      color: #fff;
-    }
-
-
-    .hero__sub {
-      margin: 1.25rem 0 0;
-
-      font-size: 1.05rem;
-
-      line-height: 1.75;
-
-      color: rgba(234, 252, 251, 0.68);
-    }
-
-
-    .hero__cta {
-      display: flex;
-
-      flex-wrap: wrap;
-
-      align-items: center;
-
-      gap: 1rem;
-
-      margin-top: 2.25rem;
-    }
-
-
-    .hero__cta .btn {
-      display: inline-flex;
-
-      align-items: center;
-      justify-content: center;
-
-      min-height: 52px;
-
-      border-radius: 999px;
-
-      font-family: 'Archivo', 'Noto Sans KR', sans-serif;
-
-      font-weight: 800;
-
-      font-size: 0.85rem;
-
-      letter-spacing: 0.06em;
-
-      transition:
-        transform 0.25s ease,
-        background-color 0.25s ease,
-        border-color 0.25s ease,
-        box-shadow 0.25s ease;
-    }
-
-
-    .hero__cta .btn--primary {
-      padding: 1rem 2rem;
-
-      background: #35e6d2;
-
-      color: #04141a;
-
-      box-shadow:
-        0 0 24px rgba(53, 230, 210, 0.45);
-    }
-
-
-    .hero__cta .btn--primary:hover {
-      background: #7ff4e8;
-
-      transform: translateY(-2px);
-    }
-
-
-    .hero__cta .btn--ghost-text {
-      padding: 1rem 0;
-
-      color: rgba(234, 252, 251, 0.65);
-
-      background: transparent;
-    }
-
-
-    .hero__cta .btn--ghost-text:hover {
-      color: #fff;
-
-      transform: translateX(4px);
-    }
-
-
-    .hero__cta .arrow {
-      margin-left: 0.4rem;
-
-      transition: transform 0.25s ease;
-    }
-
-    .hero__cta .btn:hover .arrow {
-      transform: translateX(4px);
-    }
-  }
-
-
-  // =========================================================
-  // HERO MOBILE
-  // =========================================================
-
-  @media (max-width: 768px) {
-
-    .hero-slider-section {
-
-      .swiper {
-        height: 78svh;
-        min-height: 0;
-      }
-    }
-
-
-    .hero-mesh-section,
-    .hero-launch {
-      min-height: 0;
-      height: 78svh;
-    }
-
-
-    .hero-mesh-section {
-
-      .hero-content {
-        padding: 0 1.5rem;
+      height: 100% !important;
+
+      // 2. [핵심] 테두리를 없애는 강력한 CSS 마스크 적용 (모든 가장자리를 흐리게)
+      -webkit-mask-image: radial-gradient(circle at center, black 50%, transparent 100%),
+        linear-gradient(to bottom, black 80%, transparent 100%);
+      mask-image: radial-gradient(circle at center, black 50%, transparent 100%),
+        linear-gradient(to bottom, black 80%, transparent 100%);
+      -webkit-mask-size: cover;
+      mask-size: cover;
+      -webkit-mask-composite: source-in;
+      mask-composite: intersect;
+
+      .swiper-slide {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+
+        .slide-bg {
+          position: absolute;
+          inset: 0; // top/left/right/bottom 0
+          width: 100%;
+          height: 100%;
+          background-size: cover;
+          background-position: center;
+          z-index: 1;
+
+          .overlay {
+            position: absolute;
+            inset: 0;
+            // 3. 다중 그라디언트로 테두리 숨기기 및 다크 블렌딩 가속화
+            background:
+              // 상단 헤더와의 자연스러운 연결
+              linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 20%),
+              // 전체 다크 오버레이 (가독성 확보)
+              linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.8) 100%),
+              // 좌우 가장자리 무너뜨리기 (radial)
+              radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.9) 100%);
+          }
+        }
+
+        .slide-content {
+          position: relative;
+          z-index: 2;
+          text-align: center;
+          padding: 0 20px;
+          opacity: 0;
+          width: 100%;
+
+          h2 {
+            font-size: clamp(3rem, 6vw, 5rem);
+            font-weight: 800;
+            color: #ffffff; // 히어로 텍스트 화이트 고정
+            line-height: 1.15;
+            margin-bottom: 1.5rem;
+
+            span.highlight {
+              background: linear-gradient(90deg, $ykinas-green, $ykinas-teal);
+              -webkit-background-clip: text;
+              background-clip: text;
+              -webkit-text-fill-color: transparent;
+              color: transparent;
+              font-weight: 800;
+              display: inline-block;
+            }
+          }
+
+          p.hero-desc {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: clamp(1.4rem, 2vw, 1.6rem);
+            max-width: 700px;
+            margin: 0 auto 20px;
+            word-break: keep-all;
+            line-height: 1.6;
+          }
+
+          .hero-features {
+            display: inline-grid; // grid를 유지하되 컨텐츠만큼만 너비 차지
+            grid-template-columns: repeat(2, auto); // 고정 1fr 대신 auto로 컨텐츠 밀착
+            gap: 1.2rem 4rem;
+            text-align: left;
+            margin: 0 auto 3rem; // auto margin으로 전체 덩어리를 중앙으로
+            padding: 0;
+            list-style: none;
+            justify-content: center; // 내부 아이템들 중앙 정렬
+
+            li {
+              color: rgba(255, 255, 255, 0.9);
+              font-size: 1.3rem;
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              white-space: nowrap; // 줄바꿈 방지하여 깔끔하게 유지
+
+              &::before {
+                content: '';
+                width: 6px;
+                height: 6px;
+                background-color: $ykinas-teal;
+                border-radius: 50%;
+                box-shadow: 0 0 8px $ykinas-teal;
+              }
+            }
+
+            @media (max-width: 768px) {
+              // grid-template-columns: 1fr; // 모바일은 1단
+              gap: 1rem;
+            }
+          }
+
+
+          .hero-btns {
+            display: flex;
+            justify-content: center;
+          }
+        }
+
+        &-active {
+          .slide-bg {
+            animation: kenBurns 6s ease-out forwards;
+          }
+
+          .slide-content {
+            animation: slideUpFade 1.2s $ease-ykinas forwards;
+            animation-delay: 0.3s;
+          }
+        }
       }
 
-      .sub-tag {
-        margin-bottom: 1.3rem;
+      .swiper-pagination {
+        bottom: 50px !important;
+        display: flex;
+        justify-content: center;
+        gap: 12px;
 
-        font-size: 0.62rem;
+        .swiper-pagination-bullet {
+          width: 40px; // 기본 바 형태
+          height: 4px;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 2px;
+          opacity: 1;
+          position: relative;
+          overflow: hidden;
+          margin: 0 !important;
 
-        letter-spacing: 0.18em;
+          // 활성화된 불렛 내부의 움직이는 게이지
+          &::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 100%;
+            background: $ykinas-teal;
+            transition: none;
+          }
+
+          &-active {
+            background: rgba(255, 255, 255, 0.2);
+            width: 60px; // 활성화 시 약간 길어짐
+
+            &::after {
+              // 5000ms는 Swiper의 autoplay delay와 일치시켜야 함
+              animation: paginationProgress 5s linear forwards;
+            }
+          }
+        }
       }
 
-      h1 {
-        margin-bottom: 1.6rem;
 
-        font-size: clamp(4rem,
-            20vw,
-            6rem);
+      @keyframes paginationProgress {
+        0% {
+          width: 0;
+        }
 
-        letter-spacing: -0.075em;
-      }
-
-      .desc {
-        margin-bottom: 1.2rem;
-
-        font-size: clamp(1.3rem,
-            6vw,
-            1.9rem);
-
-        line-height: 1.4;
-      }
-
-      .sub-desc {
-        margin-bottom: 2.5rem;
-
-        font-size: 0.88rem;
-
-        line-height: 1.7;
-      }
-
-      .hero-frame--1 {
-        right: -3rem;
-        top: 4rem;
-
-        width: 7rem;
-        height: 7rem;
-      }
-
-      .hero-frame--2 {
-        left: -4rem;
-        bottom: 4rem;
-
-        width: 10rem;
-        height: 5rem;
-      }
-
-      .hero-cta {
-        gap: 0.75rem;
-      }
-
-      .hero-btn {
-        min-width: 150px;
-
-        padding: 0.9rem 1.5rem;
-
-        font-size: 0.75rem;
-      }
-    }
-
-
-    .hero-launch {
-
-      .hero__inner {
-        padding: 3rem 1.5rem 6rem;
-      }
-
-      .hero__eyebrow {
-        font-size: 0.62rem;
-
-        letter-spacing: 0.25em;
-      }
-
-      .hero__title {
-        font-size: clamp(4rem,
-            20vw,
-            6.5rem);
-      }
-
-      .hero__copy {
-        margin-top: 1.5rem;
-      }
-
-      .hero__lead {
-        font-size: clamp(1.3rem,
-            6vw,
-            1.8rem);
-
-        line-height: 1.4;
-      }
-
-      .hero__sub {
-        font-size: 0.88rem;
-
-        line-height: 1.7;
-      }
-
-      .hero__cta {
-        margin-top: 2rem;
-      }
-
-      .frame--1 {
-        right: -4rem;
-        top: 4rem;
-
-        width: 7rem;
-        height: 7rem;
-      }
-
-      .frame--2 {
-        right: -4rem;
-        bottom: 3rem;
-
-        width: 10rem;
-        height: 5rem;
-      }
-
-      .beam--1 {
-        width: 100%;
-      }
-
-      .beam--2 {
-        width: 80%;
+        100% {
+          width: 100%;
+        }
       }
     }
   }
 
-
-  // =========================================================
-  // SMALL MOBILE
-  // =========================================================
-
-  @media (max-width: 480px) {
-
-    .hero-slider-section {
-
-      .swiper {
-        height: 76svh;
-      }
-    }
-
-
-    .hero-mesh-section,
-    .hero-launch {
-      height: 76svh;
-    }
-
-
-    .hero-mesh-section {
-
-      .hero-content {
-        padding: 0 1.25rem;
-      }
-
-      .sub-tag {
-        font-size: 0.58rem;
-      }
-
-      h1 {
-        font-size: clamp(3.8rem,
-            21vw,
-            5rem);
-      }
-
-      .desc {
-        font-size: 1.25rem;
-      }
-
-      .hero-cta {
-        flex-direction: column;
-        width: 100%;
-      }
-
-      .hero-btn {
-        width: 100%;
-        max-width: 280px;
-      }
-    }
-
-
-    .hero-launch {
-
-      .hero__title {
-        font-size: clamp(3.8rem,
-            21vw,
-            5rem);
-      }
-
-      .hero__lead {
-        font-size: 1.25rem;
-      }
-
-      .hero__cta {
-        flex-direction: column;
-        align-items: flex-start;
-      }
-    }
-  }
-
-
-  // =========================================================
-  // REDUCED MOTION
-  // =========================================================
-
-  @media (prefers-reduced-motion: reduce) {
-
-    .hero-mesh-section,
-    .hero-launch {
-
-      .hero-glow,
-      .hero-btn,
-      .btn {
-        transition: none;
-      }
-    }
-  }
-
-
-  // =========================================================
-  // 기존 섹션
-  // =========================================================
-
+  // --- 서비스 그리드 섹션 ---
   .service-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -1043,34 +257,428 @@
     }
 
     .service-card {
-      // 기존 코드 그대로 유지
+      position: relative;
+      background: var(--card-bg);
+      padding: 4rem 3rem;
+      border-radius: 2.4rem;
+      border: 1px solid var(--border-line);
+      overflow: hidden;
+      transition: 0.4s $ease-ykinas;
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        width: 0;
+        height: 3px;
+        background: $primary-color;
+        transition: 0.4s ease;
+        transform: translateX(-50%);
+        box-shadow: 0 0 10px $primary-color;
+      }
+
+      &:hover {
+        transform: translateY(-10px);
+        border-color: $primary-color;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+
+        &::after {
+          width: 100%;
+        }
+      }
+
+      svg {
+        stroke: var(--text-color);
+        stroke-width: 1.5;
+      }
+
+      h3 {
+        margin: 2rem 0 1rem;
+        font-size: 1.8rem;
+        color: var(--text-color);
+      }
+
+      p {
+        color: var(--footer-text);
+        font-size: 1.4rem;
+        line-height: 1.6;
+      }
     }
   }
 
-  // 이하 home-portfolio,
-  // home-template-highlight,
-  // map-section도 기존 코드 그대로 유지
+  // --- 포트폴리오 프리뷰 섹션 복구 ---
+  .home-portfolio {
+    padding: 10rem 0;
+    max-width: $max-width;
+    margin: 0 auto;
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 6rem;
+
+      span {
+        color: $secondary-color;
+        font-size: 1.2rem;
+        letter-spacing: 3px;
+        font-weight: 700;
+        display: block;
+        margin-bottom: 1rem;
+      }
+
+      h2 {
+        font-size: 3.2rem;
+        color: var(--text-color);
+        font-weight: 800;
+      }
+    }
+
+    .portfolio-preview-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); // 2열 배치
+      gap: 3rem;
+      padding: 0 2rem;
+
+      @media (max-width: 768px) {
+        grid-template-columns: 1fr; // 모바일 1열
+      }
+
+      .preview-card {
+        position: relative;
+        background: var(--card-bg);
+        border-radius: 2.4rem;
+        overflow: hidden;
+        border: 1px solid var(--border-line);
+        transition: 0.5s $ease-ykinas;
+        cursor: pointer;
+
+        .card-image {
+          width: 100%;
+          height: 350px;
+          overflow: hidden;
+
+          img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: 0.8s ease;
+          }
+        }
+
+        .item-info {
+          padding: 3rem;
+
+          .category {
+            color: $secondary-color;
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+          }
+
+          h3 {
+            font-size: 2.2rem;
+            margin: 1rem 0;
+            color: var(--text-color);
+            font-weight: 700;
+          }
+
+          /* [수정된 부분] 더보기 버튼 및 텍스트 안개 효과 */
+          .desc-wrap {
+            position: relative; // 버튼 배치를 위한 기준점
+            margin-bottom: 2rem;
+
+            .desc-text {
+              color: var(--footer-text);
+              font-size: 1.5rem;
+              line-height: 1.6;
+              word-break: keep-all;
+              margin-bottom: 0;
+
+              display: -webkit-box;
+              -webkit-line-clamp: 2; // 기본 2줄 제한
+              -webkit-box-orient: vertical;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            /* 펼쳐졌을 때 스타일 보정 */
+            &.expanded {
+              .desc-text {
+                display: block;
+                -webkit-line-clamp: unset;
+                overflow: visible;
+                padding-bottom: 1rem; // 버튼과 겹치지 않게 여백
+              }
+
+              .btn-inline-more {
+                position: relative; // 펼쳐지면 흐름에 따라 하단 배치
+                background: none; // 안개 효과 제거
+                padding-left: 0;
+                margin-top: 0.5rem;
+                display: block;
+              }
+            }
+
+            /* [핵심] 안개 효과가 포함된 더보기 버튼 */
+            .btn-inline-more {
+              position: absolute;
+              right: 0;
+              bottom: 0;
+
+              // 왼쪽(투명)에서 오른쪽(배경색)으로 이어지는 그라디언트 쉐도우
+              background: linear-gradient(to right, rgba(0, 0, 0, 0) 0%, var(--card-bg) 20%, var(--card-bg) 100%);
+
+              border: none;
+              color: $ykinas-teal; // 브랜드 컬러 사용
+              font-size: 1.4rem;
+              font-weight: 700;
+              line-height: 1.6;
+              padding-left: 4rem; // 그라디언트가 충분히 보일 수 있는 여백
+              cursor: pointer;
+              transition: color 0.3s $ease-ykinas;
+
+              &:hover {
+                color: $ykinas-green;
+                text-decoration: underline;
+              }
+            }
+          }
+
+          .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+
+            span {
+              background: rgba(47, 144, 165, 0.1); // $ykinas-teal의 10%
+              color: $secondary-color;
+              padding: 0.5rem 1.2rem;
+              border-radius: 50px;
+              font-size: 1.2rem;
+              font-weight: 500;
+            }
+          }
+        }
+
+        // 호버 시 우측 상단 화살표 아이콘
+        .card-hover-icon {
+          position: absolute;
+          top: 2rem;
+          right: 2rem;
+          width: 60px;
+          height: 60px;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(10px);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          transform: translate(20px, -20px);
+          transition: 0.4s $ease-ykinas;
+          z-index: 2;
+
+          svg {
+            color: $ykinas-cyan;
+          }
+        }
+
+        &:hover {
+          transform: translateY(-15px);
+          border-color: $primary-color;
+          box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+
+          .card-image img {
+            transform: scale(1.1);
+          }
+
+          .card-hover-icon {
+            opacity: 1;
+            transform: translate(0, 0);
+          }
+        }
+      }
+    }
+
+    // 포트폴리오 섹션 내부 하단 버튼 영역
+    .view-more-center {
+      display: flex;
+      justify-content: center;
+      margin-top: 8rem; // 카드 리스트와 충분한 간격 확보
+      padding-bottom: 2rem;
+
+      // 공통 Button 컴포넌트가 이 컨테이너 안에 있을 때의 스타일
+      button {
+        min-width: 240px;
+        height: 64px;
+        font-size: 1.6rem;
+        font-weight: 600;
+        letter-spacing: 1px;
+
+        // 와이키나스 테마 버튼 스타일 (믹스인 변수 활용)
+        background: var(--btn-bg);
+        border: 1px solid var(--btn-border);
+        color: var(--btn-text);
+        border-radius: 50px; // 완전 둥근 하이엔드 스타일
+
+        transition: all 0.4s $ease-ykinas;
+        cursor: pointer;
+
+        &:hover {
+          background: $ykinas-teal; // 호버 시 브랜드 포인트 컬러로 채우기
+          border-color: $ykinas-teal;
+          color: #ffffff;
+          transform: translateY(-5px);
+          box-shadow: 0 15px 30px rgba(47, 144, 165, 0.3);
+        }
+
+        &:active {
+          transform: scale(0.98);
+        }
+      }
+    }
+  }
+
+  // --- 템플릿 하이라이트 섹션 ---
+  .home-template-highlight {
+    padding: 10rem 0;
+    background: var(--section-grad);
+
+    .container {
+      max-width: $max-width;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 6rem;
+
+      h2 {
+        font-size: 3.2rem;
+        color: var(--text-color);
+        font-weight: 800;
+      }
+
+      span {
+        color: $ykinas-teal;
+        letter-spacing: 2px;
+        font-weight: 700;
+      }
+    }
+
+    .highlight-flex {
+      display: flex;
+      align-items: center;
+      gap: 6rem;
+
+      @media (max-width: 1024px) {
+        flex-direction: column;
+        text-align: center;
+      }
+    }
+
+    .highlight-content {
+      flex: 1;
+
+      h3 {
+        font-size: 3.2rem; // 제목 강조
+        word-break: keep-all;
+      }
+
+      .highlight-desc {
+        font-size: 1.6rem;
+        line-height: 1.8;
+        white-space: pre-wrap; 
+        word-break: keep-all;
+        opacity: 0.8;
+        margin-bottom: 3.5rem;
+      }
+
+      .feature-list {
+        list-style: none;
+        padding: 0;
+        margin-bottom: 4rem;
+
+        li {
+          font-size: 1.4rem;
+          color: var(--text-color);
+          margin-bottom: 1.5rem;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+
+          @media (max-width: 1024px) {
+            justify-content: center;
+          }
+
+          svg {
+            color: $ykinas-teal;
+          }
+        }
+      }
+    }
+
+    .highlight-image {
+      flex: 1.2;
+      border-radius: 2.4rem;
+      overflow: hidden;
+      border: 1px solid var(--border-line);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      transition: 0.5s $ease-ykinas;
+
+      img {
+        width: 100%;
+        display: block;
+        transition: 0.8s ease;
+      }
+
+      &:hover {
+        transform: translateY(-10px);
+        border-color: $ykinas-teal;
+
+        img {
+          transform: scale(1.05);
+        }
+      }
+    }
+  }
+
+  // --- 지도 섹션 ---
+  .map-section {
+    padding: 10rem 2rem;
+    max-width: $max-width;
+    margin: 0 auto;
+
+    .section-title-sub {
+      font-size: clamp(2.4rem, 5vw, 3.2rem);
+      color: var(--text-color);
+      margin-bottom: 4rem;
+      text-align: center;
+      font-weight: 800;
+    }
+
+    .kakao-map-container {
+      width: 100%;
+      height: 45rem;
+      border-radius: 2.4rem;
+      border: 1px solid var(--border-line);
+      background-color: var(--card-bg);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+    }
+  }
 }
 
-
 // ==========================================
-// 공용 하이라이트
+// 3. 공용 하이라이트 클래스 (그라디언트 보정)
 // ==========================================
-
 .highlight {
-  background:
-    linear-gradient(90deg,
-      $ykinas-green,
-      $ykinas-teal );
-
+  background: linear-gradient(90deg, $ykinas-green, $ykinas-teal);
   -webkit-background-clip: text;
   background-clip: text;
-
   -webkit-text-fill-color: transparent;
-
   color: transparent;
-
   font-weight: 800;
-
   display: inline-block;
 }
