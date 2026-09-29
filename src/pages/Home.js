@@ -366,10 +366,7 @@ function Home() {
             <SwiperSlide key={slide.id}>
               {slide.type === 'mesh' ? (
                 <section className="hero hero--mesh">
-                  <canvas
-                    className="hero__mesh"
-                    aria-hidden="true"
-                  />
+                  <HeroMesh />
 
                   <div
                     className="hero__glow"
