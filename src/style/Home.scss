@@ -37,205 +37,312 @@
   transition: background-color 0.3s ease, color 0.3s ease;
 
   // --- 히어로 스와이퍼 섹션 (높이 및 블렌딩 보정) ---
-  .hero-slider-section {
-    width: 100%;
-    // 1. 시원하게 꽉 차는 높이 설정
-    height: 85vh;
+  // =========================================================
+  // YKINAS HIGH-END CANVAS HERO
+  // =========================================================
+
+  .hero-mesh-section {
     position: relative;
+
+    width: 100vw;
+    height: 85vh;
+    min-height: 680px;
+
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+
     overflow: hidden;
-    background-color: #000; // 이미지 로드 전 배경
 
-    @media (max-width: 1024px) {
-      height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background:
+      radial-gradient(circle at 50% 45%,
+        rgba(126, 42, 170, 0.2),
+        transparent 45%),
+      #1a0b2e;
+
+    isolation: isolate;
+  }
+
+
+  // =========================================================
+  // Canvas
+  // =========================================================
+
+  .hero-mesh-section .mesh-canvas {
+    position: absolute;
+
+    inset: 0;
+
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    z-index: 0;
+
+    pointer-events: none;
+  }
+
+
+  // =========================================================
+  // 중앙 Glow
+  // =========================================================
+
+  .hero-mesh-section .hero-glow {
+    position: absolute;
+
+    inset: 0;
+
+    z-index: 1;
+
+    pointer-events: none;
+
+    background:
+      radial-gradient(circle at 50% 50%,
+        rgba(194, 76, 255, 0.12),
+        transparent 35%);
+
+    opacity: 0.9;
+  }
+
+
+  // =========================================================
+  // Hero Content
+  // =========================================================
+
+  .hero-mesh-section .hero-content {
+    position: relative;
+
+    z-index: 2;
+
+    width: 100%;
+    max-width: 1200px;
+
+    padding: 0 2rem;
+
+    text-align: center;
+
+    color: #fff;
+  }
+
+
+  // =========================================================
+  // Top Label
+  // =========================================================
+
+  .hero-mesh-section .sub-tag {
+    display: block;
+
+    margin-bottom: 1.8rem;
+
+    font-size: clamp(0.68rem,
+        1vw,
+        0.95rem);
+
+    font-weight: 600;
+
+    letter-spacing: 0.3em;
+
+    line-height: 1.5;
+
+    color: rgba(255,
+        255,
+        255,
+        0.55);
+
+    text-transform: uppercase;
+  }
+
+
+  // =========================================================
+  // DIGITAL.
+  // =========================================================
+
+  .hero-mesh-section h1 {
+    margin: 0 0 2rem;
+
+    font-size: clamp(4.5rem,
+        11vw,
+        9rem);
+
+    font-weight: 900;
+
+    line-height: 0.9;
+
+    letter-spacing: -0.07em;
+
+    color: #fff;
+  }
+
+
+  // =========================================================
+  // Main Description
+  // =========================================================
+
+  .hero-mesh-section .desc {
+    margin: 0 0 1.5rem;
+
+    font-size: clamp(1.5rem,
+        3vw,
+        2.8rem);
+
+    font-weight: 700;
+
+    line-height: 1.35;
+
+    letter-spacing: -0.045em;
+
+    color: #fff;
+  }
+
+
+  // =========================================================
+  // Sub Description
+  // =========================================================
+
+  .hero-mesh-section .sub-desc {
+    margin: 0 0 3rem;
+
+    font-size: clamp(0.95rem,
+        1.5vw,
+        1.2rem);
+
+    font-weight: 400;
+
+    line-height: 1.7;
+
+    letter-spacing: -0.02em;
+
+    color: rgba(255,
+        255,
+        255,
+        0.62);
+  }
+
+
+  // =========================================================
+  // Mobile Only
+  // =========================================================
+
+  .mobile-only {
+    display: none;
+  }
+
+
+  // =========================================================
+  // Mobile
+  // =========================================================
+
+  @media (max-width: 768px) {
+
+    .hero-mesh-section {
+      width: 100vw;
+
+      min-height: 0;
+      height: 78svh;
+
+      margin-left: calc(50% - 50vw);
+
+      margin-right: calc(50% - 50vw);
     }
 
-    @media (max-width: 768px) {
-      height: 60vh;
+
+    .hero-mesh-section .hero-content {
+      padding: 0 1.5rem;
     }
 
-    // Swiper 루트 요소
-    .hero-swiper {
-      width: 100%;
-      height: 100% !important;
 
-      // 2. [핵심] 테두리를 없애는 강력한 CSS 마스크 적용 (모든 가장자리를 흐리게)
-      -webkit-mask-image: radial-gradient(circle at center, black 50%, transparent 100%),
-        linear-gradient(to bottom, black 80%, transparent 100%);
-      mask-image: radial-gradient(circle at center, black 50%, transparent 100%),
-        linear-gradient(to bottom, black 80%, transparent 100%);
-      -webkit-mask-size: cover;
-      mask-size: cover;
-      -webkit-mask-composite: source-in;
-      mask-composite: intersect;
+    .hero-mesh-section .sub-tag {
+      margin-bottom: 1.3rem;
 
-      .swiper-slide {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
+      font-size: 0.62rem;
 
-        .slide-bg {
-          position: absolute;
-          inset: 0; // top/left/right/bottom 0
-          width: 100%;
-          height: 100%;
-          background-size: cover;
-          background-position: center;
-          z-index: 1;
-
-          .overlay {
-            position: absolute;
-            inset: 0;
-            // 3. 다중 그라디언트로 테두리 숨기기 및 다크 블렌딩 가속화
-            background:
-              // 상단 헤더와의 자연스러운 연결
-              linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 20%),
-              // 전체 다크 오버레이 (가독성 확보)
-              linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.8) 100%),
-              // 좌우 가장자리 무너뜨리기 (radial)
-              radial-gradient(circle at center, transparent 30%, rgba(0, 0, 0, 0.9) 100%);
-          }
-        }
-
-        .slide-content {
-          position: relative;
-          z-index: 2;
-          text-align: center;
-          padding: 0 20px;
-          opacity: 0;
-          width: 100%;
-
-          h2 {
-            font-size: clamp(3rem, 6vw, 5rem);
-            font-weight: 800;
-            color: #ffffff; // 히어로 텍스트 화이트 고정
-            line-height: 1.15;
-            margin-bottom: 1.5rem;
-
-            span.highlight {
-              background: linear-gradient(90deg, $ykinas-green, $ykinas-teal);
-              -webkit-background-clip: text;
-              background-clip: text;
-              -webkit-text-fill-color: transparent;
-              color: transparent;
-              font-weight: 800;
-              display: inline-block;
-            }
-          }
-
-          p.hero-desc {
-            color: rgba(255, 255, 255, 0.85);
-            font-size: clamp(1.4rem, 2vw, 1.6rem);
-            max-width: 700px;
-            margin: 0 auto 20px;
-            word-break: keep-all;
-            line-height: 1.6;
-          }
-
-          .hero-features {
-            display: inline-grid; // grid를 유지하되 컨텐츠만큼만 너비 차지
-            grid-template-columns: repeat(2, auto); // 고정 1fr 대신 auto로 컨텐츠 밀착
-            gap: 1.2rem 4rem;
-            text-align: left;
-            margin: 0 auto 3rem; // auto margin으로 전체 덩어리를 중앙으로
-            padding: 0;
-            list-style: none;
-            justify-content: center; // 내부 아이템들 중앙 정렬
-
-            li {
-              color: rgba(255, 255, 255, 0.9);
-              font-size: 1.3rem;
-              display: flex;
-              align-items: center;
-              gap: 10px;
-              white-space: nowrap; // 줄바꿈 방지하여 깔끔하게 유지
-
-              &::before {
-                content: '';
-                width: 6px;
-                height: 6px;
-                background-color: $ykinas-teal;
-                border-radius: 50%;
-                box-shadow: 0 0 8px $ykinas-teal;
-              }
-            }
-
-            @media (max-width: 768px) {
-              // grid-template-columns: 1fr; // 모바일은 1단
-              gap: 1rem;
-            }
-          }
+      letter-spacing: 0.18em;
+    }
 
 
-          .hero-btns {
-            display: flex;
-            justify-content: center;
-          }
-        }
+    .hero-mesh-section h1 {
+      margin-bottom: 1.6rem;
 
-        &-active {
-          .slide-bg {
-            animation: kenBurns 6s ease-out forwards;
-          }
+      font-size: clamp(4rem,
+          20vw,
+          6rem);
 
-          .slide-content {
-            animation: slideUpFade 1.2s $ease-ykinas forwards;
-            animation-delay: 0.3s;
-          }
-        }
-      }
-
-      .swiper-pagination {
-        bottom: 50px !important;
-        display: flex;
-        justify-content: center;
-        gap: 12px;
-
-        .swiper-pagination-bullet {
-          width: 40px; // 기본 바 형태
-          height: 4px;
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 2px;
-          opacity: 1;
-          position: relative;
-          overflow: hidden;
-          margin: 0 !important;
-
-          // 활성화된 불렛 내부의 움직이는 게이지
-          &::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 0;
-            height: 100%;
-            background: $ykinas-teal;
-            transition: none;
-          }
-
-          &-active {
-            background: rgba(255, 255, 255, 0.2);
-            width: 60px; // 활성화 시 약간 길어짐
-
-            &::after {
-              // 5000ms는 Swiper의 autoplay delay와 일치시켜야 함
-              animation: paginationProgress 5s linear forwards;
-            }
-          }
-        }
-      }
+      letter-spacing: -0.075em;
+    }
 
 
-      @keyframes paginationProgress {
-        0% {
-          width: 0;
-        }
+    .hero-mesh-section .desc {
+      margin-bottom: 1.2rem;
 
-        100% {
-          width: 100%;
-        }
-      }
+      font-size: clamp(1.3rem,
+          6vw,
+          1.9rem);
+
+      line-height: 1.4;
+    }
+
+
+    .hero-mesh-section .sub-desc {
+      margin-bottom: 2.5rem;
+
+      font-size: 0.88rem;
+
+      line-height: 1.7;
+    }
+
+
+    .mobile-only {
+      display: block;
+    }
+  }
+
+
+  // =========================================================
+  // Small Mobile
+  // =========================================================
+
+  @media (max-width: 480px) {
+
+    .hero-mesh-section {
+      height: 76svh;
+    }
+
+
+    .hero-mesh-section .hero-content {
+      padding: 0 1.25rem;
+    }
+
+
+    .hero-mesh-section .sub-tag {
+      font-size: 0.58rem;
+    }
+
+
+    .hero-mesh-section h1 {
+      font-size: clamp(3.8rem,
+          21vw,
+          5rem);
+    }
+
+
+    .hero-mesh-section .desc {
+      font-size: 1.25rem;
+    }
+  }
+
+
+  // =========================================================
+  // Reduced Motion
+  // =========================================================
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .hero-mesh-section .hero-glow {
+      transition: none;
     }
   }
 
@@ -589,7 +696,7 @@
       .highlight-desc {
         font-size: 1.6rem;
         line-height: 1.8;
-        white-space: pre-wrap; 
+        white-space: pre-wrap;
         word-break: keep-all;
         opacity: 0.8;
         margin-bottom: 3.5rem;
