@@ -13,189 +13,42 @@ import 'swiper/css/effect-fade';
 import '../style/Home.scss';
 
 // 하이엔드 톤앤매너 & 3박자(디자인-솔루션-기획) 최종 선별 이미지 데이터
-// ==========================================
-// HERO SLIDES
-// 배열에 데이터만 추가하면 슬라이드 확장 가능
-// ==========================================
 const HERO_SLIDES = [
   {
     id: 1,
-    type: 'mesh',
-    eyebrow: 'HIGH-END WEB CONSTRUCTION · B2B',
-    title: (
-      <>
-        BEYOND
-        <br />
-        DIGITAL<span className="dot">.</span>
-      </>
-    ),
-    lead: (
-      <>
-        기업의 격<span className="hero-ko-sub">(格)</span>을 증명하는
-        <br />
-        하이엔드 웹사이트 구축, <span className="brand">YKINAS</span>
-      </>
-    ),
-    sub: (
-      <>
-        당신의 웹사이트는 24시간 일하는 가장 유능한 하이엔드 영업 사원이어야 합니다.
-        <br />
-        수십억의 가치를 지닌 기업의 본질을, 템플릿에 가두지 마십시오.
-      </>
-    ),
+    title: "Next Generation",
+    highlight: "Web Solution",
+    desc: "와이키나스는 홈페이지 제작부터 쇼핑몰 구축까지, 귀사의 비즈니스를 디지털로 전환하는 최적의 파트너입니다.",
+    features: ["최신 프레임워크 기반 개발", "고성능 API 인터페이스", "철저한 보안 및 최적화"],
+    bgImage: "https://images.unsplash.com/photo-1547658719-da2b51169166?auto=format&fit=crop&q=80&w=2070"
   },
   {
     id: 2,
-    type: 'launch',
-    eyebrow: 'Brand Commerce, Engineered',
-    title: (
-      <>
-        LAUNCH<span className="accent">.</span>
-      </>
-    ),
-    lead: '브랜드의 시작을 설계하는 커머스 구축',
-    sub: (
-      <>
-        단순한 웹사이트가 아닙니다. 고객의 지갑을 열게 만드는
-        <span className="soft"> '잘 팔리는'</span> 커머스의 시작,
-        <strong> YKINAS</strong>가 함께합니다.
-      </>
-    ),
+    title: "Tech & Design",
+    highlight: "Architecture",
+    desc: "사용자 중심의 설계와 고성능 최적화로 비즈니스 성장을 견인하는 완벽한 플랫폼을 구축합니다.",
+    features: [
+      "UI/UX 인터랙티브 디자인",
+      "고급 퍼블리싱 기술 적용",
+      "일관된 브랜드 아이덴티티",
+      "사용자 여정 최적화 설계"
+    ],
+    bgImage: "https://images.unsplash.com/photo-1558655146-d09347e92766?auto=format&fit=crop&q=80&w=2064"
   },
+  {
+    id: 3,
+    title: "Scalable",
+    highlight: "Planning",
+    desc: "비즈니스의 본질을 꿰뚫는 기획과 확장이 용이한 시스템 설계로 미래 성장을 지원합니다.",
+    features: [
+      "전략적 비즈니스 기획",
+      "데이터 기반 아키텍처",
+      "지속 가능한 시스템 설계",
+      "글로벌 표준 기술 준수"
+    ],
+    bgImage: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&q=80&w=2070"
+  }
 ];
-
-
-// ==========================================
-// HERO 1 · Network Mesh
-// ==========================================
-const HeroMesh = () => {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const reduceMotion = window.matchMedia(
-      '(prefers-reduced-motion: reduce)'
-    ).matches;
-
-    if (reduceMotion) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let width = 0;
-    let height = 0;
-    let dpr = 1;
-    let nodes = [];
-    let animationFrame = null;
-
-    const LINK_DISTANCE = 150;
-    const MAX_NODES = 90;
-
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-
-      width = rect.width;
-      height = rect.height;
-
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-      canvas.width = Math.round(width * dpr);
-      canvas.height = Math.round(height * dpr);
-
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      const count = Math.min(
-        MAX_NODES,
-        Math.max(
-          25,
-          Math.round((width * height) / 16000)
-        )
-      );
-
-      nodes = Array.from({ length: count }, () => ({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        vx: (Math.random() - 0.5) * 0.35,
-        vy: (Math.random() - 0.5) * 0.35,
-      }));
-    };
-
-    const frame = () => {
-      ctx.clearRect(0, 0, width, height);
-
-      for (const node of nodes) {
-        node.x += node.vx;
-        node.y += node.vy;
-
-        if (node.x < 0 || node.x > width) {
-          node.vx *= -1;
-        }
-
-        if (node.y < 0 || node.y > height) {
-          node.vy *= -1;
-        }
-      }
-
-      for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-          const a = nodes[i];
-          const b = nodes[j];
-
-          const dx = a.x - b.x;
-          const dy = a.y - b.y;
-          const distance = Math.hypot(dx, dy);
-
-          if (distance >= LINK_DISTANCE) continue;
-
-          const alpha =
-            (1 - distance / LINK_DISTANCE) * 0.45;
-
-          ctx.strokeStyle = `rgba(53, 230, 210, ${alpha})`;
-          ctx.lineWidth = 0.7;
-
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
-        }
-      }
-
-      ctx.fillStyle = 'rgba(127, 244, 232, 0.75)';
-
-      for (const node of nodes) {
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, 1.6, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      animationFrame = requestAnimationFrame(frame);
-    };
-
-    resize();
-    window.addEventListener('resize', resize);
-
-    animationFrame = requestAnimationFrame(frame);
-
-    return () => {
-      window.removeEventListener('resize', resize);
-
-      if (animationFrame) {
-        cancelAnimationFrame(animationFrame);
-      }
-    };
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      className="hero__mesh"
-      aria-hidden="true"
-    />
-  );
-};
-
 
 // ==========================================
 // [개별 컴포넌트 분리] 포트폴리오 프리뷰 카드
@@ -267,46 +120,6 @@ function Home() {
   const [latestTemplate, setLatestTemplate] = useState(null);
 
   useEffect(() => {
-    const reduceMotion = window.matchMedia(
-      '(prefers-reduced-motion: reduce)'
-    ).matches;
-
-    const elements = document.querySelectorAll(
-      '.home-container .motion-reveal'
-    );
-
-    if (reduceMotion) {
-      elements.forEach((el) => {
-        el.classList.add('is-visible');
-      });
-
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries, obs) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-
-          entry.target.classList.add('is-visible');
-          obs.unobserve(entry.target);
-        });
-      },
-      {
-        threshold: 0.15,
-        rootMargin: '0px 0px -60px 0px',
-      }
-    );
-
-    elements.forEach((element) => {
-      observer.observe(element);
-    });
-
-    return () => observer.disconnect();
-  }, []);
-
-
-  useEffect(() => {
     // 최신 포트폴리오 2개 페칭
     const fetchLatestProjects = async () => {
       const { data, error } = await supabase
@@ -342,138 +155,39 @@ function Home() {
   return (
     <div className="home-container">
       {/* 리뉴얼된 히어로 스와이퍼 섹션 */}
-      {/* ==========================================
-    HERO SLIDER
-    - 2개 슬라이드
-    - HERO_SLIDES 배열 추가만으로 확장 가능
-========================================== */}
       <header className="hero-slider-section">
         <Swiper
           modules={[Autoplay, Pagination, EffectFade]}
           effect="fade"
-          fadeEffect={{ crossFade: true }}
           speed={1000}
-          autoplay={{
-            delay: 6000,
-            disableOnInteraction: false,
-            pauseOnMouseEnter: false,
-          }}
+          autoplay={{ delay: 5000, disableOnInteraction: false }}
           pagination={{ clickable: true }}
           loop={true}
           className="hero-swiper"
         >
           {HERO_SLIDES.map((slide) => (
             <SwiperSlide key={slide.id}>
-              {slide.type === 'mesh' ? (
-                <section className="hero hero--mesh">
-                  <HeroMesh />
+              <div className="slide-bg" style={{ backgroundImage: `url(${slide.bgImage})` }}>
+                <div className="overlay"></div>
+              </div>
+              <div className="slide-content">
+                <h2>
+                  {slide.title} <br /> <span className="highlight">{slide.highlight}</span>
+                </h2>
+                <p className="hero-desc">{slide.desc}</p>
 
-                  <div
-                    className="hero__glow"
-                    aria-hidden="true"
-                  />
+                {slide.features.length > 0 && (
+                  <ul className="hero-features">
+                    {slide.features.map((feature, idx) => (
+                      <li key={idx}>{feature}</li>
+                    ))}
+                  </ul>
+                )}
 
-                  <div
-                    className="hero__beams"
-                    aria-hidden="true"
-                  >
-                    <span className="beam beam--1" />
-                    <span className="beam beam--2" />
-                    <span className="frame frame--1" />
-                    <span className="frame frame--2" />
-                  </div>
-
-                  <div className="hero__inner">
-                    <p className="hero__eyebrow">
-                      {slide.eyebrow}
-                    </p>
-
-                    <h1 className="hero__title">
-                      {slide.title}
-                    </h1>
-
-                    <p className="hero__lead">
-                      {slide.lead}
-                    </p>
-
-                    <p className="hero__sub">
-                      {slide.sub}
-                    </p>
-
-                    <div className="hero__cta-row">
-                      <Button
-                        text="1:1 프로젝트 문의 →"
-                        onClick={handleInquiry}
-                      />
-                    </div>
-                  </div>
-
-                  <div
-                    className="hero__scroll"
-                    aria-hidden="true"
-                  >
-                    <span />
-                  </div>
-                </section>
-              ) : (
-                <section className="hero hero--launch">
-                  <div
-                    className="hero__bg"
-                    aria-hidden="true"
-                  />
-
-                  <div
-                    className="hero__beams"
-                    aria-hidden="true"
-                  >
-                    <span className="beam beam--1" />
-                    <span className="beam beam--2" />
-                    <span className="frame frame--1" />
-                    <span className="frame frame--2" />
-                  </div>
-
-                  <div className="hero__inner">
-                    <p className="hero__eyebrow hero__eyebrow--soft">
-                      {slide.eyebrow}
-                    </p>
-
-                    <h1 className="hero__title glow-text">
-                      {slide.title}
-                    </h1>
-
-                    <div className="hero__copy">
-                      <p className="hero__lead">
-                        {slide.lead}
-                      </p>
-
-                      <p className="hero__sub">
-                        {slide.sub}
-                      </p>
-
-                      <div className="hero__cta">
-                        <Button
-                          text="견적 상담받기 →"
-                          onClick={handleInquiry}
-                        />
-
-                        <button
-                          type="button"
-                          className="hero__ghost-text"
-                          onClick={() => {
-                            document
-                              .getElementById('services')
-                              ?.scrollIntoView({
-                                behavior: 'smooth',
-                              });
-                          }}
-                        >
-                          작업 프로세스 보기
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-              )}
+                <div className="hero-btns">
+                  <Button text="프로젝트 문의하기" onClick={handleInquiry} />
+                </div>
+              </div>
             </SwiperSlide>
           ))}
         </Swiper>
