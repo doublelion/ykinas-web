@@ -175,6 +175,9 @@ serve(async (req: Request) => {
                     password:
                         payload.password || "",
 
+                    secret: 
+                        "T",
+                        
                     client_ip:
                         clientIp
                 }
