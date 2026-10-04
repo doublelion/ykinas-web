@@ -177,7 +177,7 @@ serve(async (req: Request) => {
 
                     secret: 
                         "T",
-                        
+
                     client_ip:
                         clientIp
                 }
@@ -215,6 +215,7 @@ serve(async (req: Request) => {
                         )
                 }
             );
+            
 
         /*
          * ------------------------------------------------------------
