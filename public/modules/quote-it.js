@@ -1,8 +1,9 @@
 // ============================================================================
 // public/modules/quote-it.js
-// QUOTE-IT
-// 팝업 / 인라인 모드 통합 모듈
+// QUOTE-IT B2B 통합 모듈
+// 팝업 / 인라인 자동 감지
 // 백틱 미사용
+// Lifecycle 버그 방어
 // ============================================================================
 
 (function () {
@@ -11,6 +12,11 @@
   if (customElements.get("quote-it-form")) {
     return;
   }
+
+
+  // ========================================================================
+  // Custom Element
+  // ========================================================================
 
   class QuoteItForm extends HTMLElement {
 
@@ -21,6 +27,7 @@
         mode: "open"
       });
     }
+
 
     connectedCallback() {
 
@@ -69,7 +76,7 @@
           "opacity:0;" +
           "visibility:hidden;" +
           "pointer-events:none;" +
-          "transition:opacity .35s ease, visibility .35s ease;";
+          "transition:opacity .35s ease,visibility .35s ease;";
       } else {
 
         wrapperStyle =
@@ -114,6 +121,11 @@
 
       var html = "";
 
+
+      // =================================================================
+      // CSS
+      // =================================================================
+
       html += "<style>";
 
       html += "*{";
@@ -155,8 +167,8 @@
       html += "background:transparent;";
       html += "font-size:24px;";
       html += "font-weight:300;";
-      html += "cursor:pointer;";
       html += "color:#222;";
+      html += "cursor:pointer;";
       html += "}";
 
       html += ".eyebrow{";
@@ -227,6 +239,7 @@
       html += "font-weight:600;";
       html += "letter-spacing:.08em;";
       html += "cursor:pointer;";
+      html += "transition:background .25s ease;";
       html += "}";
 
       html += ".btn-submit:hover{";
@@ -258,9 +271,18 @@
       // HTML
       // =================================================================
 
-      html += "<div class=\"overlay\" id=\"overlay\">";
+      html +=
+        "<div " +
+        "class=\"overlay\" " +
+        "id=\"overlay\" " +
+        "role=\"dialog\" " +
+        "aria-modal=\"true\">";
 
-      html += "<div class=\"modal\">";
+      html +=
+        "<div class=\"modal\">";
+
+
+      // 닫기 버튼
 
       if (this.mode === "popup") {
 
@@ -274,6 +296,9 @@
           "</button>";
       }
 
+
+      // 타이틀
+
       html +=
         "<div class=\"eyebrow\">" +
         "Project Inquiry" +
@@ -284,24 +309,35 @@
         "맞춰드립니다." +
         "</h2>";
 
+
+      // =================================================================
+      // Form
+      // =================================================================
+
       html +=
-        "<form id=\"quoteForm\">";
+        "<form " +
+        "id=\"quoteForm\" " +
+        "novalidate=\"false\">";
 
 
-      // 기업명
+      // 기업/단체명
 
       html +=
         "<div class=\"form-group\">" +
+
         "<label for=\"company\">" +
         "기업/단체명 " +
         "<span class=\"required\">*</span>" +
         "</label>" +
+
         "<input " +
         "type=\"text\" " +
         "id=\"company\" " +
         "name=\"company\" " +
         "placeholder=\"기업 또는 단체명을 입력해주세요.\" " +
+        "autocomplete=\"organization\" " +
         "required>" +
+
         "</div>";
 
 
@@ -309,16 +345,20 @@
 
       html +=
         "<div class=\"form-group\">" +
+
         "<label for=\"writer\">" +
         "담당자 성함 " +
         "<span class=\"required\">*</span>" +
         "</label>" +
+
         "<input " +
         "type=\"text\" " +
         "id=\"writer\" " +
         "name=\"writer\" " +
         "placeholder=\"담당자 성함을 입력해주세요.\" " +
+        "autocomplete=\"name\" " +
         "required>" +
+
         "</div>";
 
 
@@ -326,10 +366,12 @@
 
       html +=
         "<div class=\"form-group\">" +
+
         "<label for=\"phone\">" +
         "연락처 " +
         "<span class=\"required\">*</span>" +
         "</label>" +
+
         "<input " +
         "type=\"tel\" " +
         "id=\"phone\" " +
@@ -337,6 +379,7 @@
         "placeholder=\"010-0000-0000\" " +
         "autocomplete=\"tel\" " +
         "required>" +
+
         "</div>";
 
 
@@ -344,18 +387,21 @@
 
       html +=
         "<div class=\"form-group\">" +
+
         "<label for=\"content\">" +
         "프로젝트 문의 내용" +
         "</label>" +
+
         "<textarea " +
         "id=\"content\" " +
         "name=\"content\" " +
         "placeholder=\"프로젝트에 대해 자유롭게 작성해주세요.\">" +
         "</textarea>" +
+
         "</div>";
 
 
-      // 제출
+      // 제출 버튼
 
       html +=
         "<button " +
@@ -397,14 +443,26 @@
       }
 
 
-      // 팝업 열기
+      // =================================================================
+      // Popup
+      // =================================================================
 
       if (this.mode === "popup") {
 
         this.handleOpen =
           function () {
-            overlay.classList.add("active");
+
+            overlay.classList.add(
+              "active"
+            );
+
+            document.documentElement.style.overflow =
+              "hidden";
+
+            document.body.style.overflow =
+              "hidden";
           };
+
 
         window.addEventListener(
           "QUOTE_IT_TRIGGER_OPEN",
@@ -412,11 +470,18 @@
         );
 
 
-        // 닫기
-
         this.closeFn =
           function () {
-            overlay.classList.remove("active");
+
+            overlay.classList.remove(
+              "active"
+            );
+
+            document.documentElement.style.overflow =
+              "";
+
+            document.body.style.overflow =
+              "";
           };
 
 
@@ -433,18 +498,40 @@
           "click",
           function (event) {
 
-            if (event.target === overlay) {
+            if (
+              event.target ===
+              overlay
+            ) {
               self.closeFn();
             }
-
           }
+        );
+
+
+        this.handleKeydown =
+          function (event) {
+
+            if (
+              event.key === "Escape" &&
+              overlay.classList.contains("active")
+            ) {
+              self.closeFn();
+            }
+          };
+
+
+        document.addEventListener(
+          "keydown",
+          this.handleKeydown
         );
 
       } else {
 
         // 인라인 모드
 
-        overlay.classList.add("active");
+        overlay.classList.add(
+          "active"
+        );
       }
 
 
@@ -452,17 +539,27 @@
       // Submit
       // =================================================================
 
-      form.addEventListener(
-        "submit",
+      this.handleSubmit =
         async function (event) {
 
           event.preventDefault();
 
           var submitBtn =
-            form.querySelector(".btn-submit");
+            form.querySelector(
+              ".btn-submit"
+            );
 
-          submitBtn.disabled = true;
-          submitBtn.innerText = "접수 중...";
+
+          if (!submitBtn) {
+            return;
+          }
+
+
+          submitBtn.disabled =
+            true;
+
+          submitBtn.innerText =
+            "접수 중...";
 
 
           var formData =
@@ -470,21 +567,47 @@
 
 
           var company =
-            formData.get("company") || "";
+            formData.get("company") ||
+            "";
 
           var phone =
-            formData.get("phone") || "";
+            formData.get("phone") ||
+            "";
 
           var writer =
-            formData.get("writer") || "";
+            formData.get("writer") ||
+            "";
 
           var content =
-            formData.get("content") || "";
+            formData.get("content") ||
+            "";
 
 
-          /*
-           * Cafe24 Board Relay 서버 규격
-           */
+          // 필수값 확인
+
+          if (
+            !company.trim() ||
+            !writer.trim() ||
+            !phone.trim()
+          ) {
+
+            alert(
+              "필수 항목을 입력해주세요."
+            );
+
+            submitBtn.disabled =
+              false;
+
+            submitBtn.innerText =
+              "문의 접수하기";
+
+            return;
+          }
+
+
+          // =========================================================
+          // Cafe24 Board Relay Payload
+          // =========================================================
 
           var payload = {
 
@@ -504,7 +627,10 @@
 
             password:
               phone
-                .replace(/[^0-9]/g, "")
+                .replace(
+                  /[^0-9]/g,
+                  ""
+                )
                 .slice(-4) +
               "!!",
 
@@ -522,7 +648,8 @@
               await fetch(
                 "https://ipgzyckubwakijerxcpc.supabase.co/functions/v1/relay-cafe24-board",
                 {
-                  method: "POST",
+                  method:
+                    "POST",
 
                   headers: {
                     "Content-Type":
@@ -549,16 +676,16 @@
               "성공적으로 접수되었습니다."
             );
 
+
             form.reset();
 
 
             if (
-              self.mode === "popup"
+              self.mode ===
+              "popup"
             ) {
 
-              overlay.classList.remove(
-                "active"
-              );
+              self.closeFn();
             }
 
 
@@ -575,18 +702,24 @@
 
           } finally {
 
-            submitBtn.disabled = false;
+            submitBtn.disabled =
+              false;
 
             submitBtn.innerText =
               "문의 접수하기";
           }
-        }
+        };
+
+
+      form.addEventListener(
+        "submit",
+        this.handleSubmit
       );
     }
 
 
     // ====================================================================
-    // Cleanup
+    // Lifecycle Cleanup
     // ====================================================================
 
     disconnectedCallback() {
@@ -598,12 +731,46 @@
           this.handleOpen
         );
       }
+
+
+      if (this.handleKeydown) {
+
+        document.removeEventListener(
+          "keydown",
+          this.handleKeydown
+        );
+      }
+
+
+      if (this.handleSubmit) {
+
+        var form =
+          this.shadowRoot &&
+          this.shadowRoot.getElementById(
+            "quoteForm"
+          );
+
+        if (form) {
+
+          form.removeEventListener(
+            "submit",
+            this.handleSubmit
+          );
+        }
+      }
+
+
+      document.documentElement.style.overflow =
+        "";
+
+      document.body.style.overflow =
+        "";
     }
   }
 
 
   // ========================================================================
-  // Custom Element
+  // Custom Element Registration
   // ========================================================================
 
   customElements.define(
@@ -616,98 +783,147 @@
   // Bootstrapper
   // ========================================================================
 
-  document.addEventListener(
-    "DOMContentLoaded",
-    function () {
+  function initQuoteIt() {
 
-      // ---------------------------------------------------------------
-      // 1. Inline Mode
-      // ---------------------------------------------------------------
+    var inlineAnchor =
+      document.getElementById(
+        "nexus-quote-it-anchor"
+      );
 
-      var inlineAnchor =
-        document.getElementById(
-          "nexus-quote-it-anchor"
+    var triggers =
+      document.querySelectorAll(
+        ".btn-quote-trigger"
+      );
+
+
+    // ================================================================
+    // 1. Inline Mode
+    // ================================================================
+
+    if (
+      inlineAnchor &&
+      !inlineAnchor.querySelector(
+        "quote-it-form"
+      )
+    ) {
+
+      var inlineForm =
+        document.createElement(
+          "quote-it-form"
         );
 
+      inlineForm.setAttribute(
+        "data-config",
+        JSON.stringify({
+          displayMode:
+            "inline",
 
-      if (inlineAnchor) {
+          mallId:
+            "ykinas",
 
-        var inlineForm =
-          document.createElement(
-            "quote-it-form"
-          );
+          targetBoardNo:
+            1002
+        })
+      );
 
-        inlineForm.setAttribute(
-          "data-config",
-          JSON.stringify({
-            displayMode: "inline",
-            mallId: "ykinas",
-            targetBoardNo: 1002
-          })
+      inlineAnchor.appendChild(
+        inlineForm
+      );
+    }
+
+
+    // ================================================================
+    // 2. Popup Mode
+    // ================================================================
+
+    if (
+      triggers.length > 0 &&
+      !document.querySelector(
+        "quote-it-form[data-config*=\"popup\"]"
+      )
+    ) {
+
+      var popupForm =
+        document.createElement(
+          "quote-it-form"
         );
 
-        inlineAnchor.appendChild(
-          inlineForm
-        );
-      }
+      popupForm.setAttribute(
+        "data-config",
+        JSON.stringify({
+          displayMode:
+            "popup",
+
+          mallId:
+            "ykinas",
+
+          targetBoardNo:
+            1002
+        })
+      );
+
+      document.body.appendChild(
+        popupForm
+      );
+    }
 
 
-      // ---------------------------------------------------------------
-      // 2. Popup Mode
-      // ---------------------------------------------------------------
+    // ================================================================
+    // 3. Trigger Binding
+    // ================================================================
 
-      if (
-        !inlineAnchor ||
-        document.querySelector(
-          ".btn-quote-trigger"
-        )
-      ) {
+    triggers.forEach(
+      function (button) {
 
-        var popupForm =
-          document.createElement(
-            "quote-it-form"
-          );
-
-        popupForm.setAttribute(
-          "data-config",
-          JSON.stringify({
-            displayMode: "popup",
-            mallId: "ykinas",
-            targetBoardNo: 1002
-          })
-        );
-
-        document.body.appendChild(
-          popupForm
-        );
+        if (
+          button.dataset.quoteItBound ===
+          "true"
+        ) {
+          return;
+        }
 
 
-        var triggerButtons =
-          document.querySelectorAll(
-            ".btn-quote-trigger"
-          );
+        button.dataset.quoteItBound =
+          "true";
 
 
-        triggerButtons.forEach(
-          function (button) {
+        button.addEventListener(
+          "click",
+          function (event) {
 
-            button.addEventListener(
-              "click",
-              function (event) {
+            event.preventDefault();
 
-                event.preventDefault();
 
-                window.dispatchEvent(
-                  new CustomEvent(
-                    "QUOTE_IT_TRIGGER_OPEN"
-                  )
-                );
-              }
+            window.dispatchEvent(
+              new CustomEvent(
+                "QUOTE_IT_TRIGGER_OPEN"
+              )
             );
           }
         );
       }
-    }
-  );
+    );
+  }
+
+
+  // ========================================================================
+  // DOM Ready
+  // defer 로드 시 DOMContentLoaded 유실 방어
+  // ========================================================================
+
+  if (
+    document.readyState ===
+    "loading"
+  ) {
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      initQuoteIt
+    );
+
+  } else {
+
+    initQuoteIt();
+  }
 
 })();
