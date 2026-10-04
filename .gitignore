@@ -37,3 +37,5 @@ src/**/*.css
 src/**/*.css.map
 
 # api/inject.js
+
+/supabase/functions/relay-cafe24-board/index_backup_261004.ts
