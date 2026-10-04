@@ -2,25 +2,208 @@
 // public/modules/quote-it.js
 // QUOTE-IT B2B 통합 모듈
 // 팝업 / 인라인 자동 감지
-// 백틱 미사용
-// Lifecycle 버그 방어
+// URL 쿼리 + data-config 동적 설정 지원
+// 백틱(Template Literal) 완전 배제
 // ============================================================================
 
 (function () {
+
   "use strict";
+
+
+  // =========================================================================
+  // 중복 로드 방지
+  // =========================================================================
 
   if (customElements.get("quote-it-form")) {
     return;
   }
 
 
-  // ========================================================================
+  // =========================================================================
+  // Global Configuration
+  // =========================================================================
+
+  var globalConfig = {
+    displayMode: "popup",
+    mallId: "",
+    targetBoardNo: 1002
+  };
+
+
+  // =========================================================================
+  // 현재 스크립트 탐색
+  // =========================================================================
+
+  var currentScript = document.currentScript;
+
+
+  if (!currentScript) {
+
+    var scripts =
+      document.getElementsByTagName("script");
+
+    for (
+      var i = 0;
+      i < scripts.length;
+      i++
+    ) {
+
+      if (
+        scripts[i].src &&
+        scripts[i].src.indexOf(
+          "quote-it.js"
+        ) !== -1
+      ) {
+
+        currentScript =
+          scripts[i];
+
+        break;
+      }
+    }
+  }
+
+
+  // =========================================================================
+  // URL Query / data-config 설정 파싱
+  // =========================================================================
+
+  if (currentScript) {
+
+    var src =
+      currentScript.src || "";
+
+
+    // ---------------------------------------------------------------------
+    // URL Query
+    // ---------------------------------------------------------------------
+
+    if (src.indexOf("?") !== -1) {
+
+      var queryString =
+        src.split("?")[1];
+
+      var pairs =
+        queryString.split("&");
+
+
+      for (
+        var j = 0;
+        j < pairs.length;
+        j++
+      ) {
+
+        var pair =
+          pairs[j].split("=");
+
+        var key =
+          decodeURIComponent(
+            pair[0] || ""
+          );
+
+        var value =
+          decodeURIComponent(
+            pair[1] || ""
+          );
+
+
+        if (key === "mall_id") {
+
+          globalConfig.mallId =
+            value;
+        }
+
+
+        if (key === "board_no") {
+
+          var parsedBoardNo =
+            parseInt(
+              value,
+              10
+            );
+
+          if (
+            !isNaN(parsedBoardNo)
+          ) {
+
+            globalConfig.targetBoardNo =
+              parsedBoardNo;
+          }
+        }
+
+
+        if (key === "mode") {
+
+          globalConfig.displayMode =
+            value;
+        }
+      }
+    }
+
+
+    // ---------------------------------------------------------------------
+    // data-config
+    // ---------------------------------------------------------------------
+
+    var dataConfig =
+      currentScript.getAttribute(
+        "data-config"
+      );
+
+
+    if (dataConfig) {
+
+      try {
+
+        var parsedConfig =
+          JSON.parse(dataConfig);
+
+
+        if (
+          parsedConfig.mallId
+        ) {
+
+          globalConfig.mallId =
+            parsedConfig.mallId;
+        }
+
+
+        if (
+          parsedConfig.targetBoardNo
+        ) {
+
+          globalConfig.targetBoardNo =
+            parsedConfig.targetBoardNo;
+        }
+
+
+        if (
+          parsedConfig.displayMode
+        ) {
+
+          globalConfig.displayMode =
+            parsedConfig.displayMode;
+        }
+
+      } catch (error) {
+
+        console.warn(
+          "[QUOTE-IT] data-config 파싱 실패"
+        );
+      }
+    }
+  }
+
+
+  // =========================================================================
   // Custom Element
-  // ========================================================================
+  // =========================================================================
 
   class QuoteItForm extends HTMLElement {
 
     constructor() {
+
       super();
 
       this.attachShadow({
@@ -29,38 +212,75 @@
     }
 
 
+    // =====================================================================
+    // Connected
+    // =====================================================================
+
     connectedCallback() {
 
-      var configStr =
-        this.getAttribute("data-config") || "{}";
+      var componentConfigStr =
+        this.getAttribute(
+          "data-config"
+        );
 
-      try {
-        this.config = JSON.parse(configStr);
-      } catch (error) {
-        this.config = {};
+      var componentConfig = {};
+
+
+      if (componentConfigStr) {
+
+        try {
+
+          componentConfig =
+            JSON.parse(
+              componentConfigStr
+            );
+
+        } catch (error) {
+
+          componentConfig = {};
+        }
       }
 
+
       this.mode =
-        this.config.displayMode || "popup";
+        componentConfig.displayMode ||
+        globalConfig.displayMode ||
+        "popup";
+
 
       this.mallId =
-        this.config.mallId || "ykinas";
+        componentConfig.mallId ||
+        globalConfig.mallId ||
+        "";
+
 
       this.boardNo =
-        this.config.targetBoardNo || 1002;
+        componentConfig.targetBoardNo ||
+        globalConfig.targetBoardNo ||
+        1002;
+
+
+      if (!this.mallId) {
+
+        console.warn(
+          "[QUOTE-IT] mall_id 설정이 누락되었습니다."
+        );
+      }
+
 
       this.render();
       this.bindEvents();
     }
 
 
-    // ====================================================================
+    // =====================================================================
     // Render
-    // ====================================================================
+    // =====================================================================
 
     render() {
 
       var wrapperStyle = "";
+
 
       if (this.mode === "popup") {
 
@@ -68,7 +288,7 @@
           "position:fixed;" +
           "inset:0;" +
           "z-index:99999;" +
-          "background:rgba(0,0,0,0.72);" +
+          "background:rgba(0,0,0,.72);" +
           "display:flex;" +
           "align-items:center;" +
           "justify-content:center;" +
@@ -76,7 +296,9 @@
           "opacity:0;" +
           "visibility:hidden;" +
           "pointer-events:none;" +
-          "transition:opacity .35s ease,visibility .35s ease;";
+          "transition:" +
+          "opacity .35s ease," +
+          "visibility .35s ease;";
       } else {
 
         wrapperStyle =
@@ -88,6 +310,7 @@
 
 
       var modalStyle = "";
+
 
       if (this.mode === "popup") {
 
@@ -102,8 +325,11 @@
           "color:#222;" +
           "border:1px solid rgba(255,255,255,.4);" +
           "box-shadow:0 30px 100px rgba(0,0,0,.25);" +
-          "transform:translateY(20px) scale(.98);" +
-          "transition:transform .45s cubic-bezier(.22,1,.36,1);";
+          "transform:" +
+          "translateY(20px) scale(.98);" +
+          "transition:" +
+          "transform .45s " +
+          "cubic-bezier(.22,1,.36,1);";
 
       } else {
 
@@ -128,141 +354,179 @@
 
       html += "<style>";
 
-      html += "*{";
-      html += "box-sizing:border-box;";
-      html += "}";
+      html +=
+        "*{" +
+        "box-sizing:border-box;" +
+        "}";
 
-      html += ":host{";
-      html += "display:block;";
-      html += "font-family:";
-      html += "'Pretendard','Noto Sans KR',";
-      html += "-apple-system,BlinkMacSystemFont,sans-serif;";
-      html += "}";
 
-      html += ".overlay{";
-      html += wrapperStyle;
-      html += "}";
+      html +=
+        ":host{" +
+        "display:block;" +
+        "font-family:" +
+        "'Pretendard'," +
+        "'Noto Sans KR'," +
+        "-apple-system," +
+        "BlinkMacSystemFont," +
+        "sans-serif;" +
+        "}";
 
-      html += ".overlay.active{";
-      html += "opacity:1;";
-      html += "visibility:visible;";
-      html += "pointer-events:auto;";
-      html += "}";
 
-      html += ".overlay.active .modal{";
-      html += "transform:translateY(0) scale(1);";
-      html += "}";
+      html +=
+        ".overlay{" +
+        wrapperStyle +
+        "}";
 
-      html += ".modal{";
-      html += modalStyle;
-      html += "}";
 
-      html += ".close{";
-      html += "position:absolute;";
-      html += "top:18px;";
-      html += "right:20px;";
-      html += "width:40px;";
-      html += "height:40px;";
-      html += "border:0;";
-      html += "background:transparent;";
-      html += "font-size:24px;";
-      html += "font-weight:300;";
-      html += "color:#222;";
-      html += "cursor:pointer;";
-      html += "}";
+      html +=
+        ".overlay.active{" +
+        "opacity:1;" +
+        "visibility:visible;" +
+        "pointer-events:auto;" +
+        "}";
 
-      html += ".eyebrow{";
-      html += "margin-bottom:14px;";
-      html += "font-size:11px;";
-      html += "font-weight:600;";
-      html += "letter-spacing:.2em;";
-      html += "text-transform:uppercase;";
-      html += "color:#8a9a5b;";
-      html += "}";
 
-      html += "h2{";
-      html += "margin:0 0 36px;";
-      html += "font-family:'Playfair Display',Georgia,serif;";
-      html += "font-size:clamp(32px,5vw,50px);";
-      html += "font-weight:400;";
-      html += "line-height:1.1;";
-      html += "letter-spacing:-.04em;";
-      html += "}";
+      html +=
+        ".overlay.active .modal{" +
+        "transform:translateY(0) scale(1);" +
+        "}";
 
-      html += ".form-group{";
-      html += "margin-bottom:22px;";
-      html += "}";
 
-      html += "label{";
-      html += "display:block;";
-      html += "margin-bottom:8px;";
-      html += "font-size:12px;";
-      html += "font-weight:600;";
-      html += "}";
+      html +=
+        ".modal{" +
+        modalStyle +
+        "}";
 
-      html += ".required{";
-      html += "color:#8a9a5b;";
-      html += "}";
 
-      html += "input,textarea{";
-      html += "width:100%;";
-      html += "padding:13px 0;";
-      html += "border:0;";
-      html += "border-bottom:1px solid #d6d2ca;";
-      html += "outline:0;";
-      html += "background:transparent;";
-      html += "color:#222;";
-      html += "font:inherit;";
-      html += "font-size:15px;";
-      html += "border-radius:0;";
-      html += "}";
+      html +=
+        ".close{" +
+        "position:absolute;" +
+        "top:18px;" +
+        "right:20px;" +
+        "width:40px;" +
+        "height:40px;" +
+        "border:0;" +
+        "background:transparent;" +
+        "font-size:24px;" +
+        "font-weight:300;" +
+        "color:#222;" +
+        "cursor:pointer;" +
+        "}";
 
-      html += "input:focus,textarea:focus{";
-      html += "border-color:#222;";
-      html += "}";
 
-      html += "textarea{";
-      html += "min-height:120px;";
-      html += "resize:vertical;";
-      html += "line-height:1.7;";
-      html += "}";
+      html +=
+        ".eyebrow{" +
+        "margin-bottom:14px;" +
+        "font-size:11px;" +
+        "font-weight:600;" +
+        "letter-spacing:.2em;" +
+        "text-transform:uppercase;" +
+        "color:#8a9a5b;" +
+        "}";
 
-      html += ".btn-submit{";
-      html += "width:100%;";
-      html += "margin-top:18px;";
-      html += "padding:17px 20px;";
-      html += "border:0;";
-      html += "background:#222;";
-      html += "color:#fff;";
-      html += "font:inherit;";
-      html += "font-size:13px;";
-      html += "font-weight:600;";
-      html += "letter-spacing:.08em;";
-      html += "cursor:pointer;";
-      html += "transition:background .25s ease;";
-      html += "}";
 
-      html += ".btn-submit:hover{";
-      html += "background:#8a9a5b;";
-      html += "}";
+      html +=
+        "h2{" +
+        "margin:0 0 36px;" +
+        "font-family:'Playfair Display',Georgia,serif;" +
+        "font-size:clamp(32px,5vw,50px);" +
+        "font-weight:400;" +
+        "line-height:1.1;" +
+        "letter-spacing:-.04em;" +
+        "}";
 
-      html += ".btn-submit:disabled{";
-      html += "opacity:.55;";
-      html += "cursor:not-allowed;";
-      html += "}";
 
-      html += "@media(max-width:640px){";
+      html +=
+        ".form-group{" +
+        "margin-bottom:22px;" +
+        "}";
 
-      html += ".overlay{";
-      html += "padding:12px;";
-      html += "}";
 
-      html += ".modal{";
-      html += "padding:44px 24px 30px;";
-      html += "max-height:calc(100vh - 24px);";
-      html += "}";
+      html +=
+        "label{" +
+        "display:block;" +
+        "margin-bottom:8px;" +
+        "font-size:12px;" +
+        "font-weight:600;" +
+        "}";
 
-      html += "}";
+
+      html +=
+        ".required{" +
+        "color:#8a9a5b;" +
+        "}";
+
+
+      html +=
+        "input,textarea{" +
+        "width:100%;" +
+        "padding:13px 0;" +
+        "border:0;" +
+        "border-bottom:1px solid #d6d2ca;" +
+        "outline:0;" +
+        "background:transparent;" +
+        "color:#222;" +
+        "font:inherit;" +
+        "font-size:15px;" +
+        "border-radius:0;" +
+        "}";
+
+
+      html +=
+        "input:focus,textarea:focus{" +
+        "border-color:#222;" +
+        "}";
+
+
+      html +=
+        "textarea{" +
+        "min-height:120px;" +
+        "resize:vertical;" +
+        "line-height:1.7;" +
+        "}";
+
+
+      html +=
+        ".btn-submit{" +
+        "width:100%;" +
+        "margin-top:18px;" +
+        "padding:17px 20px;" +
+        "border:0;" +
+        "background:#222;" +
+        "color:#fff;" +
+        "font:inherit;" +
+        "font-size:13px;" +
+        "font-weight:600;" +
+        "letter-spacing:.08em;" +
+        "cursor:pointer;" +
+        "transition:background .25s ease;" +
+        "}";
+
+
+      html +=
+        ".btn-submit:hover{" +
+        "background:#8a9a5b;" +
+        "}";
+
+
+      html +=
+        ".btn-submit:disabled{" +
+        "opacity:.55;" +
+        "cursor:not-allowed;" +
+        "}";
+
+
+      html +=
+        "@media(max-width:640px){" +
+        ".overlay{" +
+        "padding:12px;" +
+        "}" +
+        ".modal{" +
+        "padding:44px 24px 30px;" +
+        "max-height:calc(100vh - 24px);" +
+        "}" +
+        "}";
+
 
       html += "</style>";
 
@@ -277,6 +541,7 @@
         "id=\"overlay\" " +
         "role=\"dialog\" " +
         "aria-modal=\"true\">";
+
 
       html +=
         "<div class=\"modal\">";
@@ -297,12 +562,13 @@
       }
 
 
-      // 타이틀
+      // 헤더
 
       html +=
         "<div class=\"eyebrow\">" +
         "Project Inquiry" +
         "</div>";
+
 
       html +=
         "<h2>" +
@@ -316,11 +582,10 @@
 
       html +=
         "<form " +
-        "id=\"quoteForm\" " +
-        "novalidate=\"false\">";
+        "id=\"quoteForm\">";
 
 
-      // 기업/단체명
+      // 기업 / 단체명
 
       html +=
         "<div class=\"form-group\">" +
@@ -401,7 +666,7 @@
         "</div>";
 
 
-      // 제출 버튼
+      // 제출
 
       html +=
         "<button " +
@@ -416,26 +681,33 @@
       html += "</div>";
 
 
-      this.shadowRoot.innerHTML = html;
+      this.shadowRoot.innerHTML =
+        html;
     }
 
 
-    // ====================================================================
+    // =====================================================================
     // Events
-    // ====================================================================
+    // =====================================================================
 
     bindEvents() {
 
       var self = this;
 
       var overlay =
-        this.shadowRoot.getElementById("overlay");
+        this.shadowRoot.getElementById(
+          "overlay"
+        );
 
       var btnClose =
-        this.shadowRoot.getElementById("btnClose");
+        this.shadowRoot.getElementById(
+          "btnClose"
+        );
 
       var form =
-        this.shadowRoot.getElementById("quoteForm");
+        this.shadowRoot.getElementById(
+          "quoteForm"
+        );
 
 
       if (!overlay || !form) {
@@ -444,10 +716,12 @@
 
 
       // =================================================================
-      // Popup
+      // Popup Events
       // =================================================================
 
-      if (this.mode === "popup") {
+      if (
+        this.mode === "popup"
+      ) {
 
         this.handleOpen =
           function () {
@@ -502,6 +776,7 @@
               event.target ===
               overlay
             ) {
+
               self.closeFn();
             }
           }
@@ -513,8 +788,11 @@
 
             if (
               event.key === "Escape" &&
-              overlay.classList.contains("active")
+              overlay.classList.contains(
+                "active"
+              )
             ) {
+
               self.closeFn();
             }
           };
@@ -544,6 +822,17 @@
 
           event.preventDefault();
 
+
+          if (!self.mallId) {
+
+            alert(
+              "상점 정보(mall_id)가 설정되지 않아 접수할 수 없습니다."
+            );
+
+            return;
+          }
+
+
           var submitBtn =
             form.querySelector(
               ".btn-submit"
@@ -567,23 +856,28 @@
 
 
           var company =
-            formData.get("company") ||
-            "";
+            formData.get(
+              "company"
+            ) || "";
+
 
           var phone =
-            formData.get("phone") ||
-            "";
+            formData.get(
+              "phone"
+            ) || "";
+
 
           var writer =
-            formData.get("writer") ||
-            "";
+            formData.get(
+              "writer"
+            ) || "";
+
 
           var content =
-            formData.get("content") ||
-            "";
+            formData.get(
+              "content"
+            ) || "";
 
-
-          // 필수값 확인
 
           if (
             !company.trim() ||
@@ -606,7 +900,7 @@
 
 
           // =========================================================
-          // Cafe24 Board Relay Payload
+          // Payload
           // =========================================================
 
           var payload = {
@@ -641,6 +935,10 @@
               content
           };
 
+
+          // =========================================================
+          // Supabase Relay
+          // =========================================================
 
           try {
 
@@ -682,7 +980,8 @@
 
             if (
               self.mode ===
-              "popup"
+              "popup" &&
+              self.closeFn
             ) {
 
               self.closeFn();
@@ -692,7 +991,7 @@
           } catch (error) {
 
             console.error(
-              "QUOTE-IT",
+              "[QUOTE-IT]",
               error
             );
 
@@ -718,9 +1017,9 @@
     }
 
 
-    // ====================================================================
-    // Lifecycle Cleanup
-    // ====================================================================
+    // =====================================================================
+    // Cleanup
+    // =====================================================================
 
     disconnectedCallback() {
 
@@ -769,9 +1068,9 @@
   }
 
 
-  // ========================================================================
-  // Custom Element Registration
-  // ========================================================================
+  // =========================================================================
+  // Custom Element 등록
+  // =========================================================================
 
   customElements.define(
     "quote-it-form",
@@ -779,9 +1078,9 @@
   );
 
 
-  // ========================================================================
+  // =========================================================================
   // Bootstrapper
-  // ========================================================================
+  // =========================================================================
 
   function initQuoteIt() {
 
@@ -790,15 +1089,16 @@
         "nexus-quote-it-anchor"
       );
 
+
     var triggers =
       document.querySelectorAll(
         ".btn-quote-trigger"
       );
 
 
-    // ================================================================
-    // 1. Inline Mode
-    // ================================================================
+    // =====================================================================
+    // Inline
+    // =====================================================================
 
     if (
       inlineAnchor &&
@@ -812,19 +1112,15 @@
           "quote-it-form"
         );
 
+
       inlineForm.setAttribute(
         "data-config",
         JSON.stringify({
           displayMode:
-            "inline",
-
-          mallId:
-            "ykinas",
-
-          targetBoardNo:
-            1002
+            "inline"
         })
       );
+
 
       inlineAnchor.appendChild(
         inlineForm
@@ -832,9 +1128,9 @@
     }
 
 
-    // ================================================================
-    // 2. Popup Mode
-    // ================================================================
+    // =====================================================================
+    // Popup
+    // =====================================================================
 
     if (
       triggers.length > 0 &&
@@ -848,19 +1144,15 @@
           "quote-it-form"
         );
 
+
       popupForm.setAttribute(
         "data-config",
         JSON.stringify({
           displayMode:
-            "popup",
-
-          mallId:
-            "ykinas",
-
-          targetBoardNo:
-            1002
+            "popup"
         })
       );
+
 
       document.body.appendChild(
         popupForm
@@ -868,9 +1160,9 @@
     }
 
 
-    // ================================================================
-    // 3. Trigger Binding
-    // ================================================================
+    // =====================================================================
+    // Trigger
+    // =====================================================================
 
     triggers.forEach(
       function (button) {
@@ -879,6 +1171,7 @@
           button.dataset.quoteItBound ===
           "true"
         ) {
+
           return;
         }
 
@@ -906,10 +1199,9 @@
   }
 
 
-  // ========================================================================
+  // =========================================================================
   // DOM Ready
-  // defer 로드 시 DOMContentLoaded 유실 방어
-  // ========================================================================
+  // =========================================================================
 
   if (
     document.readyState ===
