@@ -1,109 +1,127 @@
 // api/quote-it/submit.js
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
+  if (req.method !== 'POST') {
     return res.status(405).json({
-      message: "Method Not Allowed"
+      message: 'Method Not Allowed'
     });
   }
 
-  const writer = req.body && req.body.writer
-    ? req.body.writer
-    : "";
+  const payload = req.body || {};
 
-  const phone = req.body && req.body.phone
-    ? req.body.phone
-    : "";
+  // 기본 설정
+  const mallId =
+    payload.mall_id ||
+    process.env.CAFE24_MALL_ID ||
+    'ykinas';
 
-  const content = req.body && req.body.content
-    ? req.body.content
-    : "";
-
-  if (!writer || !phone || !content) {
-    return res.status(400).json({
-      message: "필수 항목이 누락되었습니다."
-    });
-  }
-
-  const shopId = process.env.CAFE24_MALL_ID || "ykinas";
-  const targetBoardNo = Number(
-    process.env.QUOTE_IT_BOARD_NO || 1002
+  const boardNo = Number(
+    payload.board_no ||
+    process.env.QUOTE_IT_BOARD_NO ||
+    1002
   );
+
+  // 프론트엔드에서 완성한 값 그대로 수신
+  const subject = String(payload.subject || '').trim();
+  const writer = String(payload.writer || '').trim();
+  const password = String(payload.password || '').trim();
+  const content = String(payload.content || '');
+
+  // 필수값 검증
+  if (!writer || !content) {
+    return res.status(400).json({
+      message: '필수 항목이 누락되었습니다.'
+    });
+  }
+
+  if (!boardNo || Number.isNaN(boardNo)) {
+    return res.status(400).json({
+      message: '게시판 번호가 올바르지 않습니다.'
+    });
+  }
 
   try {
     /*
-     * 기존 Cafe24 OAuth / Token 로직 연결
-     * 이미 가지고 있는 토큰 로직을 사용하면 됨.
+     * Cafe24 Admin API Access Token 조회
+     * 기존 Redis OAuth 로직을 연결
      */
-    const accessToken = await getAdminTokenFromRedis(shopId);
+    const accessToken = await getAdminTokenFromRedis(mallId);
 
     if (!accessToken) {
       return res.status(401).json({
-        message: "Cafe24 access token이 없습니다."
+        message: 'Cafe24 access token이 없습니다.'
       });
     }
 
     /*
-     * Cafe24 Admin Board API
+     * Cafe24 Board API
      */
     const apiUrl =
-      "https://" +
-      shopId +
-      ".cafe24api.com/api/v2/admin/boards/" +
-      targetBoardNo +
-      "/articles";
+      'https://' +
+      mallId +
+      '.cafe24api.com/api/v2/admin/boards/' +
+      boardNo +
+      '/articles';
 
     /*
-     * 게시글 데이터
-     */
-    const articleTitle =
-      "[견적문의] " +
-      writer +
-      " 고객님";
-
-    const articleContent =
-      "연락처: " +
-      phone +
-      "\n\n문의사항:\n" +
-      content;
-
-    /*
-     * Cafe24 API 호출
+     * Cafe24 Admin Board API 호출
      */
     const cafe24Res = await fetch(apiUrl, {
-      method: "POST",
+      method: 'POST',
 
       headers: {
-        "Authorization":
-          "Bearer " + accessToken,
-
-        "Content-Type":
-          "application/json",
-
-        "X-Cafe24-Api-Version":
-          "2025-12-01"
+        Authorization: 'Bearer ' + accessToken,
+        'Content-Type': 'application/json',
+        'X-Cafe24-Api-Version': '2025-12-01'
       },
 
       body: JSON.stringify({
         request: {
-          board_no: targetBoardNo,
-          title: articleTitle,
-          content: articleContent,
-          writer: writer
+          shop_no: 1,
+          board_no: boardNo,
+
+          title: subject,
+          writer: writer,
+
+          // 프론트엔드에서 생성한 비밀번호 그대로 전달
+          password: password,
+
+          // 비밀글 강제
+          secret: 'T',
+
+          // 프론트엔드에서 완성한 동적 본문 그대로 전달
+          content: content
         }
       })
     });
 
     const result = await cafe24Res.json();
 
-    return res
-      .status(cafe24Res.status)
-      .json(result);
+    /*
+     * Cafe24 API 오류
+     */
+    if (!cafe24Res.ok) {
+      console.error(
+        '[QUOTE-IT Cafe24 API Error]',
+        JSON.stringify(result)
+      );
+
+      return res.status(cafe24Res.status).json(result);
+    }
+
+    /*
+     * 성공
+     */
+    return res.status(200).json(result);
 
   } catch (error) {
+    console.error(
+      '[QUOTE-IT Submit Server Error]',
+      error
+    );
+
     return res.status(500).json({
-      message: "서버 오류가 발생했습니다.",
-      error: error.message
+      message: '서버 오류가 발생했습니다.'
     });
   }
 }
