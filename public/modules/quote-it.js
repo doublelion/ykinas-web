@@ -211,48 +211,58 @@
       });
     }
 
+    // =====================================================================
+    // HTML Escape
+    // =====================================================================
+    escapeHtml(value) {
+
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
 
     // =====================================================================
     // Connected
     // =====================================================================
-
     connectedCallback() {
 
+      // ---------------------------------------------------------------
+      // Component Config
+      // ---------------------------------------------------------------
       var componentConfigStr =
-        this.getAttribute(
-          "data-config"
-        );
+        this.getAttribute("data-config");
 
       var componentConfig = {};
 
-
       if (componentConfigStr) {
-
         try {
-
           componentConfig =
-            JSON.parse(
-              componentConfigStr
-            );
-
+            JSON.parse(componentConfigStr);
         } catch (error) {
-
-          componentConfig = {};
+          console.warn(
+            "[QUOTE-IT] component data-config 파싱 실패",
+            error
+          );
         }
       }
 
 
+      // ---------------------------------------------------------------
+      // 기본 설정
+      // ---------------------------------------------------------------
       this.mode =
         componentConfig.displayMode ||
         globalConfig.displayMode ||
         "popup";
 
-
       this.mallId =
         componentConfig.mallId ||
         globalConfig.mallId ||
         "";
-
 
       this.boardNo =
         componentConfig.targetBoardNo ||
@@ -260,14 +270,70 @@
         1002;
 
 
-      if (!this.mallId) {
+      // ---------------------------------------------------------------
+      // UI Text
+      // ---------------------------------------------------------------
+      this.ui =
+        componentConfig.ui_text ||
+        globalConfig.ui_text ||
+        {};
 
-        console.warn(
-          "[QUOTE-IT] mall_id 설정이 누락되었습니다."
-        );
-      }
+      this.uiTitle =
+        this.ui.title ||
+        "완벽한 핏을 맞춰드립니다.";
+
+      this.uiEyebrow =
+        this.ui.eyebrow ||
+        "Project Inquiry";
 
 
+      // ---------------------------------------------------------------
+      // Dynamic Fields
+      // DB / data-config에서 fields가 내려오지 않으면
+      // BASIC 요금제 기본 필드 사용
+      // ---------------------------------------------------------------
+      var defaultFields = [
+
+        {
+          name: "company",
+          label: "기업/단체명",
+          type: "text",
+          required: true
+        },
+
+        {
+          name: "writer",
+          label: "담당자 성함",
+          type: "text",
+          required: true
+        },
+
+        {
+          name: "phone",
+          label: "연락처",
+          type: "tel",
+          required: true
+        },
+
+        {
+          name: "content",
+          label: "프로젝트 문의 내용",
+          type: "textarea",
+          required: false
+        }
+
+      ];
+
+
+      this.fields =
+        componentConfig.fields ||
+        globalConfig.fields ||
+        defaultFields;
+
+
+      // ---------------------------------------------------------------
+      // Render / Events
+      // ---------------------------------------------------------------
       this.render();
       this.bindEvents();
     }
@@ -530,10 +596,24 @@
 
       html += "</style>";
 
+      html +=
+        "select{" +
+        "width:100%;" +
+        "padding:13px 0;" +
+        "border:0;" +
+        "border-bottom:1px solid #d6d2ca;" +
+        "outline:0;" +
+        "background:transparent;" +
+        "color:#222;" +
+        "font:inherit;" +
+        "font-size:15px;" +
+        "border-radius:0;" +
+        "}";
 
-      // =================================================================
+
+      // =====================================================================
       // HTML
-      // =================================================================
+      // =====================================================================
 
       html +=
         "<div " +
@@ -547,7 +627,9 @@
         "<div class=\"modal\">";
 
 
-      // 닫기 버튼
+      // =====================================================================
+      // Close Button
+      // =====================================================================
 
       if (this.mode === "popup") {
 
@@ -559,114 +641,240 @@
           "aria-label=\"닫기\">" +
           "×" +
           "</button>";
+
       }
 
 
-      // 헤더
+      // =====================================================================
+      // Header
+      // =====================================================================
 
       html +=
         "<div class=\"eyebrow\">" +
-        "Project Inquiry" +
+        this.escapeHtml(this.uiEyebrow) +
         "</div>";
 
 
       html +=
         "<h2>" +
-        "완벽한 핏을<br>맞춰드립니다." +
+        this.escapeHtml(this.uiTitle) +
         "</h2>";
 
 
-      // =================================================================
+      // =====================================================================
       // Form
-      // =================================================================
+      // =====================================================================
 
       html +=
         "<form " +
         "id=\"quoteForm\">";
 
 
-      // 기업 / 단체명
+      // =====================================================================
+      // Dynamic Fields
+      // =====================================================================
 
-      html +=
-        "<div class=\"form-group\">" +
+      for (var i = 0; i < this.fields.length; i++) {
 
-        "<label for=\"company\">" +
-        "기업/단체명 " +
-        "<span class=\"required\">*</span>" +
-        "</label>" +
+        var field = this.fields[i];
 
-        "<input " +
-        "type=\"text\" " +
-        "id=\"company\" " +
-        "name=\"company\" " +
-        "placeholder=\"기업 또는 단체명을 입력해주세요.\" " +
-        "autocomplete=\"organization\" " +
-        "required>" +
-
-        "</div>";
+        if (!field || !field.name) {
+          continue;
+        }
 
 
-      // 담당자
+        var fieldName =
+          String(field.name);
 
-      html +=
-        "<div class=\"form-group\">" +
+        var fieldLabel =
+          field.label ||
+          fieldName;
 
-        "<label for=\"writer\">" +
-        "담당자 성함 " +
-        "<span class=\"required\">*</span>" +
-        "</label>" +
-
-        "<input " +
-        "type=\"text\" " +
-        "id=\"writer\" " +
-        "name=\"writer\" " +
-        "placeholder=\"담당자 성함을 입력해주세요.\" " +
-        "autocomplete=\"name\" " +
-        "required>" +
-
-        "</div>";
+        var fieldType =
+          field.type ||
+          "text";
 
 
-      // 연락처
-
-      html +=
-        "<div class=\"form-group\">" +
-
-        "<label for=\"phone\">" +
-        "연락처 " +
-        "<span class=\"required\">*</span>" +
-        "</label>" +
-
-        "<input " +
-        "type=\"tel\" " +
-        "id=\"phone\" " +
-        "name=\"phone\" " +
-        "placeholder=\"010-0000-0000\" " +
-        "autocomplete=\"tel\" " +
-        "required>" +
-
-        "</div>";
+        html +=
+          "<div class=\"form-group\">";
 
 
-      // 문의 내용
+        // ---------------------------------------------------------------
+        // Label
+        // ---------------------------------------------------------------
 
-      html +=
-        "<div class=\"form-group\">" +
+        html +=
+          "<label " +
+          "for=\"" +
+          this.escapeHtml(fieldName) +
+          "\">" +
 
-        "<label for=\"content\">" +
-        "프로젝트 문의 내용" +
-        "</label>" +
-
-        "<textarea " +
-        "id=\"content\" " +
-        "name=\"content\" " +
-        "placeholder=\"프로젝트에 대해 자유롭게 작성해주세요.\">" +
-        "</textarea>" +
-
-        "</div>";
+          this.escapeHtml(fieldLabel);
 
 
-      // 제출
+        if (field.required) {
+
+          html +=
+            " <span class=\"required\">*</span>";
+
+        }
+
+
+        html +=
+          "</label>";
+
+
+        // ---------------------------------------------------------------
+        // Textarea
+        // ---------------------------------------------------------------
+
+        if (fieldType === "textarea") {
+
+          html +=
+            "<textarea " +
+            "id=\"" +
+            this.escapeHtml(fieldName) +
+            "\" " +
+            "name=\"" +
+            this.escapeHtml(fieldName) +
+            "\" " +
+            "placeholder=\"내용을 입력해주세요.\"" +
+
+            (field.required ? " required" : "") +
+
+            "></textarea>";
+
+        }
+
+
+        // ---------------------------------------------------------------
+        // Select
+        // ---------------------------------------------------------------
+
+        else if (fieldType === "select") {
+
+          html +=
+            "<select " +
+            "id=\"" +
+            this.escapeHtml(fieldName) +
+            "\" " +
+            "name=\"" +
+            this.escapeHtml(fieldName) +
+            "\"" +
+
+            (field.required ? " required" : "") +
+
+            ">";
+
+
+          html +=
+            "<option value=\"\">" +
+            "선택해주세요." +
+            "</option>";
+
+
+          if (
+            Array.isArray(field.options)
+          ) {
+
+            for (
+              var j = 0;
+              j < field.options.length;
+              j++
+            ) {
+
+              var option =
+                field.options[j];
+
+              var optionValue = "";
+              var optionLabel = "";
+
+
+              if (
+                typeof option === "object"
+              ) {
+
+                optionValue =
+                  option.value || "";
+
+                optionLabel =
+                  option.label ||
+                  option.value ||
+                  "";
+
+              } else {
+
+                optionValue =
+                  String(option);
+
+                optionLabel =
+                  String(option);
+
+              }
+
+
+              html +=
+                "<option " +
+                "value=\"" +
+                this.escapeHtml(optionValue) +
+                "\">" +
+                this.escapeHtml(optionLabel) +
+                "</option>";
+
+            }
+
+          }
+
+
+          html +=
+            "</select>";
+
+        }
+
+
+        // ---------------------------------------------------------------
+        // Input
+        // ---------------------------------------------------------------
+
+        else {
+
+          html +=
+            "<input " +
+            "type=\"" +
+            this.escapeHtml(fieldType) +
+            "\" " +
+
+            "id=\"" +
+            this.escapeHtml(fieldName) +
+            "\" " +
+
+            "name=\"" +
+            this.escapeHtml(fieldName) +
+            "\" " +
+
+            "placeholder=\"" +
+            this.escapeHtml(
+              field.placeholder ||
+              "입력해주세요."
+            ) +
+            "\"" +
+
+            (field.required ? " required" : "") +
+
+            ">";
+
+        }
+
+
+        html +=
+          "</div>";
+
+      }
+
+
+      // =====================================================================
+      // Submit
+      // =====================================================================
 
       html +=
         "<button " +
@@ -676,9 +884,14 @@
         "</button>";
 
 
-      html += "</form>";
-      html += "</div>";
-      html += "</div>";
+      html +=
+        "</form>";
+
+      html +=
+        "</div>";
+
+      html +=
+        "</div>";
 
 
       this.shadowRoot.innerHTML =
@@ -817,12 +1030,19 @@
       // Submit
       // =================================================================
 
+      // =====================================================================
+      // Submit
+      // =====================================================================
+
       this.handleSubmit =
         async function (event) {
 
           event.preventDefault();
 
 
+          // ---------------------------------------------------------------
+          // Mall ID 확인
+          // ---------------------------------------------------------------
           if (!self.mallId) {
 
             alert(
@@ -833,11 +1053,13 @@
           }
 
 
+          // ---------------------------------------------------------------
+          // Submit Button
+          // ---------------------------------------------------------------
           var submitBtn =
             form.querySelector(
               ".btn-submit"
             );
-
 
           if (!submitBtn) {
             return;
@@ -851,58 +1073,136 @@
             "접수 중...";
 
 
+          // ---------------------------------------------------------------
+          // Form Data
+          // ---------------------------------------------------------------
           var formData =
             new FormData(form);
 
 
-          var company =
-            formData.get(
-              "company"
-            ) || "";
-
-
-          var phone =
-            formData.get(
-              "phone"
-            ) || "";
-
-
-          var writer =
-            formData.get(
-              "writer"
-            ) || "";
-
-
-          var content =
-            formData.get(
-              "content"
-            ) || "";
-
-
-          if (
-            !company.trim() ||
-            !writer.trim() ||
-            !phone.trim()
+          // ---------------------------------------------------------------
+          // 필수값 검증
+          // ---------------------------------------------------------------
+          for (
+            var i = 0;
+            i < self.fields.length;
+            i++
           ) {
 
-            alert(
-              "필수 항목을 입력해주세요."
-            );
+            var field =
+              self.fields[i];
 
-            submitBtn.disabled =
-              false;
+            if (
+              !field ||
+              !field.name ||
+              !field.required
+            ) {
+              continue;
+            }
 
-            submitBtn.innerText =
-              "문의 접수하기";
 
-            return;
+            var value =
+              formData.get(field.name);
+
+
+            if (
+              value === null ||
+              String(value).trim() === ""
+            ) {
+
+              alert(
+                field.label +
+                "을(를) 입력해주세요."
+              );
+
+
+              submitBtn.disabled =
+                false;
+
+              submitBtn.innerText =
+                "문의 접수하기";
+
+              return;
+            }
+
           }
 
 
-          // =========================================================
-          // Payload
-          // =========================================================
+          // ---------------------------------------------------------------
+          // 기본 정보
+          // ---------------------------------------------------------------
+          var company =
+            formData.get("company") ||
+            "";
 
+          var writer =
+            formData.get("writer") ||
+            "";
+
+          var phone =
+            formData.get("phone") ||
+            "";
+
+
+          // ---------------------------------------------------------------
+          // Cafe24 Board Content
+          // 모든 동적 필드를 게시판 본문으로 직렬화
+          // ---------------------------------------------------------------
+          var serializedContent =
+            "";
+
+
+          for (
+            var k = 0;
+            k < self.fields.length;
+            k++
+          ) {
+
+            var currentField =
+              self.fields[k];
+
+            if (
+              !currentField ||
+              !currentField.name
+            ) {
+              continue;
+            }
+
+
+            var fieldName =
+              currentField.name;
+
+            var fieldLabel =
+              currentField.label ||
+              fieldName;
+
+            var fieldValue =
+              formData.get(fieldName);
+
+
+            if (
+              fieldValue === null ||
+              fieldValue === undefined
+            ) {
+
+              fieldValue = "";
+
+            }
+
+
+            serializedContent +=
+              "[" +
+              fieldLabel +
+              "]\n" +
+              String(fieldValue) +
+              "\n\n";
+
+          }
+
+
+          // ---------------------------------------------------------------
+          // Payload
+          // ---------------------------------------------------------------
           var payload = {
 
             mall_id:
@@ -920,7 +1220,7 @@
               writer,
 
             password:
-              phone
+              String(phone)
                 .replace(
                   /[^0-9]/g,
                   ""
@@ -929,13 +1229,14 @@
               "!!",
 
             content:
-              "연락처: " +
-              phone +
-              "\n\n문의내용:\n" +
-              content
+              serializedContent
+
           };
 
 
+          // ---------------------------------------------------------------
+          // fetch 유지
+          // ---------------------------------------------------------------
           // =========================================================
           // Supabase Relay
           // =========================================================
