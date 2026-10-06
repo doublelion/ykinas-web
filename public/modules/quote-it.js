@@ -1441,29 +1441,34 @@
   }
 
   // 프론트엔드: initQuoteIt 함수 내 앵커 탐색 로직 개선 (JS)
+  // 프론트엔드: initQuoteIt 함수 내 앵커 탐색 로직 개선 (JS)
   function initQuoteIt() {
     var currentMode = globalConfig.displayMode || "popup";
 
-    // 서버 설정에서 넘어온 타겟 셀렉터 (예: ".customer-custom-box")
+    // 서버 설정에서 넘어온 타겟 셀렉터 (예: ".foot")
     var targetSelector = globalConfig.targetSelector || "";
-    var inlineAnchor = null;
+    var inlineAnchor = document.getElementById("nexus-quote-it-anchor");
+    var targetElement = null;
 
     // 1단계: 지정된 커스텀 셀렉터가 있다면 우선 탐색
     if (targetSelector) {
-      inlineAnchor = document.querySelector(targetSelector);
+      targetElement = document.querySelector(targetSelector);
     }
 
-    // 2단계: 커스텀 셀렉터가 없거나, 해당 요소를 찾지 못한 경우 기본 ID 탐색
-    if (!inlineAnchor) {
-      inlineAnchor = document.getElementById("nexus-quote-it-anchor");
-    }
-
-    // 3단계: 인라인 모드인데 앵커가 아예 없으면 최하단 Fallback 주입
+    // 2단계: 인라인 모드 렌더링 및 엣지 케이스 Fallback
     if (currentMode === "inline") {
       if (!inlineAnchor) {
         inlineAnchor = document.createElement("div");
         inlineAnchor.id = "nexus-quote-it-anchor";
-        document.body.appendChild(inlineAnchor);
+        inlineAnchor.style.width = "100%"; // 래퍼 레이아웃 붕괴 방지
+
+        if (targetElement) {
+          // 타겟 요소(.foot 등)를 찾은 경우: 해당 요소의 직전(beforebegin)에 폼을 삽입
+          targetElement.insertAdjacentElement("beforebegin", inlineAnchor);
+        } else {
+          // 엣지 케이스: 타겟을 찾지 못한 경우 기존처럼 Body 최하단 Fallback 주입
+          document.body.appendChild(inlineAnchor);
+        }
       }
 
       // 컴포넌트 렌더링 및 스크롤 이벤트 바인딩
@@ -1494,7 +1499,7 @@
       }
 
       // =====================================================================
-      // 2. 팝업 모드 (Popup)
+      // 3. 팝업 모드 (Popup)
       // =====================================================================
     } else {
 
