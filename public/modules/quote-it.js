@@ -471,7 +471,7 @@
 
         "h2{",
         "margin:0 0 36px;",
-        "font-family:'Playfair Display',Georgia,serif;",
+        "font-family:'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;",
         "font-size:clamp(32px,5vw,50px);",
         "font-weight:400;",
         "line-height:1.1;",

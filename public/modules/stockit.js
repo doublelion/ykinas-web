@@ -107,20 +107,75 @@
     const proxyUrl = `https://ykinas-web.vercel.app/api/stockit?mall_id=${MALL_ID}&shop_no=${SHOP_NO}&product_no=${productNo}`;
 
     try {
-      console.log(`[YKINAS Stockit] 📡 서버에 재고 데이터 요청 중... (상품번호: ${productNo}, 샵: ${SHOP_NO})`);
-      const response = await fetch(proxyUrl, { method: 'GET' });
-      const contentType = response.headers.get("content-type") || "";
+      console.log(
+        '[YKINAS Stockit] 서버에 재고 데이터 요청 중... 상품번호:',
+        productNo,
+        '샵:',
+        SHOP_NO
+      );
 
-      if (response.ok && contentType.includes("application/json")) {
-        const data = await response.json();
-        globalStockMap = data.stockMap || {};
-        console.log('%c[YKINAS Stockit] 📦 데이터 로드 성공:', 'color: #3b82f6; font-weight: bold;', globalStockMap);
+      const response = await fetch(proxyUrl, {
+        method: 'GET',
+        cache: 'no-store'
+      });
+
+      const contentType =
+        response.headers.get('content-type') || '';
+
+      if (
+        response.ok &&
+        contentType.includes('application/json')
+      ) {
+        const data =
+          await response.json();
+
+        globalStockMap =
+          data.stockMap || {};
+
+        console.log(
+          '%c[YKINAS Stockit] 데이터 로드 성공:',
+          'color: #3b82f6; font-weight: bold;',
+          globalStockMap
+        );
+
         instantCheckOptions();
+
       } else {
-        console.warn(`[YKINAS Stockit] ⚠️ API 거부 또는 JSON 에러. 상태코드: ${response.status}`);
+        let errorData = {};
+
+        if (
+          contentType.includes('application/json')
+        ) {
+          try {
+            errorData =
+              await response.json();
+          } catch (error) {
+            errorData = {};
+          }
+        }
+
+        console.warn(
+          '[YKINAS Stockit] API 오류:',
+          response.status,
+          errorData
+        );
+
+        if (
+          response.status === 401 &&
+          errorData.error === 'TOKEN_EXPIRED'
+        ) {
+          console.error(
+            '%c[YKINAS Stockit] Cafe24 API 토큰이 만료되었습니다. 인증 갱신이 필요합니다.',
+            'color: #ff6b6b; font-weight: bold; font-size: 14px;'
+          );
+        }
       }
+
     } catch (error) {
-      console.error('[YKINAS Stockit] 🚨 네트워크 페칭 에러:', error);
+      console.error(
+        '[YKINAS Stockit] 네트워크 페칭 에러:',
+        error
+      );
     }
   }
 
@@ -264,7 +319,7 @@
 
     attachCapturingInterceptor();
 
-    
+
     injectNativeAlertInterceptor(); // 인터셉터 주입
 
     const observeTarget = document.querySelector('.xans-product-detail') || document.body;

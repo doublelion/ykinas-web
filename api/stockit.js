@@ -1,44 +1,65 @@
-// api/stockit.js
 import { createClient } from '@supabase/supabase-js';
 
-// 콜드 스타트 시 커넥션 재사용을 위한 클라이언트 전역 선언 (서버리스 최적화)
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
 export default async function handler(req, res) {
-  // 💡 [비용 최적화 1] Edge CDN 캐싱 적용 (SWR 전략)
-  // s-maxage=15: Vercel Edge 노드에서 15초간 완벽히 캐싱하여 DB/API 호출을 0으로 만듦 (트래픽 스파이크 방어)
-  // stale-while-revalidate=45: 캐시 만료 후 45초 안에는 일단 구형 데이터를 응답하고, 백그라운드에서 비동기로 갱신
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=45'); 
+  res.setHeader(
+    'Content-Type',
+    'application/json; charset=utf-8'
+  );
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  // 프론트엔드 파라미터 수신 및 멀티쇼핑몰 번호 기본값 세팅
-  const { mall_id, product_no, shop_no } = req.query;
-  const currentShopNo = shop_no || '1'; 
-  const referer = req.headers.referer || req.headers.origin || '';
-
-  let requestHost = '';
-  if (referer) {
-    try { requestHost = new URL(referer).hostname; } catch (e) { }
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
-  if (!mall_id || !product_no) return res.status(400).json({ error: 'BAD_REQUEST', message: '파라미터 누락' });
+  const {
+    mall_id,
+    product_no,
+    shop_no
+  } = req.query;
+
+  const currentShopNo = shop_no || '1';
+
+  const referer =
+    req.headers.referer ||
+    req.headers.origin ||
+    '';
+
+  let requestHost = '';
+
+  if (referer) {
+    try {
+      requestHost = new URL(referer).hostname;
+    } catch (error) {
+      requestHost = '';
+    }
+  }
+
+  if (!mall_id || !product_no) {
+    return res.status(400).json({
+      error: 'BAD_REQUEST',
+      message: '파라미터 누락'
+    });
+  }
 
   try {
-    // 💡 [비용 최적화 2] Supabase DB 쿼리 병렬 처리 (Promise.all)
-    // 라이선스 검증과 토큰 조회를 동시에 실행하여 서버리스 함수 실행 시간(과금 기준)을 절반으로 단축
     const [
       { data: license, error: licenseError },
-      { data: tokenData }
+      { data: tokenData, error: tokenError }
     ] = await Promise.all([
       supabase
         .from('skin_licenses')
-        .select('is_active, modules_config, skin_allowed_domains(domain)')
+        .select(
+          'is_active, modules_config, skin_allowed_domains(domain)'
+        )
         .eq('mall_id', mall_id)
         .maybeSingle(),
+
       supabase
         .from('cafe24_auth_tokens')
         .select('access_token')
@@ -46,63 +67,264 @@ export default async function handler(req, res) {
         .maybeSingle()
     ]);
 
-    // 라이선스 및 도메인 검증
-    if (licenseError || !license || !license.is_active) return res.status(403).json({ error: 'FORBIDDEN' });
+    if (licenseError) {
+      console.error('[Stockit] License query error:', licenseError);
 
-    const isDomainMatched = license.skin_allowed_domains?.some(d => requestHost === d.domain || requestHost.endsWith('.' + d.domain));
-    if (requestHost && !isDomainMatched) return res.status(403).json({ error: 'FORBIDDEN' });
+      return res.status(500).json({
+        error: 'LICENSE_QUERY_ERROR'
+      });
+    }
 
+    if (tokenError) {
+      console.error('[Stockit] Token query error:', tokenError);
+
+      return res.status(500).json({
+        error: 'TOKEN_QUERY_ERROR'
+      });
+    }
+
+    if (!license || !license.is_active) {
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        message: '라이선스 만료'
+      });
+    }
+
+    /*
+     * 도메인 검증
+     *
+     * Referer / Origin이 없는 요청은 차단합니다.
+     */
+    if (!requestHost) {
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        message: 'Referer 누락 차단'
+      });
+    }
+
+    const allowedDomains =
+      license.skin_allowed_domains || [];
+
+    const isDomainMatched = allowedDomains.some((item) => {
+      const domain = String(item.domain || '')
+        .trim()
+        .toLowerCase();
+
+      const host = requestHost.toLowerCase();
+
+      return (
+        host === domain ||
+        host.endsWith('.' + domain)
+      );
+    });
+
+    if (!isDomainMatched) {
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        message: '인가되지 않은 도메인'
+      });
+    }
+
+    /*
+     * Stockit 활성화 여부
+     */
     const config = license.modules_config || {};
-    if (!config.stockit || config.stockit.enabled !== true) return res.status(403).json({ error: 'FORBIDDEN' });
 
-    if (!tokenData || !tokenData.access_token) return res.status(401).json({ error: 'UNAUTHORIZED' });
+    if (
+      !config.stockit ||
+      config.stockit.enabled !== true
+    ) {
+      return res.status(403).json({
+        error: 'FORBIDDEN',
+        message: '모듈 비활성화'
+      });
+    }
 
-    // Cafe24 API 호출 (멀티쇼핑몰 번호 주입 및 최신 버전 명시)
-    const cafe24Res = await fetch(`https://${mall_id}.cafe24api.com/api/v2/admin/products/${product_no}/variants?shop_no=${currentShopNo}&embed=inventories`, {
+    /*
+     * Cafe24 Access Token 확인
+     */
+    if (
+      !tokenData ||
+      !tokenData.access_token
+    ) {
+      return res.status(401).json({
+        error: 'UNAUTHORIZED',
+        message: '토큰 누락'
+      });
+    }
+
+    /*
+     * Cafe24 상품 옵션 / 재고 조회
+     */
+    const cafe24Url =
+      'https://' +
+      mall_id +
+      '.cafe24api.com/api/v2/admin/products/' +
+      product_no +
+      '/variants' +
+      '?shop_no=' +
+      encodeURIComponent(currentShopNo) +
+      '&embed=inventories';
+
+    const cafe24Res = await fetch(cafe24Url, {
       method: 'GET',
+
       headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`,
-        'Content-Type': 'application/json',
-        'X-Cafe24-Api-Version': '2025-12-01' 
+        Authorization:
+          'Bearer ' + tokenData.access_token,
+
+        'Content-Type':
+          'application/json',
+
+        'X-Cafe24-Api-Version':
+          '2025-12-01'
       }
     });
 
-    if (!cafe24Res.ok) throw new Error(`Cafe24 API Error: ${cafe24Res.status}`);
+    /*
+     * Cafe24 인증 만료
+     */
+    if (cafe24Res.status === 401) {
+      return res.status(401).json({
+        error: 'TOKEN_EXPIRED',
+        message: 'Cafe24 Access Token 만료'
+      });
+    }
 
-    const cafe24Data = await cafe24Res.json();
-    const variants = cafe24Data.variants || [];
+    /*
+     * 기타 Cafe24 API 오류
+     */
+    if (!cafe24Res.ok) {
+      const errorText =
+        await cafe24Res.text();
+
+      console.error(
+        '[Stockit] Cafe24 API Error:',
+        cafe24Res.status,
+        errorText
+      );
+
+      return res.status(502).json({
+        error: 'CAFE24_API_ERROR',
+        status: cafe24Res.status
+      });
+    }
+
+    const cafe24Data =
+      await cafe24Res.json();
+
+    const variants =
+      Array.isArray(cafe24Data.variants)
+        ? cafe24Data.variants
+        : [];
 
     const stockMap = {};
-    variants.forEach(variant => {
-      if (!variant.variant_code) return;
 
-      let invObj = {};
-      if (variant.inventories && Array.isArray(variant.inventories)) invObj = variant.inventories[0] || {};
-      else if (variant.inventory && typeof variant.inventory === 'object') invObj = variant.inventory;
-      else if (variant.inventories && typeof variant.inventories === 'object') invObj = variant.inventories;
-
-      // 카페24 available_inventory 원시값 그대로 사용
-      let realQty = parseInt(invObj.available_inventory ?? invObj.quantity ?? variant.available_inventory ?? variant.quantity ?? 0, 10);
-
-      // 진열 및 판매 상태 검증
-      const isDisplay = variant.display === undefined || variant.display === 'T' || variant.display === true;
-      const isSelling = variant.selling === undefined || variant.selling === 'T' || variant.selling === true;
-
-      if (!isDisplay || !isSelling) realQty = 0;
-
-      // 재고관리 '사용 안함(F)' 처리
-      const useInv = invObj.use_inventory ?? variant.use_inventory;
-      if (useInv === 'F' || useInv === false) {
-        realQty = 99999; 
+    variants.forEach((variant) => {
+      if (!variant.variant_code) {
+        return;
       }
 
-      stockMap[variant.variant_code] = realQty;
+      let inventory = {};
+
+      if (
+        Array.isArray(variant.inventories)
+      ) {
+        inventory =
+          variant.inventories[0] || {};
+      } else if (
+        variant.inventories &&
+        typeof variant.inventories === 'object'
+      ) {
+        inventory =
+          variant.inventories;
+      } else if (
+        variant.inventory &&
+        typeof variant.inventory === 'object'
+      ) {
+        inventory =
+          variant.inventory;
+      }
+
+      let realQty = parseInt(
+        inventory.available_inventory ??
+        inventory.quantity ??
+        variant.available_inventory ??
+        variant.quantity ??
+        0,
+        10
+      );
+
+      if (Number.isNaN(realQty)) {
+        realQty = 0;
+      }
+
+      const isDisplay =
+        variant.display === undefined ||
+        variant.display === 'T' ||
+        variant.display === true;
+
+      const isSelling =
+        variant.selling === undefined ||
+        variant.selling === 'T' ||
+        variant.selling === true;
+
+      if (!isDisplay || !isSelling) {
+        realQty = 0;
+      }
+
+      const useInventory =
+        inventory.use_inventory ??
+        variant.use_inventory;
+
+      /*
+       * 재고관리 미사용 상품
+       */
+      if (
+        useInventory === 'F' ||
+        useInventory === false
+      ) {
+        realQty = 99999;
+      }
+
+      stockMap[variant.variant_code] =
+        realQty;
     });
 
-    return res.status(200).json({ success: true, stockMap });
+    /*
+     * 중요:
+     *
+     * Cafe24 API가 정상적으로 성공한 경우에만
+     * CDN 캐시를 허용합니다.
+     *
+     * 에러 응답은 캐시하지 않습니다.
+     */
+    res.setHeader(
+      'Cache-Control',
+      'public, s-maxage=15, stale-while-revalidate=45'
+    );
 
-  } catch (err) {
-    console.error('[Nexus API Error]', err);
-    return res.status(500).json({ error: 'INTERNAL_SERVER_ERROR' });
+    return res.status(200).json({
+      success: true,
+      stockMap
+    });
+
+  } catch (error) {
+    console.error(
+      '[YKINAS Stockit API Error]',
+      error
+    );
+
+    /*
+     * 500 에러는 캐시하지 않도록 명시
+     */
+    res.setHeader(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate'
+    );
+
+    return res.status(500).json({
+      error: 'INTERNAL_SERVER_ERROR'
+    });
   }
 }
