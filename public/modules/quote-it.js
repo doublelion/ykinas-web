@@ -27,7 +27,12 @@
   var globalConfig = {
     displayMode: "popup",
     mallId: "",
-    targetBoardNo: 1002
+    targetBoardNo: 1002,
+    fields: null,
+    ui_text: {},
+    ui_theme: {},
+    tier: "",
+    enabled: true
   };
 
 
@@ -1383,6 +1388,113 @@
   // Bootstrapper
   // =========================================================================
 
+
+  async function loadQuoteItConfig() {
+
+    if (!globalConfig.mallId) {
+      console.warn(
+        "[QUOTE-IT] mall_id가 없어 서버 설정을 불러올 수 없습니다."
+      );
+      return;
+    }
+
+    try {
+
+      var configUrl =
+        "https://ipgzyckubwakijerxcpc.supabase.co/functions/v1/quote-it-config" +
+        "?mall_id=" +
+        encodeURIComponent(globalConfig.mallId);
+
+      var response =
+        await fetch(configUrl, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          cache: "no-store"
+        });
+
+      if (!response.ok) {
+        throw new Error(
+          "Config API HTTP " +
+          response.status
+        );
+      }
+
+      var config =
+        await response.json();
+
+      if (!config || typeof config !== "object") {
+        throw new Error(
+          "Config 데이터가 올바르지 않습니다."
+        );
+      }
+
+      if (config.enabled === false) {
+        console.warn(
+          "[QUOTE-IT] 모듈이 비활성화되어 있습니다."
+        );
+
+        globalConfig.enabled = false;
+
+        return;
+      }
+
+      if (config.tier) {
+        globalConfig.tier =
+          config.tier;
+      }
+
+      if (
+        Array.isArray(config.fields)
+      ) {
+        globalConfig.fields =
+          config.fields;
+      }
+
+      if (
+        config.ui_text &&
+        typeof config.ui_text === "object"
+      ) {
+        globalConfig.ui_text =
+          config.ui_text;
+      }
+
+      if (
+        config.ui_theme &&
+        typeof config.ui_theme === "object"
+      ) {
+        globalConfig.ui_theme =
+          config.ui_theme;
+      }
+
+      if (config.displayMode) {
+        globalConfig.displayMode =
+          config.displayMode;
+      }
+
+      if (config.targetBoardNo) {
+        globalConfig.targetBoardNo =
+          config.targetBoardNo;
+      }
+
+      console.log(
+        "[QUOTE-IT] Config loaded:",
+        config
+      );
+
+    } catch (error) {
+
+      console.error(
+        "[QUOTE-IT CONFIG]",
+        error
+      );
+
+      // 서버 설정을 못 가져온 경우
+      // 기존 BASIC fallback 유지
+    }
+  }
+
   function initQuoteIt() {
 
     var inlineAnchor =
@@ -1504,6 +1616,18 @@
   // DOM Ready
   // =========================================================================
 
+  async function bootstrapQuoteIt() {
+
+    await loadQuoteItConfig();
+
+    if (globalConfig.enabled === false) {
+      return;
+    }
+
+    initQuoteIt();
+  }
+
+
   if (
     document.readyState ===
     "loading"
@@ -1511,12 +1635,15 @@
 
     document.addEventListener(
       "DOMContentLoaded",
-      initQuoteIt
+      function () {
+        bootstrapQuoteIt();
+      }
     );
 
   } else {
 
-    initQuoteIt();
+    bootstrapQuoteIt();
+
   }
 
 })();
