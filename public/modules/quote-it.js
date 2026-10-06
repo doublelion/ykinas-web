@@ -1433,119 +1433,79 @@
   }
 
   function initQuoteIt() {
-
-    var inlineAnchor =
-      document.getElementById(
-        "nexus-quote-it-anchor"
-      );
-
-
-    var triggers =
-      document.querySelectorAll(
-        ".btn-quote-trigger"
-      );
-
+    var inlineAnchor = document.getElementById("nexus-quote-it-anchor");
+    var triggers = document.querySelectorAll(".btn-quote-trigger");
+    var currentMode = globalConfig.displayMode || "popup";
 
     // =====================================================================
-    // Inline
+    // 1. 인라인 모드 (Inline)
     // =====================================================================
+    if (currentMode === "inline") {
 
-    if (
-      inlineAnchor &&
-      !inlineAnchor.querySelector(
-        "quote-it-form"
-      )
-    ) {
-
-      var inlineForm =
-        document.createElement(
-          "quote-it-form"
-        );
-
-
-      inlineForm.setAttribute(
-        "data-config",
-        JSON.stringify({
-          displayMode:
-            "inline"
-        })
-      );
-
-
-      inlineAnchor.appendChild(
-        inlineForm
-      );
-    }
-
-
-    // =====================================================================
-    // Popup
-    // =====================================================================
-
-    if (
-      triggers.length > 0 &&
-      !document.querySelector(
-        "quote-it-form[data-config*=\"popup\"]"
-      )
-    ) {
-
-      var popupForm =
-        document.createElement(
-          "quote-it-form"
-        );
-
-
-      popupForm.setAttribute(
-        "data-config",
-        JSON.stringify({
-          displayMode:
-            "popup"
-        })
-      );
-
-
-      document.body.appendChild(
-        popupForm
-      );
-    }
-
-
-    // =====================================================================
-    // Trigger
-    // =====================================================================
-
-    triggers.forEach(
-      function (button) {
-
-        if (
-          button.dataset.quoteItBound ===
-          "true"
-        ) {
-
-          return;
-        }
-
-
-        button.dataset.quoteItBound =
-          "true";
-
-
-        button.addEventListener(
-          "click",
-          function (event) {
-
-            event.preventDefault();
-
-
-            window.dispatchEvent(
-              new CustomEvent(
-                "QUOTE_IT_TRIGGER_OPEN"
-              )
-            );
-          }
-        );
+      // 삽입될 앵커가 없으면 컨텐츠 최하단을 밀고 들어가도록 body 끝에 동적 생성
+      if (!inlineAnchor) {
+        inlineAnchor = document.createElement("div");
+        inlineAnchor.id = "nexus-quote-it-anchor";
+        document.body.appendChild(inlineAnchor);
       }
-    );
+
+      // 인라인 폼 컴포넌트 렌더링
+      if (!inlineAnchor.querySelector("quote-it-form")) {
+        var inlineForm = document.createElement("quote-it-form");
+        inlineForm.setAttribute(
+          "data-config",
+          JSON.stringify({ displayMode: "inline" })
+        );
+        inlineAnchor.appendChild(inlineForm);
+      }
+
+      // 트리거 버튼 클릭 시 팝업 대신 인라인 폼 영역으로 스무스 스크롤 이동
+      triggers.forEach(function (button) {
+        if (button.dataset.quoteItBound === "true") return;
+        button.dataset.quoteItBound = "true";
+
+        button.addEventListener("click", function (event) {
+          event.preventDefault();
+          if (inlineAnchor) {
+            inlineAnchor.scrollIntoView({
+              behavior: "smooth",
+              block: "start"
+            });
+          }
+        });
+      });
+
+      // =====================================================================
+      // 2. 팝업 모드 (Popup)
+      // =====================================================================
+    } else {
+
+      // 팝업 폼 컴포넌트 렌더링 (중복 방지)
+      if (
+        triggers.length > 0 &&
+        !document.querySelector("quote-it-form[data-config*=\"popup\"]")
+      ) {
+        var popupForm = document.createElement("quote-it-form");
+        popupForm.setAttribute(
+          "data-config",
+          JSON.stringify({ displayMode: "popup" })
+        );
+        document.body.appendChild(popupForm);
+      }
+
+      // 트리거 버튼 클릭 시 팝업 오픈 이벤트 디스패치
+      triggers.forEach(function (button) {
+        if (button.dataset.quoteItBound === "true") return;
+        button.dataset.quoteItBound = "true";
+
+        button.addEventListener("click", function (event) {
+          event.preventDefault();
+          window.dispatchEvent(
+            new CustomEvent("QUOTE_IT_TRIGGER_OPEN")
+          );
+        });
+      });
+    }
   }
 
 
