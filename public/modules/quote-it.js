@@ -1415,6 +1415,14 @@
           config.targetBoardNo;
       }
 
+      // ==========================================================
+      // [필수 추가] 서버에서 내려준 타겟 셀렉터 값을 globalConfig에 저장
+      // ==========================================================
+      if (config.targetSelector) {
+        globalConfig.targetSelector =
+          config.targetSelector;
+      }
+
       console.log(
         "[QUOTE-IT] Config loaded:",
         config
@@ -1432,24 +1440,33 @@
     }
   }
 
+  // 프론트엔드: initQuoteIt 함수 내 앵커 탐색 로직 개선 (JS)
   function initQuoteIt() {
-    var inlineAnchor = document.getElementById("nexus-quote-it-anchor");
-    var triggers = document.querySelectorAll(".btn-quote-trigger");
     var currentMode = globalConfig.displayMode || "popup";
 
-    // =====================================================================
-    // 1. 인라인 모드 (Inline)
-    // =====================================================================
-    if (currentMode === "inline") {
+    // 서버 설정에서 넘어온 타겟 셀렉터 (예: ".customer-custom-box")
+    var targetSelector = globalConfig.targetSelector || "";
+    var inlineAnchor = null;
 
-      // 삽입될 앵커가 없으면 컨텐츠 최하단을 밀고 들어가도록 body 끝에 동적 생성
+    // 1단계: 지정된 커스텀 셀렉터가 있다면 우선 탐색
+    if (targetSelector) {
+      inlineAnchor = document.querySelector(targetSelector);
+    }
+
+    // 2단계: 커스텀 셀렉터가 없거나, 해당 요소를 찾지 못한 경우 기본 ID 탐색
+    if (!inlineAnchor) {
+      inlineAnchor = document.getElementById("nexus-quote-it-anchor");
+    }
+
+    // 3단계: 인라인 모드인데 앵커가 아예 없으면 최하단 Fallback 주입
+    if (currentMode === "inline") {
       if (!inlineAnchor) {
         inlineAnchor = document.createElement("div");
         inlineAnchor.id = "nexus-quote-it-anchor";
         document.body.appendChild(inlineAnchor);
       }
 
-      // 인라인 폼 컴포넌트 렌더링
+      // 컴포넌트 렌더링 및 스크롤 이벤트 바인딩
       if (!inlineAnchor.querySelector("quote-it-form")) {
         var inlineForm = document.createElement("quote-it-form");
         inlineForm.setAttribute(
@@ -1459,9 +1476,10 @@
         inlineAnchor.appendChild(inlineForm);
       }
 
-      // 트리거 버튼 클릭 시 팝업 대신 인라인 폼 영역으로 스무스 스크롤 이동
-      triggers.forEach(function (button) {
-        if (button.dataset.quoteItBound === "true") return;
+      var triggers = document.querySelectorAll(".btn-quote-trigger");
+      for (var i = 0; i < triggers.length; i++) {
+        var button = triggers[i];
+        if (button.dataset.quoteItBound === "true") continue;
         button.dataset.quoteItBound = "true";
 
         button.addEventListener("click", function (event) {
@@ -1473,7 +1491,7 @@
             });
           }
         });
-      });
+      }
 
       // =====================================================================
       // 2. 팝업 모드 (Popup)
