@@ -221,12 +221,13 @@
     // =====================================================================
     escapeHtml(value) {
 
-      return String(value || "")
+      return String(value == null ? "" : value)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+
     }
 
 
@@ -351,7 +352,7 @@
     render() {
 
       var wrapperStyle = "";
-
+      var modalStyle = "";
 
       if (this.mode === "popup") {
 
@@ -367,23 +368,7 @@
           "opacity:0;" +
           "visibility:hidden;" +
           "pointer-events:none;" +
-          "transition:" +
-          "opacity .35s ease," +
-          "visibility .35s ease;";
-      } else {
-
-        wrapperStyle =
-          "position:relative;" +
-          "width:100%;" +
-          "padding:40px 0;" +
-          "display:block;";
-      }
-
-
-      var modalStyle = "";
-
-
-      if (this.mode === "popup") {
+          "transition:opacity .35s ease,visibility .35s ease;";
 
         modalStyle =
           "position:relative;" +
@@ -396,13 +381,16 @@
           "color:#222;" +
           "border:1px solid rgba(255,255,255,.4);" +
           "box-shadow:0 30px 100px rgba(0,0,0,.25);" +
-          "transform:" +
-          "translateY(20px) scale(.98);" +
-          "transition:" +
-          "transform .45s " +
-          "cubic-bezier(.22,1,.36,1);";
+          "transform:translateY(20px) scale(.98);" +
+          "transition:transform .45s cubic-bezier(.22,1,.36,1);";
 
       } else {
+
+        wrapperStyle =
+          "position:relative;" +
+          "width:100%;" +
+          "padding:40px 0;" +
+          "display:block;";
 
         modalStyle =
           "position:relative;" +
@@ -413,223 +401,186 @@
           "background:#f9f8f6;" +
           "color:#222;" +
           "border:1px solid #e5e2dc;";
+
       }
 
 
-      var html = "";
+      var html = [];
 
 
-      // =================================================================
+      // =====================================================================
       // CSS
-      // =================================================================
+      // =====================================================================
 
-      html += "<style>";
+      html.push(
+        "<style>",
+        "*{box-sizing:border-box;}",
 
-      html +=
-        "*{" +
-        "box-sizing:border-box;" +
-        "}";
+        ":host{",
+        "display:block;",
+        "font-family:",
+        "'Pretendard',",
+        "'Noto Sans KR',",
+        "-apple-system,",
+        "BlinkMacSystemFont,",
+        "'Segoe UI',",
+        "sans-serif;",
+        "}",
 
+        ".overlay{",
+        wrapperStyle,
+        "}",
 
-      html +=
-        ":host{" +
-        "display:block;" +
-        "font-family:" +
-        "'Pretendard'," +
-        "'Noto Sans KR'," +
-        "-apple-system," +
-        "BlinkMacSystemFont," +
-        "sans-serif;" +
-        "}";
+        ".overlay.active{",
+        "opacity:1;",
+        "visibility:visible;",
+        "pointer-events:auto;",
+        "}",
 
+        ".overlay.active .modal{",
+        "transform:translateY(0) scale(1);",
+        "}",
 
-      html +=
-        ".overlay{" +
-        wrapperStyle +
-        "}";
+        ".modal{",
+        modalStyle,
+        "}",
 
+        ".close{",
+        "position:absolute;",
+        "top:18px;",
+        "right:20px;",
+        "width:40px;",
+        "height:40px;",
+        "border:0;",
+        "background:transparent;",
+        "font-size:24px;",
+        "font-weight:300;",
+        "line-height:1;",
+        "color:#222;",
+        "cursor:pointer;",
+        "}",
 
-      html +=
-        ".overlay.active{" +
-        "opacity:1;" +
-        "visibility:visible;" +
-        "pointer-events:auto;" +
-        "}";
+        ".eyebrow{",
+        "margin-bottom:14px;",
+        "font-size:11px;",
+        "font-weight:600;",
+        "letter-spacing:.2em;",
+        "text-transform:uppercase;",
+        "color:#8a9a5b;",
+        "}",
 
+        "h2{",
+        "margin:0 0 36px;",
+        "font-family:'Playfair Display',Georgia,serif;",
+        "font-size:clamp(32px,5vw,50px);",
+        "font-weight:400;",
+        "line-height:1.1;",
+        "letter-spacing:-.04em;",
+        "}",
 
-      html +=
-        ".overlay.active .modal{" +
-        "transform:translateY(0) scale(1);" +
-        "}";
+        ".form-group{",
+        "margin-bottom:22px;",
+        "}",
 
+        "label{",
+        "display:block;",
+        "margin-bottom:8px;",
+        "font-size:12px;",
+        "font-weight:600;",
+        "}",
 
-      html +=
-        ".modal{" +
-        modalStyle +
-        "}";
+        ".required{",
+        "color:#8a9a5b;",
+        "}",
 
+        "input,textarea,select{",
+        "width:100%;",
+        "padding:13px 0;",
+        "border:0;",
+        "border-bottom:1px solid #d6d2ca;",
+        "outline:0;",
+        "background:transparent;",
+        "color:#222;",
+        "font:inherit;",
+        "font-size:15px;",
+        "border-radius:0;",
+        "}",
 
-      html +=
-        ".close{" +
-        "position:absolute;" +
-        "top:18px;" +
-        "right:20px;" +
-        "width:40px;" +
-        "height:40px;" +
-        "border:0;" +
-        "background:transparent;" +
-        "font-size:24px;" +
-        "font-weight:300;" +
-        "color:#222;" +
-        "cursor:pointer;" +
-        "}";
+        "input:focus,textarea:focus,select:focus{",
+        "border-bottom-color:#222;",
+        "}",
 
+        "textarea{",
+        "min-height:120px;",
+        "resize:vertical;",
+        "line-height:1.7;",
+        "}",
 
-      html +=
-        ".eyebrow{" +
-        "margin-bottom:14px;" +
-        "font-size:11px;" +
-        "font-weight:600;" +
-        "letter-spacing:.2em;" +
-        "text-transform:uppercase;" +
-        "color:#8a9a5b;" +
-        "}";
+        "select{",
+        "appearance:none;",
+        "-webkit-appearance:none;",
+        "cursor:pointer;",
+        "}",
 
+        ".btn-submit{",
+        "width:100%;",
+        "margin-top:18px;",
+        "padding:17px 20px;",
+        "border:0;",
+        "background:#222;",
+        "color:#fff;",
+        "font:inherit;",
+        "font-size:13px;",
+        "font-weight:600;",
+        "letter-spacing:.08em;",
+        "cursor:pointer;",
+        "transition:background .25s ease;",
+        "}",
 
-      html +=
-        "h2{" +
-        "margin:0 0 36px;" +
-        "font-family:'Playfair Display',Georgia,serif;" +
-        "font-size:clamp(32px,5vw,50px);" +
-        "font-weight:400;" +
-        "line-height:1.1;" +
-        "letter-spacing:-.04em;" +
-        "}";
+        ".btn-submit:hover{",
+        "background:#8a9a5b;",
+        "}",
 
+        ".btn-submit:disabled{",
+        "opacity:.55;",
+        "cursor:not-allowed;",
+        "}",
 
-      html +=
-        ".form-group{" +
-        "margin-bottom:22px;" +
-        "}";
+        "@media(max-width:640px){",
 
+        ".overlay{",
+        "padding:12px;",
+        "}",
 
-      html +=
-        "label{" +
-        "display:block;" +
-        "margin-bottom:8px;" +
-        "font-size:12px;" +
-        "font-weight:600;" +
-        "}";
+        ".modal{",
+        "padding:44px 24px 30px;",
+        "max-height:calc(100vh - 24px);",
+        "}",
 
+        "h2{",
+        "font-size:clamp(30px,9vw,40px);",
+        "margin-bottom:30px;",
+        "}",
 
-      html +=
-        ".required{" +
-        "color:#8a9a5b;" +
-        "}";
+        "}",
 
-
-      html +=
-        "input,textarea{" +
-        "width:100%;" +
-        "padding:13px 0;" +
-        "border:0;" +
-        "border-bottom:1px solid #d6d2ca;" +
-        "outline:0;" +
-        "background:transparent;" +
-        "color:#222;" +
-        "font:inherit;" +
-        "font-size:15px;" +
-        "border-radius:0;" +
-        "}";
-
-
-      html +=
-        "input:focus,textarea:focus{" +
-        "border-color:#222;" +
-        "}";
-
-
-      html +=
-        "textarea{" +
-        "min-height:120px;" +
-        "resize:vertical;" +
-        "line-height:1.7;" +
-        "}";
-
-
-      html +=
-        ".btn-submit{" +
-        "width:100%;" +
-        "margin-top:18px;" +
-        "padding:17px 20px;" +
-        "border:0;" +
-        "background:#222;" +
-        "color:#fff;" +
-        "font:inherit;" +
-        "font-size:13px;" +
-        "font-weight:600;" +
-        "letter-spacing:.08em;" +
-        "cursor:pointer;" +
-        "transition:background .25s ease;" +
-        "}";
-
-
-      html +=
-        ".btn-submit:hover{" +
-        "background:#8a9a5b;" +
-        "}";
-
-
-      html +=
-        ".btn-submit:disabled{" +
-        "opacity:.55;" +
-        "cursor:not-allowed;" +
-        "}";
-
-
-      html +=
-        "@media(max-width:640px){" +
-        ".overlay{" +
-        "padding:12px;" +
-        "}" +
-        ".modal{" +
-        "padding:44px 24px 30px;" +
-        "max-height:calc(100vh - 24px);" +
-        "}" +
-        "}";
-
-
-      html += "</style>";
-
-      html +=
-        "select{" +
-        "width:100%;" +
-        "padding:13px 0;" +
-        "border:0;" +
-        "border-bottom:1px solid #d6d2ca;" +
-        "outline:0;" +
-        "background:transparent;" +
-        "color:#222;" +
-        "font:inherit;" +
-        "font-size:15px;" +
-        "border-radius:0;" +
-        "}";
+        "</style>"
+      );
 
 
       // =====================================================================
       // HTML
       // =====================================================================
 
-      html +=
-        "<div " +
-        "class=\"overlay\" " +
-        "id=\"overlay\" " +
-        "role=\"dialog\" " +
-        "aria-modal=\"true\">";
+      html.push(
+        "<div ",
+        "class=\"overlay\" ",
+        "id=\"overlay\" ",
+        "role=\"dialog\" ",
+        "aria-modal=\"true\">",
 
-
-      html +=
-        "<div class=\"modal\">";
+        "<div class=\"modal\">"
+      );
 
 
       // =====================================================================
@@ -638,14 +589,15 @@
 
       if (this.mode === "popup") {
 
-        html +=
-          "<button " +
-          "type=\"button\" " +
-          "class=\"close\" " +
-          "id=\"btnClose\" " +
-          "aria-label=\"닫기\">" +
-          "×" +
-          "</button>";
+        html.push(
+          "<button ",
+          "type=\"button\" ",
+          "class=\"close\" ",
+          "id=\"btnClose\" ",
+          "aria-label=\"닫기\">",
+          "×",
+          "</button>"
+        );
 
       }
 
@@ -654,25 +606,17 @@
       // Header
       // =====================================================================
 
-      html +=
-        "<div class=\"eyebrow\">" +
-        this.escapeHtml(this.uiEyebrow) +
-        "</div>";
+      html.push(
+        "<div class=\"eyebrow\">",
+        this.escapeHtml(this.uiEyebrow),
+        "</div>",
 
+        "<h2>",
+        this.escapeHtml(this.uiTitle),
+        "</h2>",
 
-      html +=
-        "<h2>" +
-        this.escapeHtml(this.uiTitle) +
-        "</h2>";
-
-
-      // =====================================================================
-      // Form
-      // =====================================================================
-
-      html +=
-        "<form " +
-        "id=\"quoteForm\">";
+        "<form id=\"quoteForm\">"
+      );
 
 
       // =====================================================================
@@ -687,7 +631,6 @@
           continue;
         }
 
-
         var fieldName =
           String(field.name);
 
@@ -700,33 +643,30 @@
           "text";
 
 
-        html +=
-          "<div class=\"form-group\">";
+        html.push(
+          "<div class=\"form-group\">",
 
+          "<label ",
+          "for=\"",
+          this.escapeHtml(fieldName),
+          "\">",
 
-        // ---------------------------------------------------------------
-        // Label
-        // ---------------------------------------------------------------
-
-        html +=
-          "<label " +
-          "for=\"" +
-          this.escapeHtml(fieldName) +
-          "\">" +
-
-          this.escapeHtml(fieldLabel);
+          this.escapeHtml(fieldLabel)
+        );
 
 
         if (field.required) {
 
-          html +=
-            " <span class=\"required\">*</span>";
+          html.push(
+            " <span class=\"required\">*</span>"
+          );
 
         }
 
 
-        html +=
-          "</label>";
+        html.push(
+          "</label>"
+        );
 
 
         // ---------------------------------------------------------------
@@ -735,52 +675,52 @@
 
         if (fieldType === "textarea") {
 
-          html +=
-            "<textarea " +
-            "id=\"" +
-            this.escapeHtml(fieldName) +
-            "\" " +
-            "name=\"" +
-            this.escapeHtml(fieldName) +
-            "\" " +
-            "placeholder=\"내용을 입력해주세요.\"" +
+          html.push(
+            "<textarea ",
+            "id=\"",
+            this.escapeHtml(fieldName),
+            "\" ",
+            "name=\"",
+            this.escapeHtml(fieldName),
+            "\" ",
+            "placeholder=\"내용을 입력해주세요.\"",
 
-            (field.required ? " required" : "") +
+            field.required
+              ? " required"
+              : "",
 
-            "></textarea>";
-
-        }
-
-
-        // ---------------------------------------------------------------
-        // Select
-        // ---------------------------------------------------------------
-
-        else if (fieldType === "select") {
-
-          html +=
-            "<select " +
-            "id=\"" +
-            this.escapeHtml(fieldName) +
-            "\" " +
-            "name=\"" +
-            this.escapeHtml(fieldName) +
-            "\"" +
-
-            (field.required ? " required" : "") +
-
-            ">";
+            "></textarea>"
+          );
 
 
-          html +=
-            "<option value=\"\">" +
-            "선택해주세요." +
-            "</option>";
+          // ---------------------------------------------------------------
+          // Select
+          // ---------------------------------------------------------------
+
+        } else if (fieldType === "select") {
+
+          html.push(
+            "<select ",
+            "id=\"",
+            this.escapeHtml(fieldName),
+            "\" ",
+            "name=\"",
+            this.escapeHtml(fieldName),
+            "\"",
+
+            field.required
+              ? " required"
+              : "",
+
+            ">",
+
+            "<option value=\"\">",
+            "선택해주세요.",
+            "</option>"
+          );
 
 
-          if (
-            Array.isArray(field.options)
-          ) {
+          if (Array.isArray(field.options)) {
 
             for (
               var j = 0;
@@ -796,7 +736,8 @@
 
 
               if (
-                typeof option === "object"
+                typeof option === "object" &&
+                option !== null
               ) {
 
                 optionValue =
@@ -818,61 +759,61 @@
               }
 
 
-              html +=
-                "<option " +
-                "value=\"" +
-                this.escapeHtml(optionValue) +
-                "\">" +
-                this.escapeHtml(optionLabel) +
-                "</option>";
+              html.push(
+                "<option value=\"",
+                this.escapeHtml(optionValue),
+                "\">",
+                this.escapeHtml(optionLabel),
+                "</option>"
+              );
 
             }
 
           }
 
 
-          html +=
-            "</select>";
+          html.push(
+            "</select>"
+          );
 
-        }
 
+          // ---------------------------------------------------------------
+          // Input
+          // ---------------------------------------------------------------
 
-        // ---------------------------------------------------------------
-        // Input
-        // ---------------------------------------------------------------
+        } else {
 
-        else {
-
-          html +=
-            "<input " +
-            "type=\"" +
-            this.escapeHtml(fieldType) +
-            "\" " +
-
-            "id=\"" +
-            this.escapeHtml(fieldName) +
-            "\" " +
-
-            "name=\"" +
-            this.escapeHtml(fieldName) +
-            "\" " +
-
-            "placeholder=\"" +
+          html.push(
+            "<input ",
+            "type=\"",
+            this.escapeHtml(fieldType),
+            "\" ",
+            "id=\"",
+            this.escapeHtml(fieldName),
+            "\" ",
+            "name=\"",
+            this.escapeHtml(fieldName),
+            "\" ",
+            "placeholder=\"",
             this.escapeHtml(
               field.placeholder ||
               "입력해주세요."
-            ) +
-            "\"" +
+            ),
+            "\"",
 
-            (field.required ? " required" : "") +
+            field.required
+              ? " required"
+              : "",
 
-            ">";
+            ">"
+          );
 
         }
 
 
-        html +=
-          "</div>";
+        html.push(
+          "</div>"
+        );
 
       }
 
@@ -881,26 +822,22 @@
       // Submit
       // =====================================================================
 
-      html +=
-        "<button " +
-        "type=\"submit\" " +
-        "class=\"btn-submit\">" +
-        "문의 접수하기" +
-        "</button>";
+      html.push(
+        "<button ",
+        "type=\"submit\" ",
+        "class=\"btn-submit\">",
+        "문의 접수하기",
+        "</button>",
 
-
-      html +=
-        "</form>";
-
-      html +=
-        "</div>";
-
-      html +=
-        "</div>";
+        "</form>",
+        "</div>",
+        "</div>"
+      );
 
 
       this.shadowRoot.innerHTML =
-        html;
+        html.join("");
+
     }
 
 
