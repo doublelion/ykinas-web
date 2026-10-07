@@ -1445,7 +1445,20 @@
   // =========================================================================
   function initQuoteIt() {
     var currentMode = globalConfig.displayMode || "popup";
-    var targetSelector = globalConfig.targetSelector || ".xans-product-additional, .xans-product-detail";
+
+    // [핵심 변경] 카페24의 다양한 스킨과 페이지 상황을 커버하는 다중 셀렉터망
+    // 우선순위: 1.서버 지정값 -> 2.표준 상세영역 -> 3.구형 상세영역 -> 4.공통 본문 영역
+    var fallbackSelectors = [
+      ".xans-product-additional", // 카페24 표준 추가정보 영역
+      ".xans-product-detail",     // 카페24 표준 상세 영역
+      "#prdDetail",               // 구형 스킨 상세 영역 ID
+      ".detailArea",              // 일부 커스텀 스킨 상세 영역
+      "#contents",                // 메인/기타 페이지의 본문 래퍼
+      "#container",                // 구형 스킨 본문 래퍼
+      "#wrap"
+    ].join(", ");
+
+    var targetSelector = globalConfig.targetSelector || fallbackSelectors;
     // 트리거 버튼 이벤트 바인딩 (팝업/인라인 공통)
     function bindTriggers(anchorElem) {
       var triggers = document.querySelectorAll(".btn-quote-trigger");
@@ -1484,12 +1497,19 @@
         inlineAnchor = document.createElement("div");
         inlineAnchor.id = "nexus-quote-it-anchor";
         inlineAnchor.style.width = "100%";
+        inlineAnchor.style.marginTop = "40px"; // 타겟 요소와 너무 붙지 않도록 시각적 여백 추가
 
         if (targetElem) {
-
-          targetElem.insertAdjacentElement("afterend", inlineAnchor);
+          // 컨테이너 계열(#contents 등)이 잡혔을 때는 appendChild(내부 맨 끝)가 유리하고,
+          // 형제 요소(상세영역)가 잡혔을 때는 afterend(직후)가 유리합니다.
+          if (targetElem.id === 'contents' || targetElem.id === 'container') {
+            targetElem.appendChild(inlineAnchor);
+          } else {
+            targetElem.insertAdjacentElement("afterend", inlineAnchor);
+          }
         } else {
-          document.body.appendChild(inlineAnchor); //  Fallback
+          // 모든 탐색 실패 시 최후 수단
+          document.body.appendChild(inlineAnchor);
         }
       }
 
@@ -1510,7 +1530,6 @@
       var checkExist = setInterval(function () {
         // 다중 셀렉터 지원 (예: ".custom-target, .xans-product-additional")
         var targetElement = document.querySelector(targetSelector);
-
         if (targetElement) {
           clearInterval(checkExist);
           console.log("[QUOTE-IT] 타겟 요소를 찾았습니다:", targetElement);
