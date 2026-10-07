@@ -222,95 +222,60 @@ serve(async (req: Request) => {
     // ============================================================
 
     const responsePayload = {
-      // ----------------------------------------------------------
-      // Module tier
-      // ----------------------------------------------------------
+  debugVersion: "quote-it-config-20261007-01",
 
-      tier:
-        quoteit.tier || "BASIC",
+  tier:
+    quoteit.tier || "BASIC",
 
-      // ----------------------------------------------------------
-      // Enabled
-      // quote_it_configs 값이 있으면 우선
-      // ----------------------------------------------------------
+  enabled:
+    configData?.enabled !== null &&
+    configData?.enabled !== undefined
+      ? configData.enabled
+      : quoteit.enabled !== false,
 
-      enabled:
-        configData?.enabled !== null &&
-        configData?.enabled !== undefined
-          ? configData.enabled
-          : quoteit.enabled !== false,
+  fields:
+    Array.isArray(configData?.fields)
+      ? configData.fields
+      : Array.isArray(quoteit.fields)
+        ? quoteit.fields
+        : [],
 
-      // ----------------------------------------------------------
-      // Fields
-      // ----------------------------------------------------------
+  displayMode:
+    configData?.display_mode ||
+    quoteit.displayMode ||
+    "inline",
 
-      fields:
-        Array.isArray(configData?.fields)
-          ? configData.fields
-          : Array.isArray(quoteit.fields)
-            ? quoteit.fields
-            : [],
+  targetBoardNo:
+    configData?.target_board_no ||
+    quoteit.targetBoardNo ||
+    1002,
 
-      // ----------------------------------------------------------
-      // Display mode
-      // ----------------------------------------------------------
+  targetSelector:
+    configData?.target_selector ||
+    "",
 
-      displayMode:
-        configData?.display_mode ||
-        quoteit.displayMode ||
-        "inline",
+  ui_text:
+    configData?.ui_text &&
+    typeof configData.ui_text === "object"
+      ? configData.ui_text
+      : quoteit.ui_text &&
+          typeof quoteit.ui_text === "object"
+        ? quoteit.ui_text
+        : {},
 
-      // ----------------------------------------------------------
-      // Target board
-      // ----------------------------------------------------------
+  ui_theme:
+    configData?.ui_theme &&
+    typeof configData.ui_theme === "object"
+      ? configData.ui_theme
+      : quoteit.ui_theme &&
+          typeof quoteit.ui_theme === "object"
+        ? quoteit.ui_theme
+        : {},
 
-      targetBoardNo:
-        configData?.target_board_no ||
-        quoteit.targetBoardNo ||
-        1002,
-
-      // ----------------------------------------------------------
-      // Inline target selector
-      // ----------------------------------------------------------
-
-      targetSelector:
-        configData?.target_selector ||
-        "",
-
-      // ----------------------------------------------------------
-      // UI text
-      // ----------------------------------------------------------
-
-      ui_text:
-        configData?.ui_text &&
-        typeof configData.ui_text === "object"
-          ? configData.ui_text
-          : quoteit.ui_text &&
-              typeof quoteit.ui_text === "object"
-            ? quoteit.ui_text
-            : {},
-
-      // ----------------------------------------------------------
-      // UI theme
-      // ----------------------------------------------------------
-
-      ui_theme:
-        configData?.ui_theme &&
-        typeof configData.ui_theme === "object"
-          ? configData.ui_theme
-          : quoteit.ui_theme &&
-              typeof quoteit.ui_theme === "object"
-            ? quoteit.ui_theme
-            : {},
-
-      // ----------------------------------------------------------
-      // Injection position
-      // ----------------------------------------------------------
-
-      injectPosition:
-        configData?.inject_position ||
-        "after",
-    };
+  injectPosition:
+    configData?.inject_position ||
+    "after",
+};
 
     // ============================================================
     // Response
