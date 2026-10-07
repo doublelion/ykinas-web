@@ -1415,14 +1415,14 @@
           config.targetBoardNo;
       }
 
-      // ==========================================================
-      // [필수 추가] 서버에서 내려준 타겟 셀렉터 값을 globalConfig에 저장
-      // ==========================================================
+
       if (config.targetSelector) {
-        globalConfig.targetSelector =
-          config.targetSelector;
+        globalConfig.targetSelector = config.targetSelector;
       }
 
+      if (config.injectPosition) {
+        globalConfig.injectPosition = config.injectPosition;
+      }
       console.log(
         "[QUOTE-IT] Config loaded:",
         config
@@ -1445,10 +1445,10 @@
   // =========================================================================
   function initQuoteIt() {
     var currentMode = globalConfig.displayMode || "popup";
-    
+
     // [안전장치] 서버에서 값이 오지 않아도 ReferenceError가 나지 않도록 빈 문자열 할당
-    var targetSelector = globalConfig.targetSelector || ""; 
-    
+    var targetSelector = globalConfig.targetSelector || "";
+
     function bindTriggers(anchorElem) {
       var triggers = document.querySelectorAll(".btn-quote-trigger");
       for (var i = 0; i < triggers.length; i++) {
@@ -1477,24 +1477,26 @@
       return;
     }
 
-    // 인라인 주입 로직
+    // 2. initQuoteIt() 내부의 injectInline() 함수 수정 (동적 위치 주입)
     function injectInline(targetElem) {
-      // 타겟 요소가 없다면 DOM에 아예 주입하지 않고 렌더링을 취소합니다. (Zero-Fallback)
       if (!targetElem) {
         console.warn("[QUOTE-IT] 타겟이 없어 렌더링을 안전하게 취소합니다.");
-        return; 
+        return;
       }
 
       var inlineAnchor = document.getElementById("nexus-quote-it-anchor");
-      
+
       if (!inlineAnchor) {
         inlineAnchor = document.createElement("div");
         inlineAnchor.id = "nexus-quote-it-anchor";
         inlineAnchor.style.width = "100%";
-        inlineAnchor.style.margin = "40px 0"; // 상하 여백 확보
-        
-        // 타겟 요소 직후(afterend)에 정확히 폼을 안착시킵니다.
-        targetElem.insertAdjacentElement("afterend", inlineAnchor); 
+        inlineAnchor.style.margin = "40px 0";
+
+        // [수정] 하드코딩된 "afterend" 대신 서버 설정값 사용 (기본값 fallback 제공)
+        var position = globalConfig.injectPosition || "afterend";
+
+        // 타겟 요소 기준 지정된 위치(예: beforebegin)에 정확히 안착
+        targetElem.insertAdjacentElement(position, inlineAnchor);
       }
 
       if (!inlineAnchor.querySelector("quote-it-form")) {
@@ -1502,7 +1504,7 @@
         inlineForm.setAttribute("data-config", JSON.stringify({ displayMode: "inline" }));
         inlineAnchor.appendChild(inlineForm);
       }
-      
+
       bindTriggers(inlineAnchor);
     }
 
@@ -1513,17 +1515,17 @@
     }
 
     // 비동기 렌더링 대응 Polling (최대 3초 대기)
-    var maxAttempts = 30; 
+    var maxAttempts = 30;
     var attempts = 0;
 
-    var checkExist = setInterval(function() {
+    var checkExist = setInterval(function () {
       // document.body.querySelector를 통해 문서 본문 내에서만 안전하게 탐색
       var targetElement = document.body ? document.body.querySelector(targetSelector) : null;
 
       if (targetElement) {
         clearInterval(checkExist);
         console.log("[QUOTE-IT] 정확한 위치 캡처 완료:", targetSelector);
-        injectInline(targetElement); 
+        injectInline(targetElement);
       } else {
         attempts++;
         if (attempts >= maxAttempts) {
