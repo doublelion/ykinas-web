@@ -102,29 +102,23 @@ serve(async (req: Request) => {
     );
 
     // ============================================================
-    // quote_it_configs
+    // skin_licenses
+    // modules_config.quoteit = 기본 설정
     // ============================================================
 
-    const { data, error } = await supabase
-      .from("quote_it_configs")
-      .select(`
-        enabled,
-        display_mode,
-        target_board_no,
-        target_selector,
-        fields,
-        ui_text,
-        ui_theme,
-        inject_position,
-        modules_config
-      `)
-      .eq("mall_id", mallId)
-      .maybeSingle();
+    const { data: licenseData, error: licenseError } =
+      await supabase
+        .from("skin_licenses")
+        .select(`
+          modules_config
+        `)
+        .eq("mall_id", mallId)
+        .maybeSingle();
 
-    if (error) {
+    if (licenseError) {
       console.error(
-        "[QUOTE-IT CONFIG] Database error:",
-        error,
+        "[QUOTE-IT CONFIG] License database error:",
+        licenseError,
       );
 
       return new Response(
@@ -141,7 +135,68 @@ serve(async (req: Request) => {
       );
     }
 
-    if (!data) {
+    // ============================================================
+    // quote_it_configs
+    // mall별 실행 설정
+    // ============================================================
+
+    const { data: configData, error: configError } =
+      await supabase
+        .from("quote_it_configs")
+        .select(`
+          enabled,
+          display_mode,
+          target_board_no,
+          target_selector,
+          fields,
+          ui_text,
+          ui_theme,
+          inject_position
+        `)
+        .eq("mall_id", mallId)
+        .maybeSingle();
+
+    if (configError) {
+      console.error(
+        "[QUOTE-IT CONFIG] Quote config database error:",
+        configError,
+      );
+
+      return new Response(
+        JSON.stringify({
+          error: "Database error",
+        }),
+        {
+          status: 500,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    }
+
+    // ============================================================
+    // modules_config.quoteit
+    // ============================================================
+
+    const modulesConfig =
+      licenseData?.modules_config &&
+      typeof licenseData.modules_config === "object"
+        ? licenseData.modules_config
+        : {};
+
+    const quoteit =
+      modulesConfig.quoteit &&
+      typeof modulesConfig.quoteit === "object"
+        ? modulesConfig.quoteit
+        : {};
+
+    // ============================================================
+    // Configuration 존재 여부
+    // ============================================================
+
+    if (!licenseData && !configData) {
       return new Response(
         JSON.stringify({
           error: "QUOTE-IT configuration not found",
@@ -157,79 +212,103 @@ serve(async (req: Request) => {
     }
 
     // ============================================================
-    // modules_config.quoteit
-    // ============================================================
-
-    const modulesConfig =
-      data.modules_config &&
-      typeof data.modules_config === "object"
-        ? data.modules_config
-        : {};
-
-    const quoteit =
-      modulesConfig.quoteit &&
-      typeof modulesConfig.quoteit === "object"
-        ? modulesConfig.quoteit
-        : {};
-
-    // ============================================================
     // Normalize
     //
-    // modules_config.quoteit = 기본값
-    // quote_it_configs = mall별 override
+    // skin_licenses.modules_config.quoteit
+    //     ↓ 기본값
+    //
+    // quote_it_configs
+    //     ↓ mall별 override
     // ============================================================
 
     const responsePayload = {
+      // ----------------------------------------------------------
+      // Module tier
+      // ----------------------------------------------------------
+
       tier:
         quoteit.tier || "BASIC",
 
+      // ----------------------------------------------------------
+      // Enabled
+      // quote_it_configs 값이 있으면 우선
+      // ----------------------------------------------------------
+
       enabled:
-        data.enabled !== null &&
-        data.enabled !== undefined
-          ? data.enabled
+        configData?.enabled !== null &&
+        configData?.enabled !== undefined
+          ? configData.enabled
           : quoteit.enabled !== false,
 
+      // ----------------------------------------------------------
+      // Fields
+      // ----------------------------------------------------------
+
       fields:
-        Array.isArray(data.fields)
-          ? data.fields
+        Array.isArray(configData?.fields)
+          ? configData.fields
           : Array.isArray(quoteit.fields)
             ? quoteit.fields
             : [],
 
+      // ----------------------------------------------------------
+      // Display mode
+      // ----------------------------------------------------------
+
       displayMode:
-        data.display_mode ||
+        configData?.display_mode ||
         quoteit.displayMode ||
         "inline",
 
+      // ----------------------------------------------------------
+      // Target board
+      // ----------------------------------------------------------
+
       targetBoardNo:
-        data.target_board_no ||
+        configData?.target_board_no ||
         quoteit.targetBoardNo ||
         1002,
 
+      // ----------------------------------------------------------
+      // Inline target selector
+      // ----------------------------------------------------------
+
       targetSelector:
-        data.target_selector ||
+        configData?.target_selector ||
         "",
 
+      // ----------------------------------------------------------
+      // UI text
+      // ----------------------------------------------------------
+
       ui_text:
-        data.ui_text &&
-        typeof data.ui_text === "object"
-          ? data.ui_text
+        configData?.ui_text &&
+        typeof configData.ui_text === "object"
+          ? configData.ui_text
           : quoteit.ui_text &&
               typeof quoteit.ui_text === "object"
             ? quoteit.ui_text
             : {},
 
+      // ----------------------------------------------------------
+      // UI theme
+      // ----------------------------------------------------------
+
       ui_theme:
-        data.ui_theme &&
-        typeof data.ui_theme === "object"
-          ? data.ui_theme
+        configData?.ui_theme &&
+        typeof configData.ui_theme === "object"
+          ? configData.ui_theme
           : quoteit.ui_theme &&
               typeof quoteit.ui_theme === "object"
             ? quoteit.ui_theme
             : {},
 
+      // ----------------------------------------------------------
+      // Injection position
+      // ----------------------------------------------------------
+
       injectPosition:
-        data.inject_position ||
+        configData?.inject_position ||
         "after",
     };
 
