@@ -275,6 +275,7 @@
         globalConfig.targetBoardNo ||
         1002;
 
+      this.tier = componentConfig.tier || globalConfig.tier || "BASIC";
 
       // ---------------------------------------------------------------
       // UI Text
@@ -978,19 +979,14 @@
 
       this.handleSubmit =
         async function (event) {
-
           event.preventDefault();
-
-
           // ---------------------------------------------------------------
           // Mall ID 확인
           // ---------------------------------------------------------------
           if (!self.mallId) {
-
             alert(
               "상점 정보(mall_id)가 설정되지 않아 접수할 수 없습니다."
             );
-
             return;
           }
 
@@ -1150,8 +1146,7 @@
             mall_id:
               self.mallId,
 
-            board_no:
-              self.boardNo,
+            board_no: self.boardNo,
 
             subject:
               "[견적문의] " +
@@ -1175,10 +1170,6 @@
 
           };
 
-
-          // ---------------------------------------------------------------
-          // fetch 유지
-          // ---------------------------------------------------------------
           // =========================================================
           // Supabase Relay
           // =========================================================
@@ -1311,10 +1302,9 @@
 
   }
 
-  // connectedCallback() 내부 기본 설정 영역에 추가
-  this.tier = componentConfig.tier || globalConfig.tier || "BASIC";
 
-  
+
+
   // =========================================================================
   // Custom Element 등록
   // =========================================================================
@@ -1415,8 +1405,7 @@
       }
 
       if (config.targetBoardNo) {
-        globalConfig.targetBoardNo =
-          config.targetBoardNo;
+        globalConfig.targetBoardNo = config.targetBoardNo;
       }
 
 
