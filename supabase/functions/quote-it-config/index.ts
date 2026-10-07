@@ -3,8 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
 };
 
@@ -118,78 +117,62 @@ serve(async (req: Request) => {
       .eq("mall_id", mallId)
       .maybeSingle();
 
-    // DB 오류
     if (error) {
-      console.error(
-        "[QUOTE-IT CONFIG] Database error:",
-        error,
-      );
-
-      return new Response(
-        JSON.stringify({
-          error: "Database error",
-        }),
-        {
-          status: 500,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        },
-      );
+      return new Response(JSON.stringify({ error: "Database error" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // 라이선스 없음
     if (!data) {
-      return new Response(
-        JSON.stringify({
-          error: "License not found",
-        }),
-        {
-          status: 404,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        },
-      );
+      return new Response(JSON.stringify({ error: "License not found" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     /*
-     * modules_config 안전하게 확인
+     * 2. JSONB 구조에서 QUOTE-IT 설정 추출
      */
     const modulesConfig =
-      data.modules_config &&
-      typeof data.modules_config === "object"
-        ? data.modules_config as Record<string, unknown>
+      data.modules_config && typeof data.modules_config === "object"
+        ? (data.modules_config as Record<string, unknown>)
         : {};
 
-    /*
-     * modules_config.quoteit 추출
-     */
     const quoteItConfig =
-      modulesConfig.quoteit &&
-      typeof modulesConfig.quoteit === "object"
-        ? modulesConfig.quoteit as QuoteItConfig
+      modulesConfig.quoteit && typeof modulesConfig.quoteit === "object"
+        ? (modulesConfig.quoteit as Record<string, any>)
         : {};
 
     /*
-     * QUOTE-IT 설정만 프론트엔드로 반환
+     * 3. [핵심] API 응답 페이로드 규격화 (Normalization)
+     * DB에 값이 빠져있더라도 프론트엔드가 예측할 수 있도록 명시적으로 구조를 매핑합니다.
      */
-    return new Response(
-      JSON.stringify(quoteItConfig),
-      {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
+    const responsePayload = {
+      enabled: quoteItConfig.enabled !== false, // DB에 없으면 기본적으로 활성화(true)
+      tier: quoteItConfig.tier || "BASIC",
+      displayMode: quoteItConfig.displayMode || quoteItConfig.display_mode || "popup",
+      targetBoardNo: quoteItConfig.targetBoardNo || quoteItConfig.target_board_no || 1002,
+      
+      // 💡 해결 포인트: targetSelector 명시적 바인딩 (카멜/스네이크 케이스 동시 대응)
+      targetSelector: quoteItConfig.targetSelector || quoteItConfig.target_selector || "",
+      
+      fields: quoteItConfig.fields || [],
+      ui_text: quoteItConfig.ui_text || {},
+      ui_theme: quoteItConfig.ui_theme || {},
+    };
 
-          // 60초 캐시
-          "Cache-Control":
-            "public, max-age=60, s-maxage=60",
-        },
+    /*
+     * 4. QUOTE-IT 설정 프론트엔드로 반환
+     */
+    return new Response(JSON.stringify(responsePayload), {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+        "Cache-Control": "public, max-age=60, s-maxage=60",
       },
-    );
+    });
 
   } catch (error) {
     console.error(

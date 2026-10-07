@@ -1445,8 +1445,7 @@
   // =========================================================================
   function initQuoteIt() {
     var currentMode = globalConfig.displayMode || "popup";
-    var targetSelector = globalConfig.targetSelector || "";
-
+    var targetSelector = globalConfig.targetSelector || ".xans-product-additional, .xans-product-detail";
     // 트리거 버튼 이벤트 바인딩 (팝업/인라인 공통)
     function bindTriggers(anchorElem) {
       var triggers = document.querySelectorAll(".btn-quote-trigger");
@@ -1487,11 +1486,10 @@
         inlineAnchor.style.width = "100%";
 
         if (targetElem) {
-          // 찾은 타겟 요소 직전에 삽입 (기획 의도 유지)
-          targetElem.insertAdjacentElement("beforebegin", inlineAnchor);
+
+          targetElem.insertAdjacentElement("afterend", inlineAnchor);
         } else {
-          // 최후의 수단: Body 최하단 Fallback
-          document.body.appendChild(inlineAnchor);
+          document.body.appendChild(inlineAnchor); //  Fallback
         }
       }
 
@@ -1506,21 +1504,23 @@
 
     // 타겟 셀렉터가 지정된 경우 대기(Polling) 로직 실행
     if (targetSelector) {
-      var maxAttempts = 30; // 100ms * 30회 = 최대 3초 대기
+      var maxAttempts = 30;
       var attempts = 0;
 
       var checkExist = setInterval(function () {
+        // 다중 셀렉터 지원 (예: ".custom-target, .xans-product-additional")
         var targetElement = document.querySelector(targetSelector);
 
         if (targetElement) {
           clearInterval(checkExist);
-          injectInline(targetElement); // 성공: 타겟을 찾음
+          console.log("[QUOTE-IT] 타겟 요소를 찾았습니다:", targetElement);
+          injectInline(targetElement);
         } else {
           attempts++;
           if (attempts >= maxAttempts) {
             clearInterval(checkExist);
-            console.warn("[QUOTE-IT] 타겟 셀렉터(" + targetSelector + ")를 3초 내에 찾지 못해 Fallback을 실행합니다.");
-            injectInline(null); // 실패: 3초 후 Fallback 실행
+            console.warn("[QUOTE-IT] 타겟 셀렉터(" + targetSelector + ")를 찾지 못해 기본 위치로 Fallback 됩니다.");
+            injectInline(null);
           }
         }
       }, 100);
