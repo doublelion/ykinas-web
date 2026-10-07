@@ -102,11 +102,11 @@ serve(async (req: Request) => {
     );
 
     // ============================================================
-    // quoteit_configs
+    // quote_it_configs
     // ============================================================
 
     const { data, error } = await supabase
-      .from("quoteit_configs")
+      .from("quote_it_configs")
       .select(`
         enabled,
         display_mode,
@@ -115,7 +115,8 @@ serve(async (req: Request) => {
         fields,
         ui_text,
         ui_theme,
-        inject_position
+        inject_position,
+        modules_config
       `)
       .eq("mall_id", mallId)
       .maybeSingle();
@@ -156,39 +157,80 @@ serve(async (req: Request) => {
     }
 
     // ============================================================
+    // modules_config.quoteit
+    // ============================================================
+
+    const modulesConfig =
+      data.modules_config &&
+      typeof data.modules_config === "object"
+        ? data.modules_config
+        : {};
+
+    const quoteit =
+      modulesConfig.quoteit &&
+      typeof modulesConfig.quoteit === "object"
+        ? modulesConfig.quoteit
+        : {};
+
+    // ============================================================
     // Normalize
+    //
+    // modules_config.quoteit = 기본값
+    // quote_it_configs = mall별 override
     // ============================================================
 
     const responsePayload = {
-      enabled: data.enabled !== false,
+      tier:
+        quoteit.tier || "BASIC",
 
-      fields: Array.isArray(data.fields)
-        ? data.fields
-        : [],
+      enabled:
+        data.enabled !== null &&
+        data.enabled !== undefined
+          ? data.enabled
+          : quoteit.enabled !== false,
+
+      fields:
+        Array.isArray(data.fields)
+          ? data.fields
+          : Array.isArray(quoteit.fields)
+            ? quoteit.fields
+            : [],
 
       displayMode:
-        data.display_mode || "inline",
+        data.display_mode ||
+        quoteit.displayMode ||
+        "inline",
 
       targetBoardNo:
-        data.target_board_no || 1002,
+        data.target_board_no ||
+        quoteit.targetBoardNo ||
+        1002,
 
       targetSelector:
-        data.target_selector || "",
+        data.target_selector ||
+        "",
 
       ui_text:
         data.ui_text &&
         typeof data.ui_text === "object"
           ? data.ui_text
-          : {},
+          : quoteit.ui_text &&
+              typeof quoteit.ui_text === "object"
+            ? quoteit.ui_text
+            : {},
 
       ui_theme:
         data.ui_theme &&
         typeof data.ui_theme === "object"
           ? data.ui_theme
-          : {},
+          : quoteit.ui_theme &&
+              typeof quoteit.ui_theme === "object"
+            ? quoteit.ui_theme
+            : {},
 
       injectPosition:
-        data.inject_position || "after",
+        data.inject_position ||
+        "after",
     };
 
     // ============================================================
