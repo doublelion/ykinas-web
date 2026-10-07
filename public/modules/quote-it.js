@@ -1423,10 +1423,10 @@
       if (config.injectPosition) {
         globalConfig.injectPosition = config.injectPosition;
       }
-      console.log(
-        "[QUOTE-IT] Config loaded:",
-        config
-      );
+      // console.log(
+      //   "[QUOTE-IT] Config loaded:",
+      //   config
+      // );
 
     } catch (error) {
 
