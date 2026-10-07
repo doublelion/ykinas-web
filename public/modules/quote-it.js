@@ -1308,9 +1308,13 @@
       document.body.style.overflow =
         "";
     }
+
   }
 
+  // connectedCallback() 내부 기본 설정 영역에 추가
+  this.tier = componentConfig.tier || globalConfig.tier || "BASIC";
 
+  
   // =========================================================================
   // Custom Element 등록
   // =========================================================================
