@@ -1443,23 +1443,24 @@
   // =========================================================================
   // 프론트엔드: DOM 비동기 렌더링 대응을 위한 Polling 기반 타겟 탐색
   // =========================================================================
+  // =========================================================================
+  // 프론트엔드: 우선순위 기반 엄격한 DOM 탐색 및 지능형 삽입 로직
+  // =========================================================================
   function initQuoteIt() {
     var currentMode = globalConfig.displayMode || "popup";
+    
+    // [핵심 변경] 콤마(",") 탐색의 함정을 피해, 순차적 큐(Queue) 배열을 만듭니다.
+    // isContainer 속성을 두어 삽입 방식을 지능적으로 분기합니다.
+    var fallbackList = [
+      { selector: ".xans-product-additional", isContainer: false }, // 상세 추가영역 (블록)
+      { selector: ".xans-product-detail",     isContainer: false }, // 상세 기본영역 (블록)
+      { selector: "#prdDetail",               isContainer: false }, // 구형 상세영역 (블록)
+      { selector: ".detailArea",              isContainer: false }, // 커스텀 상세영역 (블록)
+      { selector: "#contents",                isContainer: true },  // 공통 본문영역 (컨테이너)
+      { selector: "#container",               isContainer: true },  // 공통 본문영역 (컨테이너)
+      { selector: "#wrap",                    isContainer: true }   // 최후의 전체 래퍼 (컨테이너)
+    ];
 
-    // [핵심 변경] 카페24의 다양한 스킨과 페이지 상황을 커버하는 다중 셀렉터망
-    // 우선순위: 1.서버 지정값 -> 2.표준 상세영역 -> 3.구형 상세영역 -> 4.공통 본문 영역
-    var fallbackSelectors = [
-      ".xans-product-additional", // 카페24 표준 추가정보 영역
-      ".xans-product-detail",     // 카페24 표준 상세 영역
-      "#prdDetail",               // 구형 스킨 상세 영역 ID
-      ".detailArea",              // 일부 커스텀 스킨 상세 영역
-      "#contents",                // 메인/기타 페이지의 본문 래퍼
-      "#container",                // 구형 스킨 본문 래퍼
-      "#wrap"
-    ].join(", ");
-
-    var targetSelector = globalConfig.targetSelector || fallbackSelectors;
-    // 트리거 버튼 이벤트 바인딩 (팝업/인라인 공통)
     function bindTriggers(anchorElem) {
       var triggers = document.querySelectorAll(".btn-quote-trigger");
       for (var i = 0; i < triggers.length; i++) {
@@ -1478,7 +1479,6 @@
       }
     }
 
-    // --- [1] 팝업 모드 렌더링 ---
     if (currentMode === "popup") {
       if (!document.querySelector("quote-it-form[data-config*=\"popup\"]")) {
         var popupForm = document.createElement("quote-it-form");
@@ -1486,30 +1486,30 @@
         document.body.appendChild(popupForm);
       }
       bindTriggers(null);
-      return; // 팝업 모드는 여기서 종료
+      return;
     }
 
-    // --- [2] 인라인 모드 렌더링 ---
-    function injectInline(targetElem) {
+    // 💡 삽입 전략 최적화: 컨테이너냐 블록이냐에 따라 Node 삽입 위치를 변경합니다.
+    function injectInline(targetElem, isContainer) {
       var inlineAnchor = document.getElementById("nexus-quote-it-anchor");
-
+      
       if (!inlineAnchor) {
         inlineAnchor = document.createElement("div");
         inlineAnchor.id = "nexus-quote-it-anchor";
         inlineAnchor.style.width = "100%";
-        inlineAnchor.style.marginTop = "40px"; // 타겟 요소와 너무 붙지 않도록 시각적 여백 추가
-
+        inlineAnchor.style.marginTop = "40px"; 
+        inlineAnchor.style.marginBottom = "40px"; // 하단 여백 추가
+        
         if (targetElem) {
-          // 컨테이너 계열(#contents 등)이 잡혔을 때는 appendChild(내부 맨 끝)가 유리하고,
-          // 형제 요소(상세영역)가 잡혔을 때는 afterend(직후)가 유리합니다.
-          if (targetElem.id === 'contents' || targetElem.id === 'container') {
-            targetElem.appendChild(inlineAnchor);
+          if (isContainer) {
+            // 컨테이너 내부 맨 아래(푸터 위)에 삽입
+            targetElem.appendChild(inlineAnchor); 
           } else {
-            targetElem.insertAdjacentElement("afterend", inlineAnchor);
+            // 상세 설명 블록 끝난 직후에 삽입
+            targetElem.insertAdjacentElement("afterend", inlineAnchor); 
           }
         } else {
-          // 모든 탐색 실패 시 최후 수단
-          document.body.appendChild(inlineAnchor);
+          document.body.appendChild(inlineAnchor); 
         }
       }
 
@@ -1518,35 +1518,52 @@
         inlineForm.setAttribute("data-config", JSON.stringify({ displayMode: "inline" }));
         inlineAnchor.appendChild(inlineForm);
       }
-
+      
       bindTriggers(inlineAnchor);
     }
 
-    // 타겟 셀렉터가 지정된 경우 대기(Polling) 로직 실행
-    if (targetSelector) {
-      var maxAttempts = 30;
-      var attempts = 0;
+    var maxAttempts = 30; 
+    var attempts = 0;
 
-      var checkExist = setInterval(function () {
-        // 다중 셀렉터 지원 (예: ".custom-target, .xans-product-additional")
-        var targetElement = document.querySelector(targetSelector);
-        if (targetElement) {
-          clearInterval(checkExist);
-          console.log("[QUOTE-IT] 타겟 요소를 찾았습니다:", targetElement);
-          injectInline(targetElement);
-        } else {
-          attempts++;
-          if (attempts >= maxAttempts) {
-            clearInterval(checkExist);
-            console.warn("[QUOTE-IT] 타겟 셀렉터(" + targetSelector + ")를 찾지 못해 기본 위치로 Fallback 됩니다.");
-            injectInline(null);
+    var checkExist = setInterval(function() {
+      var targetElement = null;
+      var isContainerTarget = false;
+
+      // 1. 백엔드에서 내려준 명시적 타겟 셀렉터가 최우선
+      if (globalConfig.targetSelector) {
+        targetElement = document.querySelector(globalConfig.targetSelector);
+        // 서버에서 받아온 타겟이 #container, #contents, #wrap 등을 포함한다면 컨테이너로 취급
+        if (targetElement && (targetElement.id === 'contents' || targetElement.id === 'container' || targetElement.id === 'wrap')) {
+          isContainerTarget = true;
+        }
+      }
+
+      // 2. 서버 타겟을 찾지 못했다면, 폴백 배열을 "순서대로" 탐색 (위에서부터 우선순위)
+      if (!targetElement) {
+        for (var i = 0; i < fallbackList.length; i++) {
+          var el = document.querySelector(fallbackList[i].selector);
+          if (el) {
+            targetElement = el;
+            isContainerTarget = fallbackList[i].isContainer;
+            break; // 가장 구체적인 영역(상세페이지 우선)을 찾자마자 탐색을 멈춥니다!
           }
         }
-      }, 100);
-    } else {
-      // 타겟 셀렉터가 아예 설정되지 않은 경우 즉시 Fallback
-      injectInline(null);
-    }
+      }
+
+      // 3. 요소 렌더링 검증 완료
+      if (targetElement) {
+        clearInterval(checkExist);
+        console.log("[QUOTE-IT] 타겟 요소 캡처 완료:", (targetElement.id || targetElement.className), isContainerTarget ? "(컨테이너 삽입)" : "(형제블록 삽입)");
+        injectInline(targetElement, isContainerTarget); 
+      } else {
+        attempts++;
+        if (attempts >= maxAttempts) {
+          clearInterval(checkExist);
+          console.warn("[QUOTE-IT] 타겟 탐색 실패. 최후 Fallback으로 body에 삽입됩니다.");
+          injectInline(null, false);
+        }
+      }
+    }, 100);
   }
 
 
