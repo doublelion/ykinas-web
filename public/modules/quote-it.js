@@ -1441,26 +1441,14 @@
   }
 
   // =========================================================================
-  // 프론트엔드: DOM 비동기 렌더링 대응을 위한 Polling 기반 타겟 탐색
-  // =========================================================================
-  // =========================================================================
-  // 프론트엔드: 우선순위 기반 엄격한 DOM 탐색 및 지능형 삽입 로직
+  // 프론트엔드: 정밀 타겟팅 및 Zero-Fallback (오류 방지 구조)
   // =========================================================================
   function initQuoteIt() {
     var currentMode = globalConfig.displayMode || "popup";
-
-    // [핵심 변경] 콤마(",") 탐색의 함정을 피해, 순차적 큐(Queue) 배열을 만듭니다.
-    // isContainer 속성을 두어 삽입 방식을 지능적으로 분기합니다.
-    var fallbackList = [
-      { selector: ".xans-product-additional", isContainer: false }, // 상세 추가영역 (블록)
-      { selector: ".xans-product-detail", isContainer: false }, // 상세 기본영역 (블록)
-      { selector: "#prdDetail", isContainer: false }, // 구형 상세영역 (블록)
-      { selector: ".detailArea", isContainer: false }, // 커스텀 상세영역 (블록)
-      { selector: "#contents", isContainer: true },  // 공통 본문영역 (컨테이너)
-      { selector: "#container", isContainer: true },  // 공통 본문영역 (컨테이너)
-      { selector: "#wrap", isContainer: true }   // 최후의 전체 래퍼 (컨테이너)
-    ];
-
+    
+    // [안전장치] 서버에서 값이 오지 않아도 ReferenceError가 나지 않도록 빈 문자열 할당
+    var targetSelector = globalConfig.targetSelector || ""; 
+    
     function bindTriggers(anchorElem) {
       var triggers = document.querySelectorAll(".btn-quote-trigger");
       for (var i = 0; i < triggers.length; i++) {
@@ -1489,22 +1477,24 @@
       return;
     }
 
+    // 인라인 주입 로직
     function injectInline(targetElem) {
-      var inlineAnchor = document.getElementById("nexus-quote-it-anchor");
+      // 타겟 요소가 없다면 DOM에 아예 주입하지 않고 렌더링을 취소합니다. (Zero-Fallback)
+      if (!targetElem) {
+        console.warn("[QUOTE-IT] 타겟이 없어 렌더링을 안전하게 취소합니다.");
+        return; 
+      }
 
+      var inlineAnchor = document.getElementById("nexus-quote-it-anchor");
+      
       if (!inlineAnchor) {
         inlineAnchor = document.createElement("div");
         inlineAnchor.id = "nexus-quote-it-anchor";
         inlineAnchor.style.width = "100%";
-        inlineAnchor.style.margin = "40px 0";
-
-        if (targetElem) {
-          // 서버가 지정한 타겟 요소 직후에 삽입
-          targetElem.insertAdjacentElement("afterend", inlineAnchor);
-        } else {
-          // 타겟이 비어있거나 끝내 못 찾은 경우의 UI 보호용 Fallback
-          document.body.appendChild(inlineAnchor);
-        }
+        inlineAnchor.style.margin = "40px 0"; // 상하 여백 확보
+        
+        // 타겟 요소 직후(afterend)에 정확히 폼을 안착시킵니다.
+        targetElem.insertAdjacentElement("afterend", inlineAnchor); 
       }
 
       if (!inlineAnchor.querySelector("quote-it-form")) {
@@ -1512,34 +1502,34 @@
         inlineForm.setAttribute("data-config", JSON.stringify({ displayMode: "inline" }));
         inlineAnchor.appendChild(inlineForm);
       }
-
+      
       bindTriggers(inlineAnchor);
     }
 
-    // 서버 설정값 자체가 없으면 탐색 없이 바로 Fallback 처리
-    if (!targetSelector || targetSelector.trim() === "") {
-      console.warn("[QUOTE-IT] 서버로부터 타겟 셀렉터를 전달받지 못했습니다.");
-      injectInline(null);
+    // 서버 설정값 자체가 유효하지 않으면 탐색을 시작하지 않음
+    if (typeof targetSelector !== "string" || targetSelector.trim() === "") {
+      console.warn("[QUOTE-IT] 서버로부터 유효한 타겟 셀렉터가 없습니다.");
       return;
     }
 
-    var maxAttempts = 30;
+    // 비동기 렌더링 대응 Polling (최대 3초 대기)
+    var maxAttempts = 30; 
     var attempts = 0;
 
-    var checkExist = setInterval(function () {
-      // 서버에서 전달받은 순수 셀렉터 값으로만 탐색
-      var targetElement = document.body.querySelector(targetSelector);
+    var checkExist = setInterval(function() {
+      // document.body.querySelector를 통해 문서 본문 내에서만 안전하게 탐색
+      var targetElement = document.body ? document.body.querySelector(targetSelector) : null;
 
       if (targetElement) {
         clearInterval(checkExist);
-        console.log("[QUOTE-IT] 서버 지정 타겟 캡처 완료:", targetSelector);
-        injectInline(targetElement);
+        console.log("[QUOTE-IT] 정확한 위치 캡처 완료:", targetSelector);
+        injectInline(targetElement); 
       } else {
         attempts++;
         if (attempts >= maxAttempts) {
           clearInterval(checkExist);
-          console.warn("[QUOTE-IT] 타겟(" + targetSelector + ") 탐색 실패. Fallback 적용");
-          injectInline(null);
+          console.warn("[QUOTE-IT] 3초 대기 초과. 타겟(" + targetSelector + ")을 찾지 못했습니다.");
+          injectInline(null); // 타겟이 없으므로 injectInline 내부에서 렌더링 거부됨
         }
       }
     }, 100);
