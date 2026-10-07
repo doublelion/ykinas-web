@@ -1440,47 +1440,15 @@
     }
   }
 
-  // 프론트엔드: initQuoteIt 함수 내 앵커 탐색 로직 개선 (JS)
-  // 프론트엔드: initQuoteIt 함수 내 앵커 탐색 로직 개선 (JS)
+  // =========================================================================
+  // 프론트엔드: DOM 비동기 렌더링 대응을 위한 Polling 기반 타겟 탐색
+  // =========================================================================
   function initQuoteIt() {
     var currentMode = globalConfig.displayMode || "popup";
-
-    // 서버 설정에서 넘어온 타겟 셀렉터 (예: ".foot")
     var targetSelector = globalConfig.targetSelector || "";
-    var inlineAnchor = document.getElementById("nexus-quote-it-anchor");
-    var targetElement = null;
 
-    // 1단계: 지정된 커스텀 셀렉터가 있다면 우선 탐색
-    if (targetSelector) {
-      targetElement = document.querySelector(targetSelector);
-    }
-
-    // 2단계: 인라인 모드 렌더링 및 엣지 케이스 Fallback
-    if (currentMode === "inline") {
-      if (!inlineAnchor) {
-        inlineAnchor = document.createElement("div");
-        inlineAnchor.id = "nexus-quote-it-anchor";
-        inlineAnchor.style.width = "100%"; // 래퍼 레이아웃 붕괴 방지
-
-        if (targetElement) {
-          // 타겟 요소(.foot 등)를 찾은 경우: 해당 요소의 직전(beforebegin)에 폼을 삽입
-          targetElement.insertAdjacentElement("beforebegin", inlineAnchor);
-        } else {
-          // 엣지 케이스: 타겟을 찾지 못한 경우 기존처럼 Body 최하단 Fallback 주입
-          document.body.appendChild(inlineAnchor);
-        }
-      }
-
-      // 컴포넌트 렌더링 및 스크롤 이벤트 바인딩
-      if (!inlineAnchor.querySelector("quote-it-form")) {
-        var inlineForm = document.createElement("quote-it-form");
-        inlineForm.setAttribute(
-          "data-config",
-          JSON.stringify({ displayMode: "inline" })
-        );
-        inlineAnchor.appendChild(inlineForm);
-      }
-
+    // 트리거 버튼 이벤트 바인딩 (팝업/인라인 공통)
+    function bindTriggers(anchorElem) {
       var triggers = document.querySelectorAll(".btn-quote-trigger");
       for (var i = 0; i < triggers.length; i++) {
         var button = triggers[i];
@@ -1489,45 +1457,76 @@
 
         button.addEventListener("click", function (event) {
           event.preventDefault();
-          if (inlineAnchor) {
-            inlineAnchor.scrollIntoView({
-              behavior: "smooth",
-              block: "start"
-            });
+          if (currentMode === "inline" && anchorElem) {
+            anchorElem.scrollIntoView({ behavior: "smooth", block: "start" });
+          } else {
+            window.dispatchEvent(new CustomEvent("QUOTE_IT_TRIGGER_OPEN"));
           }
         });
       }
+    }
 
-      // =====================================================================
-      // 3. 팝업 모드 (Popup)
-      // =====================================================================
-    } else {
-
-      // 팝업 폼 컴포넌트 렌더링 (중복 방지)
-      if (
-        triggers.length > 0 &&
-        !document.querySelector("quote-it-form[data-config*=\"popup\"]")
-      ) {
+    // --- [1] 팝업 모드 렌더링 ---
+    if (currentMode === "popup") {
+      if (!document.querySelector("quote-it-form[data-config*=\"popup\"]")) {
         var popupForm = document.createElement("quote-it-form");
-        popupForm.setAttribute(
-          "data-config",
-          JSON.stringify({ displayMode: "popup" })
-        );
+        popupForm.setAttribute("data-config", JSON.stringify({ displayMode: "popup" }));
         document.body.appendChild(popupForm);
       }
+      bindTriggers(null);
+      return; // 팝업 모드는 여기서 종료
+    }
 
-      // 트리거 버튼 클릭 시 팝업 오픈 이벤트 디스패치
-      triggers.forEach(function (button) {
-        if (button.dataset.quoteItBound === "true") return;
-        button.dataset.quoteItBound = "true";
+    // --- [2] 인라인 모드 렌더링 ---
+    function injectInline(targetElem) {
+      var inlineAnchor = document.getElementById("nexus-quote-it-anchor");
 
-        button.addEventListener("click", function (event) {
-          event.preventDefault();
-          window.dispatchEvent(
-            new CustomEvent("QUOTE_IT_TRIGGER_OPEN")
-          );
-        });
-      });
+      if (!inlineAnchor) {
+        inlineAnchor = document.createElement("div");
+        inlineAnchor.id = "nexus-quote-it-anchor";
+        inlineAnchor.style.width = "100%";
+
+        if (targetElem) {
+          // 찾은 타겟 요소 직전에 삽입 (기획 의도 유지)
+          targetElem.insertAdjacentElement("beforebegin", inlineAnchor);
+        } else {
+          // 최후의 수단: Body 최하단 Fallback
+          document.body.appendChild(inlineAnchor);
+        }
+      }
+
+      if (!inlineAnchor.querySelector("quote-it-form")) {
+        var inlineForm = document.createElement("quote-it-form");
+        inlineForm.setAttribute("data-config", JSON.stringify({ displayMode: "inline" }));
+        inlineAnchor.appendChild(inlineForm);
+      }
+
+      bindTriggers(inlineAnchor);
+    }
+
+    // 타겟 셀렉터가 지정된 경우 대기(Polling) 로직 실행
+    if (targetSelector) {
+      var maxAttempts = 30; // 100ms * 30회 = 최대 3초 대기
+      var attempts = 0;
+
+      var checkExist = setInterval(function () {
+        var targetElement = document.querySelector(targetSelector);
+
+        if (targetElement) {
+          clearInterval(checkExist);
+          injectInline(targetElement); // 성공: 타겟을 찾음
+        } else {
+          attempts++;
+          if (attempts >= maxAttempts) {
+            clearInterval(checkExist);
+            console.warn("[QUOTE-IT] 타겟 셀렉터(" + targetSelector + ")를 3초 내에 찾지 못해 Fallback을 실행합니다.");
+            injectInline(null); // 실패: 3초 후 Fallback 실행
+          }
+        }
+      }, 100);
+    } else {
+      // 타겟 셀렉터가 아예 설정되지 않은 경우 즉시 Fallback
+      injectInline(null);
     }
   }
 
