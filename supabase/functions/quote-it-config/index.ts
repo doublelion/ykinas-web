@@ -280,18 +280,23 @@ serve(async (req: Request) => {
     // Response
     // ============================================================
 
-    return new Response(
-      JSON.stringify(responsePayload),
-      {
-        status: 200,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-          "Cache-Control":
-            "public, max-age=60, s-maxage=60",
-        },
-      },
-    );
+    console.log(
+  "[QUOTE-IT CONFIG RESPONSE]",
+  JSON.stringify(responsePayload)
+);
+
+return new Response(
+  JSON.stringify(responsePayload),
+  {
+    status: 200,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      "Cache-Control":
+        "no-store, no-cache, must-revalidate",
+    },
+  },
+);
   } catch (error) {
     console.error(
       "[QUOTE-IT CONFIG] Unexpected error:",
