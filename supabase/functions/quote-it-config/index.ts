@@ -222,10 +222,9 @@ serve(async (req: Request) => {
     // ============================================================
 
     const responsePayload = {
-  debugVersion: "quote-it-config-20261007-01",
+  debugVersion: "QUOTE-IT-20261007-TEST",
 
-  tier:
-    quoteit.tier || "BASIC",
+  tier: quoteit.tier || "BASIC",
 
   enabled:
     configData?.enabled !== null &&
