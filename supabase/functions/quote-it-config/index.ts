@@ -54,7 +54,7 @@ serve(async (req: Request) => {
       enabled: configData?.enabled ?? true,
       tier: configData?.tier || "CUSTOM", 
       displayMode: configData?.display_mode || "popup",
-      targetBoardNo: configData?.target_board_no || 1002,
+      targetBoardNo: configData?.target_board_no || null,
       targetSelector: configData?.target_selector || "",
       injectPosition: configData?.inject_position || "afterend",
       
