@@ -45,7 +45,6 @@ serve(async (req: Request) => {
     // ============================================================
 
     const url = new URL(req.url);
-
     const mallId = url.searchParams.get("mall_id")?.trim();
 
     if (!mallId) {
@@ -64,7 +63,7 @@ serve(async (req: Request) => {
     }
 
     // ============================================================
-    // Supabase environment
+    // Supabase
     // ============================================================
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -74,7 +73,7 @@ serve(async (req: Request) => {
 
     if (!supabaseUrl || !serviceRoleKey) {
       console.error(
-        "[QUOTE-IT CONFIG] Supabase environment variables missing",
+        "[QUOTE-IT CONFIG] Missing Supabase environment variables",
       );
 
       return new Response(
@@ -91,10 +90,6 @@ serve(async (req: Request) => {
       );
     }
 
-    // ============================================================
-    // Supabase Admin Client
-    // ============================================================
-
     const supabase = createClient(
       supabaseUrl,
       serviceRoleKey,
@@ -107,27 +102,23 @@ serve(async (req: Request) => {
     );
 
     // ============================================================
-    // QUOTE-IT CONFIG
+    // quoteit_configs
     // ============================================================
 
     const { data, error } = await supabase
       .from("quoteit_configs")
       .select(`
-        tier,
-        fields,
+        enabled,
+        display_mode,
         target_board_no,
         target_selector,
-        display_mode,
-        enabled,
+        fields,
         ui_text,
-        ui_theme
+        ui_theme,
+        inject_position
       `)
       .eq("mall_id", mallId)
       .maybeSingle();
-
-    // ============================================================
-    // Database error
-    // ============================================================
 
     if (error) {
       console.error(
@@ -149,10 +140,6 @@ serve(async (req: Request) => {
       );
     }
 
-    // ============================================================
-    // Config not found
-    // ============================================================
-
     if (!data) {
       return new Response(
         JSON.stringify({
@@ -169,13 +156,11 @@ serve(async (req: Request) => {
     }
 
     // ============================================================
-    // Normalize response
+    // Normalize
     // ============================================================
 
     const responsePayload = {
       enabled: data.enabled !== false,
-
-      tier: data.tier || "BASIC",
 
       fields: Array.isArray(data.fields)
         ? data.fields
@@ -201,6 +186,9 @@ serve(async (req: Request) => {
         typeof data.ui_theme === "object"
           ? data.ui_theme
           : {},
+
+      injectPosition:
+        data.inject_position || "after",
     };
 
     // ============================================================
