@@ -112,10 +112,22 @@ serve(async (req: Request) => {
      * 해당 Cafe24 Mall의 라이선스 설정 조회
      */
     const { data, error } = await supabase
-      .from("skin_licenses")
-      .select("modules_config")
+      .from("quoteit_configs") // 새로 만드신 전용 테이블 이름[cite: 2]
+      .select("tier, fields, target_board_no, target_selector, display_mode, enabled")
       .eq("mall_id", mallId)
       .maybeSingle();
+
+    if (data) {
+      const responsePayload = {
+        enabled: data.enabled !== false,
+        tier: data.tier || "BASIC",
+        displayMode: data.display_mode || "inline",
+        targetBoardNo: data.target_board_no || 1002,
+        targetSelector: data.target_selector || ".hero", // DB의 .hero 전달[cite: 2]
+        fields: data.fields || [],
+      };
+      return new Response(JSON.stringify(responsePayload), { /* headers */ });
+    }
 
     if (error) {
       return new Response(JSON.stringify({ error: "Database error" }), {
@@ -124,12 +136,6 @@ serve(async (req: Request) => {
       });
     }
 
-    if (!data) {
-      return new Response(JSON.stringify({ error: "License not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
 
     /*
      * 2. JSONB 구조에서 QUOTE-IT 설정 추출
