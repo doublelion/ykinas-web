@@ -168,6 +168,10 @@ serve(async (req: Request) => {
             payload.content || "",
           writer:
             payload.writer || "",
+          password:
+            payload.password || "",
+          secret:
+            "T",
           client_ip:
             clientIp
         }
