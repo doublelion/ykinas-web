@@ -4,6 +4,7 @@
 // 팝업 / 인라인 자동 감지
 // URL 쿼리 + data-config 동적 설정 지원
 // 백틱(Template Literal) 완전 배제
+// 네임스페이스(qi-) 적용으로 호스트 CSS 충돌 원천 차단
 // ============================================================================
 
 (function () {
@@ -265,8 +266,6 @@
 
       // ---------------------------------------------------------------------
       // Dynamic Fields
-      // DB / data-config에서 fields가 내려오지 않으면
-      // BASIC 요금제 기본 필드 사용
       // ---------------------------------------------------------------------
 
       var defaultFields = [
@@ -370,7 +369,7 @@
       var html = [];
 
       // =====================================================================
-      // CSS (유실되었던 모든 스타일 복원)
+      // CSS (qi- 네임스페이스 전면 적용)
       // =====================================================================
 
       html.push(
@@ -386,21 +385,21 @@
         "'Segoe UI',",
         "sans-serif;",
         "}",
-        ".overlay{",
+        ".qi-overlay{",
         wrapperStyle,
         "}",
-        ".overlay.active{",
+        ".qi-overlay.active{",
         "opacity:1;",
         "visibility:visible;",
         "pointer-events:auto;",
         "}",
-        ".overlay.active .modal{",
+        ".qi-overlay.active .qi-modal{",
         "transform:translateY(0) scale(1);",
         "}",
-        ".modal{",
+        ".qi-modal{",
         modalStyle,
         "}",
-        ".close{",
+        ".qi-close{",
         "position:absolute;",
         "top:18px;",
         "right:20px;",
@@ -414,7 +413,7 @@
         "color:#222;",
         "cursor:pointer;",
         "}",
-        ".eyebrow{",
+        ".qi-eyebrow{",
         "margin-bottom:14px;",
         "font-size:11px;",
         "font-weight:600;",
@@ -430,7 +429,7 @@
         "line-height:1.1;",
         "letter-spacing:-.04em;",
         "}",
-        ".form-group{",
+        ".qi-form-group{",
         "margin-bottom:22px;",
         "}",
         "label{",
@@ -439,7 +438,7 @@
         "font-size:12px;",
         "font-weight:600;",
         "}",
-        ".required{",
+        ".qi-required{",
         "color:#8a9a5b;",
         "}",
         "input,textarea,select{",
@@ -467,7 +466,7 @@
         "-webkit-appearance:none;",
         "cursor:pointer;",
         "}",
-        ".btn-submit{",
+        ".qi-btn-submit{",
         "width:100%;",
         "margin-top:18px;",
         "padding:17px 20px;",
@@ -481,18 +480,18 @@
         "cursor:pointer;",
         "transition:background .25s ease;",
         "}",
-        ".btn-submit:hover{",
+        ".qi-btn-submit:hover{",
         "background:#8a9a5b;",
         "}",
-        ".btn-submit:disabled{",
+        ".qi-btn-submit:disabled{",
         "opacity:.55;",
         "cursor:not-allowed;",
         "}",
         "@media(max-width:640px){",
-        ".overlay{",
+        ".qi-overlay{",
         "padding:12px;",
         "}",
-        ".modal{",
+        ".qi-modal{",
         "padding:44px 24px 30px;",
         "max-height:calc(100vh - 24px);",
         "}",
@@ -501,7 +500,7 @@
         "margin-bottom:30px;",
         "}",
         "}",
-        ".security-notice {",
+        ".qi-security-notice {",
         "  display: flex;",
         "  align-items: flex-start;",
         "  gap: 10px;",
@@ -511,25 +510,25 @@
         "  border: 1px solid #e2e8f0;",
         "  border-radius: 6px;",
         "}",
-        ".security-notice svg {",
+        ".qi-security-notice svg {",
         "  width: 18px;",
         "  height: 18px;",
         "  flex-shrink: 0;",
         "  fill: #475569;",
         "  margin-top: 2px;",
         "}",
-        ".security-notice-text {",
+        ".qi-security-notice-text {",
         "  display: flex;",
         "  flex-direction: column;",
         "  gap: 6px;",
         "}",
-        ".security-notice-text strong {",
+        ".qi-security-notice-text strong {",
         "  font-size: 13px;",
         "  color: #334155;",
         "  font-weight: 600;",
         "  word-break: keep-all;",
         "}",
-        ".security-notice-text span {",
+        ".qi-security-notice-text span {",
         "  font-size: 12px;",
         "  color: #64748b;",
         "  line-height: 1.5;",
@@ -543,11 +542,11 @@
 
       html.push(
         "<div ",
-        "class=\"overlay\" ",
-        "id=\"overlay\" ",
+        "class=\"qi-overlay\" ",
+        "id=\"qi-overlay\" ",
         "role=\"dialog\" ",
         "aria-modal=\"true\">",
-        "<div class=\"modal\">"
+        "<div class=\"qi-modal\">"
       );
 
       // =====================================================================
@@ -559,8 +558,8 @@
         html.push(
           "<button ",
           "type=\"button\" ",
-          "class=\"close\" ",
-          "id=\"btnClose\" ",
+          "class=\"qi-close\" ",
+          "id=\"qi-btnClose\" ",
           "aria-label=\"닫기\">",
           "×",
           "</button>"
@@ -572,13 +571,13 @@
       // =====================================================================
 
       html.push(
-        "<div class=\"eyebrow\">",
+        "<div class=\"qi-eyebrow\">",
         this.escapeHtml(this.uiEyebrow),
         "</div>",
         "<h2>",
         this.escapeHtml(this.uiTitle),
         "</h2>",
-        "<form id=\"quoteForm\">"
+        "<form id=\"qi-quoteForm\">"
       );
 
       // =====================================================================
@@ -609,18 +608,21 @@
           field.type ||
           "text";
 
+        // 내부 고유 ID 적용
+        var fieldId = "qi-input-" + fieldName;
+
         html.push(
-          "<div class=\"form-group\">",
+          "<div class=\"qi-form-group\">",
           "<label ",
           "for=\"",
-          this.escapeHtml(fieldName),
+          this.escapeHtml(fieldId),
           "\">",
           this.escapeHtml(fieldLabel)
         );
 
         if (field.required) {
           html.push(
-            " <span class=\"required\">*</span>"
+            " <span class=\"qi-required\">*</span>"
           );
         }
 
@@ -637,7 +639,7 @@
           html.push(
             "<textarea ",
             "id=\"",
-            this.escapeHtml(fieldName),
+            this.escapeHtml(fieldId),
             "\" ",
             "name=\"",
             this.escapeHtml(fieldName),
@@ -658,7 +660,7 @@
           html.push(
             "<select ",
             "id=\"",
-            this.escapeHtml(fieldName),
+            this.escapeHtml(fieldId),
             "\" ",
             "name=\"",
             this.escapeHtml(fieldName),
@@ -734,7 +736,7 @@
             this.escapeHtml(fieldType),
             "\" ",
             "id=\"",
-            this.escapeHtml(fieldName),
+            this.escapeHtml(fieldId),
             "\" ",
             "name=\"",
             this.escapeHtml(fieldName),
@@ -758,15 +760,15 @@
       }
 
       // =====================================================================
-      // 2. HTML 폼 렌더링 영역 (Submit 버튼 직전 / 중복 코드 제거됨)
+      // 2. 보안 안내 UI
       // =====================================================================
 
       html.push(
-        "<div class=\"security-notice\">",
+        "<div class=\"qi-security-notice\">",
         "  <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\">",
         "    <path d=\"M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z\"/>",
         "  </svg>",
-        "  <div class=\"security-notice-text\">",
+        "  <div class=\"qi-security-notice-text\">",
         "    <strong>100% 비밀글로 안전하게 접수됩니다.</strong>",
         "    <span>※ 열람 비밀번호는 <br><strong>'Qt + 연락처 뒷 4자리 + !!*'</strong> 로<br>자동 설정됩니다.</span>",
         "  </div>",
@@ -780,7 +782,7 @@
       html.push(
         "<button ",
         "type=\"submit\" ",
-        "class=\"btn-submit\">",
+        "class=\"qi-btn-submit\">",
         "문의 접수하기",
         "</button>",
         "</form>",
@@ -802,17 +804,17 @@
 
       var overlay =
         this.shadowRoot.getElementById(
-          "overlay"
+          "qi-overlay"
         );
 
       var btnClose =
         this.shadowRoot.getElementById(
-          "btnClose"
+          "qi-btnClose"
         );
 
       var form =
         this.shadowRoot.getElementById(
-          "quoteForm"
+          "qi-quoteForm"
         );
 
       if (!overlay || !form) {
@@ -936,7 +938,7 @@
 
           var submitBtn =
             form.querySelector(
-              ".btn-submit"
+              ".qi-btn-submit"
             );
 
           if (!submitBtn) {
@@ -1020,7 +1022,6 @@
 
           // -----------------------------------------------------------------
           // Cafe24 Board Content
-          // 모든 동적 필드를 게시판 본문으로 직렬화
           // -----------------------------------------------------------------
 
           var serializedContent =
@@ -1068,12 +1069,7 @@
           }
 
           // -----------------------------------------------------------------
-          // 기존 비밀번호 로직
-          //
-          // 예:
-          // 010-9063-3069
-          // ->
-          // Qt3069!!*
+          // 기존 비밀번호 로직 (Qt+연락처+!!*)
           // -----------------------------------------------------------------
 
           var phoneDigits =
@@ -1220,7 +1216,7 @@
         var form =
           this.shadowRoot &&
           this.shadowRoot.getElementById(
-            "quoteForm"
+            "qi-quoteForm"
           );
 
         if (form) {
