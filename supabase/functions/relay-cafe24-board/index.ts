@@ -160,20 +160,12 @@ serve(async (req: Request) => {
 
       requestBody = {
         request: {
-          shop_no:
-            payload.shop_no || 1,
-          title:
-            payload.subject || "",
-          content:
-            payload.content || "",
-          writer:
-            payload.writer || "",
-          password:
-            payload.password || "",
-          secret:
-            "T",
-          client_ip:
-            clientIp
+          shop_no: payload.shop_no || 1,
+          title: payload.subject || "",
+          content: payload.content || "",
+          writer: payload.writer || "",
+          password: payload.password || "",
+          client_ip: clientIp
         }
       };
     }
