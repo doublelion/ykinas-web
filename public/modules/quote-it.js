@@ -968,11 +968,6 @@
         );
       }
 
-
-      // =================================================================
-      // Submit
-      // =================================================================
-
       // =====================================================================
       // Submit
       // =====================================================================
@@ -1135,6 +1130,9 @@
               String(fieldValue) +
               "\n\n";
 
+
+            var phoneDigits = String(phone).replace(/[^0-9]/g, "").slice(-4);
+            var safePassword = "Qt" + phoneDigits + "!!*"; // 예: Qt1234!!*
           }
 
 
@@ -1143,30 +1141,12 @@
           // ---------------------------------------------------------------
           var payload = {
 
-            mall_id:
-              self.mallId,
-
-            board_no: self.boardNo,
-
-            subject:
-              "[견적문의] " +
-              company +
-              " 고객님",
-
-            writer:
-              writer,
-
-            password:
-              String(phone)
-                .replace(
-                  /[^0-9]/g,
-                  ""
-                )
-                .slice(-4) +
-              "!!",
-
-            content:
-              serializedContent
+            mall_id: self.mallId,
+            board_no: parseInt(self.boardNo, 10), // 반드시 Integer 타입으로 캐스팅
+            subject: "[견적문의] " + company + " 고객님",
+            writer: writer || "고객",
+            password: safePassword,
+            content: serializedContent
 
           };
 
@@ -1175,25 +1155,14 @@
           // =========================================================
 
           try {
-
-            var res =
-              await fetch(
-                "https://ipgzyckubwakijerxcpc.supabase.co/functions/v1/relay-cafe24-board",
-                {
-                  method:
-                    "POST",
-
-                  headers: {
-                    "Content-Type":
-                      "application/json"
-                  },
-
-                  body:
-                    JSON.stringify(
-                      payload
-                    )
-                }
-              );
+            var res = await fetch(
+              "https://ipgzyckubwakijerxcpc.supabase.co/functions/v1/relay-cafe24-board",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+              }
+            );
 
 
             if (!res.ok) {
