@@ -370,11 +370,124 @@
       var html = [];
 
       // =====================================================================
-      // CSS
+      // CSS (유실되었던 모든 스타일 복원)
       // =====================================================================
 
-
       html.push(
+        "<style>",
+        "*{box-sizing:border-box;}",
+        ":host{",
+        "display:block;",
+        "font-family:",
+        "'Pretendard',",
+        "'Noto Sans KR',",
+        "-apple-system,",
+        "BlinkMacSystemFont,",
+        "'Segoe UI',",
+        "sans-serif;",
+        "}",
+        ".overlay{",
+        wrapperStyle,
+        "}",
+        ".overlay.active{",
+        "opacity:1;",
+        "visibility:visible;",
+        "pointer-events:auto;",
+        "}",
+        ".overlay.active .modal{",
+        "transform:translateY(0) scale(1);",
+        "}",
+        ".modal{",
+        modalStyle,
+        "}",
+        ".close{",
+        "position:absolute;",
+        "top:18px;",
+        "right:20px;",
+        "width:40px;",
+        "height:40px;",
+        "border:0;",
+        "background:transparent;",
+        "font-size:24px;",
+        "font-weight:300;",
+        "line-height:1;",
+        "color:#222;",
+        "cursor:pointer;",
+        "}",
+        ".eyebrow{",
+        "margin-bottom:14px;",
+        "font-size:11px;",
+        "font-weight:600;",
+        "letter-spacing:.2em;",
+        "text-transform:uppercase;",
+        "color:#8a9a5b;",
+        "}",
+        "h2{",
+        "margin:0 0 36px;",
+        "font-family:'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;",
+        "font-size:clamp(32px,5vw,50px);",
+        "font-weight:400;",
+        "line-height:1.1;",
+        "letter-spacing:-.04em;",
+        "}",
+        ".form-group{",
+        "margin-bottom:22px;",
+        "}",
+        "label{",
+        "display:block;",
+        "margin-bottom:8px;",
+        "font-size:12px;",
+        "font-weight:600;",
+        "}",
+        ".required{",
+        "color:#8a9a5b;",
+        "}",
+        "input,textarea,select{",
+        "width:100%;",
+        "padding:13px 0;",
+        "border:0;",
+        "border-bottom:1px solid #d6d2ca;",
+        "outline:0;",
+        "background:transparent;",
+        "color:#222;",
+        "font:inherit;",
+        "font-size:15px;",
+        "border-radius:0;",
+        "}",
+        "input:focus,textarea:focus,select:focus{",
+        "border-bottom-color:#222;",
+        "}",
+        "textarea{",
+        "min-height:120px;",
+        "resize:vertical;",
+        "line-height:1.7;",
+        "}",
+        "select{",
+        "appearance:none;",
+        "-webkit-appearance:none;",
+        "cursor:pointer;",
+        "}",
+        ".btn-submit{",
+        "width:100%;",
+        "margin-top:18px;",
+        "padding:17px 20px;",
+        "border:0;",
+        "background:#222;",
+        "color:#fff;",
+        "font:inherit;",
+        "font-size:13px;",
+        "font-weight:600;",
+        "letter-spacing:.08em;",
+        "cursor:pointer;",
+        "transition:background .25s ease;",
+        "}",
+        ".btn-submit:hover{",
+        "background:#8a9a5b;",
+        "}",
+        ".btn-submit:disabled{",
+        "opacity:.55;",
+        "cursor:not-allowed;",
+        "}",
         "@media(max-width:640px){",
         ".overlay{",
         "padding:12px;",
@@ -387,9 +500,7 @@
         "font-size:clamp(30px,9vw,40px);",
         "margin-bottom:30px;",
         "}",
-        "}", // 반응형 쿼리 닫기
-
-        /* 여기서부터 배열(html.push) 내부에 정상적으로 포함되도록 수정 */
+        "}",
         ".security-notice {",
         "  display: flex;",
         "  align-items: flex-start;",
@@ -424,42 +535,19 @@
         "  line-height: 1.5;",
         "}",
         "</style>"
-      ); // 🚨 HTML PUSH 닫기
-
-
-      // =====================================================================
-      // 2. HTML 폼 렌더링 영역 (Submit 버튼 직전에 삽입)
-      // =====================================================================
-
-      html.push(
-        "<div class=\"security-notice\">",
-        "  <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\">",
-        "    <path d=\"M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z\"/>",
-        "  </svg>",
-        "  <div class=\"security-notice-text\">",
-        "    <strong>100% 비밀글로 안전하게 접수됩니다.</strong>",
-        // 줄바꿈(<br>) 적용 및 변경된 비밀번호 룰(Qt+번호+!!*) 반영
-        "    <span>※ 열람 비밀번호는 <br><strong>'Qt + 연락처 뒷 4자리 + !!*'</strong> 로<br>자동 설정됩니다.</span>",
-        "  </div>",
-        "</div>"
       );
 
-
       // =====================================================================
-      // 2. HTML 폼 렌더링 영역 (Submit 버튼 직전에 삽입)
+      // 1. 기본 마크업 및 래퍼
       // =====================================================================
 
       html.push(
-        "<div class=\"security-notice\">",
-        "  <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\">",
-        "    <path d=\"M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z\"/>",
-        "  </svg>",
-        "  <div class=\"security-notice-text\">",
-        "    <strong>100% 비밀글로 안전하게 접수됩니다.</strong>",
-        // 줄바꿈(<br>) 적용 및 변경된 비밀번호 룰(Qt+번호+!!*) 반영
-        "    <span>※ 열람 비밀번호는 <br><strong>'Qt + 연락처 뒷 4자리 + !!*'</strong> 로<br>자동 설정됩니다.</span>",
-        "  </div>",
-        "</div>"
+        "<div ",
+        "class=\"overlay\" ",
+        "id=\"overlay\" ",
+        "role=\"dialog\" ",
+        "aria-modal=\"true\">",
+        "<div class=\"modal\">"
       );
 
       // =====================================================================
@@ -668,7 +756,11 @@
           "</div>"
         );
       }
-      // 2. HTML 폼 렌더링 영역 (Submit 버튼 직전에 삽입)
+
+      // =====================================================================
+      // 2. HTML 폼 렌더링 영역 (Submit 버튼 직전 / 중복 코드 제거됨)
+      // =====================================================================
+
       html.push(
         "<div class=\"security-notice\">",
         "  <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\">",
@@ -676,10 +768,11 @@
         "  </svg>",
         "  <div class=\"security-notice-text\">",
         "    <strong>100% 비밀글로 안전하게 접수됩니다.</strong>",
-        "    <span>※ 열람 비밀번호는 '연락처 뒷 4자리 + !!' 로 자동 설정됩니다.</span>",
+        "    <span>※ 열람 비밀번호는 <br><strong>'Qt + 연락처 뒷 4자리 + !!*'</strong> 로<br>자동 설정됩니다.</span>",
         "  </div>",
         "</div>"
       );
+
       // =====================================================================
       // Submit
       // =====================================================================
@@ -1020,12 +1113,6 @@
             password:
               safePassword,
 
-            /*
-             * 비밀글 등록
-             *
-             * Cafe24 Board API
-             * secret = T
-             */
             secret:
               "T",
 
@@ -1300,20 +1387,12 @@
           config.injectPosition;
       }
 
-      // console.log(
-      //   "[QUOTE-IT] Config loaded:",
-      //   config
-      // );
-
     } catch (error) {
 
       console.error(
         "[QUOTE-IT CONFIG]",
         error
       );
-
-      // 서버 설정을 못 가져온 경우
-      // 기존 BASIC fallback 유지
     }
   }
 
@@ -1326,10 +1405,6 @@
     var currentMode =
       globalConfig.displayMode ||
       "popup";
-
-    // [안전장치]
-    // 서버에서 값이 오지 않아도
-    // ReferenceError가 나지 않도록 빈 문자열 할당
 
     var targetSelector =
       globalConfig.targetSelector ||
@@ -1428,7 +1503,6 @@
 
     // =======================================================================
     // initQuoteIt() 내부의 injectInline() 함수
-    // 동적 위치 주입
     // =======================================================================
 
     function injectInline(
@@ -1465,17 +1539,9 @@
         inlineAnchor.style.margin =
           "40px 0";
 
-        // [수정]
-        // 하드코딩된 "afterend" 대신
-        // 서버 설정값 사용
-        // 기본값 fallback 제공
-
         var position =
           globalConfig.injectPosition ||
           "afterend";
-
-        // 타겟 요소 기준 지정된 위치
-        // 예: beforebegin
 
         targetElem.insertAdjacentElement(
           position,
@@ -1512,10 +1578,6 @@
       );
     }
 
-    // =======================================================================
-    // 서버 설정값 자체가 유효하지 않으면 탐색을 시작하지 않음
-    // =======================================================================
-
     if (
       typeof targetSelector !==
       "string" ||
@@ -1529,20 +1591,12 @@
       return;
     }
 
-    // =======================================================================
-    // 비동기 렌더링 대응 Polling
-    // 최대 3초 대기
-    // =======================================================================
-
     var maxAttempts = 30;
     var attempts = 0;
 
     var checkExist =
       setInterval(
         function () {
-
-          // document.body.querySelector를 통해
-          // 문서 본문 내에서만 안전하게 탐색
 
           var targetElement =
             document.body
