@@ -565,21 +565,34 @@
 
         ".security-notice {",
         "  display: flex;",
-        "  align-items: center;",
+        "  align-items: flex-start;",
         "  gap: 8px;",
-        "  padding: 12px 16px;",
-        "  background: #f0f4f8;", // 신뢰감을 주는 연한 블루
-        "  border-radius: 4px;",
-        "  margin-bottom: 22px;",
-        "  font-size: 13px;",
-        "  color: #334155;",
+        "  padding: 14px 16px;",
+        "  margin-bottom: 24px;",
+        "  background-color: #f8fafc;",
+        "  border: 1px solid #e2e8f0;",
+        "  border-radius: 6px;",
         "}",
         ".security-notice svg {",
-        "  width: 16px;",
-        "  height: 16px;",
+        "  width: 18px;",
+        "  height: 18px;",
+        "  flex-shrink: 0;",
         "  fill: #475569;",
+        "  margin-top: 2px;",
         "}",
-
+        ".security-notice-text {",
+        "  display: flex;",
+        "  flex-direction: column;",
+        "  gap: 4px;",
+        "}",
+        ".security-notice-text strong {",
+        "  font-size: 13px;",
+        "  color: #334155;",
+        "  font-weight: 600;",
+        "}",
+        ".security-notice-text span {",
+        "  font-size: 12px;",
+        "  color: #64748b;",
         "}",
 
         "</style>"
@@ -837,14 +850,13 @@
       // Dynamic Fields 루프(for문)가 끝난 후, Submit 버튼 삽입 전에 아래 코드 추가
 
       html.push(
-        // 🔒 자물쇠 아이콘(SVG) 및 안내 문구 영역
         "<div class=\"security-notice\">",
         "  <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\">",
         "    <path d=\"M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z\"/>",
         "  </svg>",
-        "  <div>",
-        "    <strong>100% 비밀글로 안전하게 접수됩니다.</strong><br/>",
-        "    <span style=\"font-size:11.5px; color:#64748b;\">※ 열람 비밀번호는 '연락처 뒷 4자리 + !!' 로 자동 설정됩니다.</span>",
+        "  <div class=\"security-notice-text\">",
+        "    <strong>100% 비밀글로 안전하게 접수됩니다.</strong>",
+        "    <span>※ 열람 비밀번호는 '연락처 뒷 4자리 + !!' 로 자동 설정됩니다.</span>",
         "  </div>",
         "</div>",
 

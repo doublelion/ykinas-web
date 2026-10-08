@@ -125,28 +125,20 @@ serve(async (req: Request) => {
         ) {
 
             requestBody = {
-                shop_no: payload.shop_no || 1,
-
-                requests: payload.requests.map(
-                    (item: any) => ({
-                        title:
-                            item.title ||
-                            item.subject ||
-                            "",
-
-                        content:
-                            item.content || "",
-
-                        writer:
-                            item.writer || "",
-
-                        password:
-                            item.password || "",
-
-                        client_ip:
-                            clientIp
-                    })
-                )
+                shop_no: payload.shop_no || 1, // 배열 밖으로 분리
+                requests: [
+                    {
+                        title: payload.subject || "",
+                        content: payload.content || "",
+                        writer: payload.writer || "",
+                        // 프론트엔드에서 넘겨준 패스워드. 비회원 비밀글 열람의 핵심 Key입니다.
+                        password: payload.password || "",
+                        // 카페24 게시판 비밀글 강제 옵션 (반드시 문자열 "T")
+                        secret: "T", 
+                        client_ip: clientIp,
+                        input_channel: "P"
+                    }
+                ]
             };
 
         } else {
