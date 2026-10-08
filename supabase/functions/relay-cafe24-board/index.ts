@@ -103,13 +103,16 @@ serve(async (req: Request) => {
     }
 
     const clientIpHeader = req.headers.get("x-forwarded-for");
+
+    // 1. 재할당이 가능하도록 반드시 'let'으로 선언합니다.
     let clientIp = clientIpHeader ? clientIpHeader.split(",")[0].trim() : "127.0.0.1";
 
-    // 카페24는 IPv4만 허용하므로, IPv6 형식이 들어오면 기본값으로 치환
+    // 2. IPv6 규격이 들어왔을 경우 카페24가 허용하는 IPv4 기본값으로 치환
     if (clientIp.includes(":")) {
       clientIp = "127.0.0.1";
     }
-    // 2. 완벽한 규격의 페이로드 조립
+
+    // 3. 완벽한 규격의 페이로드 조립
     const requestBody = {
       shop_no: payload.shop_no || 1,
       requests: [
@@ -117,9 +120,9 @@ serve(async (req: Request) => {
           title: payload.subject || "제목 없음",
           content: payload.content || "내용 없음",
           writer: payload.writer || "익명",
-          password: payload.password || "1234", // 비회원 비밀글 필수
-          secret: "T",                          // 비밀글 강제
-          client_ip: clientIp,                  // 🚨 422 에러 해결의 핵심 (필수)
+          password: payload.password || "1234",
+          secret: "T",
+          client_ip: clientIp, // 정제된 IPv4 값이 안전하게 맵핑됨
           input_channel: "P"
         }
       ]
