@@ -150,22 +150,12 @@ serve(async (req: Request) => {
       };
 
     } else {
-
-      /*
-       * --------------------------------------------------------
-       * QUOTE-IT
-       * 단일 request 구조
-       * --------------------------------------------------------
-       */
-
       requestBody = {
         request: {
           shop_no: payload.shop_no || 1,
           title: payload.subject || "",
           content: payload.content || "",
-          writer: payload.writer || "",
-          password: payload.password || "",
-          client_ip: clientIp
+          writer: payload.writer || ""
         }
       };
     }
@@ -176,6 +166,11 @@ serve(async (req: Request) => {
       ".cafe24api.com/api/v2/admin/boards/" +
       payload.board_no +
       "/articles";
+
+    console.log(
+      "[QUOTE-IT CAFE24 REQUEST]",
+      JSON.stringify(requestBody)
+    );
 
     let cafe24Res =
       await fetchWithFailover(
