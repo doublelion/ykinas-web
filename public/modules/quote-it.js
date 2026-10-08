@@ -1142,11 +1142,11 @@
           // Payload
           // ---------------------------------------------------------------
           var payload = {
-
             mall_id:
               self.mallId,
 
-            board_no: self.boardNo,
+            board_no:
+              self.boardNo,
 
             subject:
               "[견적문의] " +
@@ -1156,18 +1156,8 @@
             writer:
               writer,
 
-            password:
-              String(phone)
-                .replace(
-                  /[^0-9]/g,
-                  ""
-                )
-                .slice(-4) +
-              "!!",
-
             content:
               serializedContent
-
           };
 
           // =========================================================
