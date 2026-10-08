@@ -182,13 +182,13 @@ serve(async (req: Request) => {
 
     const modulesConfig =
       licenseData?.modules_config &&
-      typeof licenseData.modules_config === "object"
+        typeof licenseData.modules_config === "object"
         ? licenseData.modules_config
         : {};
 
     const quoteit =
       modulesConfig.quoteit &&
-      typeof modulesConfig.quoteit === "object"
+        typeof modulesConfig.quoteit === "object"
         ? modulesConfig.quoteit
         : {};
 
@@ -222,81 +222,81 @@ serve(async (req: Request) => {
     // ============================================================
 
     const responsePayload = {
-  debugVersion: "QUOTE-IT-20261007-TEST",
+      debugVersion: "QUOTE-IT-20261007-TEST",
 
-  tier: quoteit.tier || "BASIC",
+      tier: quoteit.tier || "BASIC",
 
-  enabled:
-    configData?.enabled !== null &&
-    configData?.enabled !== undefined
-      ? configData.enabled
-      : quoteit.enabled !== false,
+      enabled:
+        configData?.enabled !== null &&
+          configData?.enabled !== undefined
+          ? configData.enabled
+          : quoteit.enabled !== false,
 
-  fields:
-    Array.isArray(configData?.fields)
-      ? configData.fields
-      : Array.isArray(quoteit.fields)
-        ? quoteit.fields
-        : [],
+      fields:
+        Array.isArray(configData?.fields)
+          ? configData.fields
+          : Array.isArray(quoteit.fields)
+            ? quoteit.fields
+            : [],
 
-  displayMode:
-    configData?.display_mode ||
-    quoteit.displayMode ||
-    "inline",
+      displayMode:
+        configData?.display_mode ||
+        quoteit.displayMode ||
+        "inline",
 
-  targetBoardNo:
-    configData?.target_board_no ||
-    quoteit.targetBoardNo ||
-    1002,
+      targetBoardNo:
+        configData?.target_board_no ||
+        quoteit.targetBoardNo ||
+        1002,
 
-  targetSelector:
-    configData?.target_selector ||
-    "",
+      targetSelector:
+        configData?.target_selector ||
+        "",
 
-  ui_text:
-    configData?.ui_text &&
-    typeof configData.ui_text === "object"
-      ? configData.ui_text
-      : quoteit.ui_text &&
-          typeof quoteit.ui_text === "object"
-        ? quoteit.ui_text
-        : {},
+      ui_text:
+        configData?.ui_text &&
+          typeof configData.ui_text === "object"
+          ? configData.ui_text
+          : quoteit.ui_text &&
+            typeof quoteit.ui_text === "object"
+            ? quoteit.ui_text
+            : {},
 
-  ui_theme:
-    configData?.ui_theme &&
-    typeof configData.ui_theme === "object"
-      ? configData.ui_theme
-      : quoteit.ui_theme &&
-          typeof quoteit.ui_theme === "object"
-        ? quoteit.ui_theme
-        : {},
+      ui_theme:
+        configData?.ui_theme &&
+          typeof configData.ui_theme === "object"
+          ? configData.ui_theme
+          : quoteit.ui_theme &&
+            typeof quoteit.ui_theme === "object"
+            ? quoteit.ui_theme
+            : {},
 
-  injectPosition:
-    configData?.inject_position ||
-    "after",
-};
+      injectPosition:
+        configData?.inject_position ||
+        "after",
+    };
 
     // ============================================================
     // Response
     // ============================================================
 
     console.log(
-  "[QUOTE-IT CONFIG RESPONSE]",
-  JSON.stringify(responsePayload)
-);
+      "[QUOTE-IT CONFIG RESPONSE]",
+      JSON.stringify(responsePayload)
+    );
 
-return new Response(
-  JSON.stringify(responsePayload),
-  {
-    status: 200,
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json",
-      "Cache-Control":
-        "no-store, no-cache, must-revalidate",
-    },
-  },
-);
+    return new Response(
+      JSON.stringify(responsePayload),
+      {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate",
+        },
+      },
+    );
   } catch (error) {
     console.error(
       "[QUOTE-IT CONFIG] Unexpected error:",
