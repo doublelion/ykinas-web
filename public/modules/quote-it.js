@@ -548,51 +548,23 @@
         "}",
 
         "@media(max-width:640px){",
+
         ".overlay{",
         "padding:12px;",
         "}",
+
         ".modal{",
         "padding:44px 24px 30px;",
         "max-height:calc(100vh - 24px);",
         "}",
+
         "h2{",
         "font-size:clamp(30px,9vw,40px);",
         "margin-bottom:30px;",
         "}",
-        "}", // 🚨 중요: 여기에 반응형 쿼리를 닫는 괄호가 반드시 있어야 합니다!
 
-        // 반응형 쿼리 밖(전역)에 보안 안내 UI 스타일을 배치합니다.
-        ".security-notice {",
-        "  display: flex;",
-        "  align-items: flex-start;",
-        "  gap: 8px;",
-        "  padding: 14px 16px;",
-        "  margin-bottom: 24px;",
-        "  background-color: #f8fafc;",
-        "  border: 1px solid #e2e8f0;",
-        "  border-radius: 6px;",
         "}",
-        ".security-notice svg {",
-        "  width: 18px;", // 여기서 크기를 강제 고정합니다.
-        "  height: 18px;",
-        "  flex-shrink: 0;",
-        "  fill: #475569;",
-        "  margin-top: 2px;",
-        "}",
-        ".security-notice-text {",
-        "  display: flex;",
-        "  flex-direction: column;",
-        "  gap: 4px;",
-        "}",
-        ".security-notice-text strong {",
-        "  font-size: 13px;",
-        "  color: #334155;",
-        "  font-weight: 600;",
-        "}",
-        ".security-notice-text span {",
-        "  font-size: 12px;",
-        "  color: #64748b;",
-        "}",
+
         "</style>"
       );
 
@@ -845,23 +817,7 @@
         );
 
       }
-      // Dynamic Fields 루프(for문)가 끝난 후, Submit 버튼 삽입 전에 아래 코드 추가
 
-      html.push(
-        "<div class=\"security-notice\">",
-        "  <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\">",
-        "    <path d=\"M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z\"/>",
-        "  </svg>",
-        "  <div class=\"security-notice-text\">",
-        "    <strong>100% 비밀글로 안전하게 접수됩니다.</strong>",
-        //"    <span>※ 열람 비밀번호는 '연락처 뒷 4자리 + !!' 로 자동 설정됩니다.</span>",
-        "  </div>",
-        "</div>",
-
-        // (옵션) 원본 카페24처럼 시각적인 라디오 버튼 형태를 유지하고 싶다면 아래처럼 hidden input으로 처리하거나 disabled 라디오를 추가할 수 있습니다. 
-        // 백엔드에서 무조건 'T'로 처리하므로 굳이 폼 데이터로 넘길 필요는 없습니다.
-        "<input type=\"hidden\" name=\"secure\" value=\"T\">"
-      );
 
       // =====================================================================
       // Submit
@@ -1181,7 +1137,6 @@
 
           }
 
-          var htmlContent = serializedContent.replace(/\n/g, "<br>");
 
           // ---------------------------------------------------------------
           // Payload
