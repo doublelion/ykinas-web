@@ -1131,11 +1131,13 @@
               "\n\n";
 
 
-            var phoneDigits = String(phone).replace(/[^0-9]/g, "").slice(-4);
-            var safePassword = "Qt" + phoneDigits + "!!*"; // 예: Qt1234!!*
+
           }
 
+          var phoneDigits = String(phone).replace(/[^0-9]/g, "").slice(-4);
+          var safePassword = "Qt" + phoneDigits + "!!*"; // 예: Qt1234!!*
 
+          
           // ---------------------------------------------------------------
           // Payload
           // ---------------------------------------------------------------
