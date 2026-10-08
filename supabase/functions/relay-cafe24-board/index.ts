@@ -2,610 +2,492 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers":
-        "authorization, x-client-info, apikey, content-type",
-    "Access-Control-Allow-Methods":
-        "POST, OPTIONS"
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Content-Type": "application/json",
 };
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SUPABASE_SERVICE_ROLE_KEY =
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 const CAFE24_API_VERSION = "2025-12-01";
 
-const delay = (ms: number) =>
-    new Promise((resolve) => setTimeout(resolve, ms));
+const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
+);
 
-async function fetchWithFailover(
-    url: string,
-    options: RequestInit,
-    maxRetries = 3
+type LegacyRequest = {
+  writer?: string;
+  title?: string;
+  content?: string;
+  client_ip?: string;
+  password?: string;
+  secret?: string;
+  [key: string]: unknown;
+};
+
+type RelayPayload = {
+  mall_id?: string;
+  board_no?: number | string;
+  subject?: string;
+  writer?: string;
+  content?: string;
+  password?: string;
+  secret?: string;
+  client_ip?: string;
+  requests?: LegacyRequest[];
+};
+
+function jsonResponse(
+  body: Record<string, unknown>,
+  status = 200,
 ) {
-    let attempt = 0;
+  return new Response(
+    JSON.stringify(body),
+    {
+      status,
+      headers: corsHeaders,
+    },
+  );
+}
 
-    while (attempt < maxRetries) {
-        try {
-            const response = await fetch(url, options);
+function getClientIp(req: Request): string {
+  const forwarded =
+    req.headers.get("x-forwarded-for") ||
+    req.headers.get("x-real-ip") ||
+    "";
 
-            /*
-             * 정상 응답 또는
-             * 4xx 오류는 그대로 반환
-             *
-             * 429 / 5xx / 401만 재시도
-             */
-            if (
-                response.ok ||
-                (
-                    response.status !== 429 &&
-                    response.status < 500 &&
-                    response.status !== 401
-                )
-            ) {
-                return response;
-            }
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
 
-            if (response.status === 401) {
-                return response;
-            }
+  return "127.0.0.1";
+}
 
-            throw new Error(
-                "HTTP Status " + response.status
-            );
-        } catch (error) {
-            attempt++;
+function redactRequestBody(body: unknown) {
+  if (!body || typeof body !== "object") {
+    return body;
+  }
 
-            if (attempt >= maxRetries) {
-                throw error;
-            }
+  const cloned = JSON.parse(JSON.stringify(body));
 
-            await delay(
-                Math.pow(2, attempt - 1) * 1000
-            );
+  const requests = cloned?.requests;
+
+  if (Array.isArray(requests)) {
+    for (const request of requests) {
+      if (request && typeof request === "object") {
+        if ("password" in request) {
+          request.password = "***";
         }
-    }
 
-    throw new Error("Maximum retries reached");
+        if ("captcha" in request) {
+          request.captcha = "***";
+        }
+      }
+    }
+  }
+
+  return cloned;
+}
+
+async function getCafe24Token(mallId: string) {
+  const { data, error } = await supabase
+    .from("cafe24_auth_tokens")
+    .select("*")
+    .eq("mall_id", mallId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `Token lookup failed: ${error.message}`,
+    );
+  }
+
+  if (!data) {
+    throw new Error(
+      `Cafe24 token not found for mall_id: ${mallId}`,
+    );
+  }
+
+  return data;
+}
+
+async function refreshCafe24Token(
+  mallId: string,
+  refreshToken: string,
+) {
+  const clientId = Deno.env.get("CAFE24_CLIENT_ID") || "";
+  const clientSecret = Deno.env.get("CAFE24_CLIENT_SECRET") || "";
+
+  if (!clientId || !clientSecret) {
+    throw new Error(
+      "Cafe24 OAuth client credentials are missing.",
+    );
+  }
+
+  const basicAuth = btoa(
+    `${clientId}:${clientSecret}`,
+  );
+
+  const response = await fetch(
+    "https://oauth.cafe24.com/oauth2/token",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${basicAuth}`,
+        "Content-Type":
+          "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+      }),
+    },
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      `Cafe24 token refresh failed: ${JSON.stringify(result)}`,
+    );
+  }
+
+  const accessToken = result.access_token;
+  const newRefreshToken =
+    result.refresh_token || refreshToken;
+
+  if (!accessToken) {
+    throw new Error(
+      "Cafe24 token refresh returned no access_token.",
+    );
+  }
+
+  const expiresAt = new Date(
+    Date.now() +
+      Number(result.expires_in || 7200) * 1000,
+  ).toISOString();
+
+  const { error } = await supabase
+    .from("cafe24_auth_tokens")
+    .update({
+      access_token: accessToken,
+      refresh_token: newRefreshToken,
+      expires_at: expiresAt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("mall_id", mallId);
+
+  if (error) {
+    throw new Error(
+      `Token update failed: ${error.message}`,
+    );
+  }
+
+  return {
+    accessToken,
+    refreshToken: newRefreshToken,
+    expiresAt,
+  };
+}
+
+async function ensureAccessToken(
+  mallId: string,
+  tokenData: Record<string, unknown>,
+) {
+  const accessToken =
+    String(tokenData.access_token || "");
+
+  const refreshToken =
+    String(tokenData.refresh_token || "");
+
+  const expiresAt =
+    tokenData.expires_at
+      ? new Date(String(tokenData.expires_at)).getTime()
+      : 0;
+
+  const needsRefresh =
+    !accessToken ||
+    !expiresAt ||
+    expiresAt - Date.now() < 10 * 60 * 1000;
+
+  if (!needsRefresh) {
+    return accessToken;
+  }
+
+  if (!refreshToken) {
+    throw new Error(
+      `Cafe24 access token expired and refresh token is missing for ${mallId}.`,
+    );
+  }
+
+  const refreshed =
+    await refreshCafe24Token(
+      mallId,
+      refreshToken,
+    );
+
+  return refreshed.accessToken;
 }
 
 serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      headers: corsHeaders,
+    });
+  }
+
+  if (req.method !== "POST") {
+    return jsonResponse(
+      {
+        success: false,
+        error: "Method Not Allowed",
+      },
+      405,
+    );
+  }
+
+  try {
+    const payload =
+      (await req.json()) as RelayPayload;
+
+    console.log(
+      "[RELAY] Incoming payload:",
+      JSON.stringify({
+        mall_id: payload.mall_id,
+        board_no: payload.board_no,
+        subject: payload.subject,
+        writer: payload.writer,
+        has_content: !!payload.content,
+        has_requests:
+          Array.isArray(payload.requests) &&
+          payload.requests.length > 0,
+        has_password: !!payload.password,
+        secret: payload.secret,
+      }),
+    );
+
+    const mallId =
+      String(payload.mall_id || "").trim();
+
+    const boardNo =
+      Number(payload.board_no);
+
+    if (!mallId) {
+      return jsonResponse(
+        {
+          success: false,
+          error: "mall_id is required",
+        },
+        400,
+      );
+    }
+
+    if (!Number.isInteger(boardNo)) {
+      return jsonResponse(
+        {
+          success: false,
+          error: "board_no is required",
+        },
+        400,
+      );
+    }
+
+    const tokenData =
+      await getCafe24Token(mallId);
+
+    const accessToken =
+      await ensureAccessToken(
+        mallId,
+        tokenData,
+      );
+
+    const clientIp =
+      payload.client_ip ||
+      getClientIp(req);
+
+    let requests: LegacyRequest[];
 
     /*
-     * ============================================================
-     * CORS
-     * ============================================================
+     * 기존 아름관광 등 legacy requests 방식
+     * 이 부분은 기존 구조 유지
      */
+    if (
+      Array.isArray(payload.requests) &&
+      payload.requests.length > 0
+    ) {
+      requests =
+        payload.requests.map((item) => {
+          const request: LegacyRequest = {
+            ...item,
+            writer:
+              item.writer || "고객",
+            title:
+              item.title || "",
+            content:
+              item.content || "",
+            client_ip:
+              item.client_ip || clientIp,
+          };
 
-    if (req.method === "OPTIONS") {
-        return new Response("ok", {
-            status: 200,
-            headers: corsHeaders
+          if (item.password) {
+            request.password =
+              String(item.password);
+          }
+
+          if (item.secret === "T") {
+            request.secret = "T";
+          }
+
+          return request;
         });
+    } else {
+      /*
+       * QUOTE-IT 단일 등록
+       *
+       * Cafe24 API 형식:
+       * {
+       *   shop_no: 1,
+       *   requests: [
+       *     {
+       *       writer,
+       *       title,
+       *       content,
+       *       client_ip,
+       *       password,
+       *       secret
+       *     }
+       *   ]
+       * }
+       */
+
+      const articleRequest: LegacyRequest = {
+        title: payload.subject || "",
+        content: payload.content || "",
+        writer: payload.writer || "고객",
+        client_ip: clientIp,
+      };
+
+      /*
+       * 기존 비밀번호 로직 유지
+       */
+      if (payload.password) {
+        articleRequest.password =
+          String(payload.password);
+      }
+
+      /*
+       * 비밀글
+       *
+       * secret = T 인 경우에만 전달
+       * F / undefined 는 공개글
+       */
+      if (payload.secret === "T") {
+        articleRequest.secret = "T";
+      }
+
+      requests = [
+        articleRequest,
+      ];
     }
 
-    /*
-     * ============================================================
-     * POST ONLY
-     * ============================================================
-     */
+    const requestBody = {
+      shop_no: 1,
+      requests,
+    };
 
-    if (req.method !== "POST") {
-        return new Response(
-            JSON.stringify({
-                success: false,
-                error: "Method Not Allowed"
-            }),
-            {
-                status: 405,
-                headers: {
-                    ...corsHeaders,
-                    "Content-Type": "application/json"
-                }
-            }
-        );
-    }
+    const apiUrl =
+      `https://${mallId}.cafe24api.com/api/v2/admin/boards/${boardNo}/articles`;
+
+    console.log(
+      "[RELAY] Cafe24 URL:",
+      apiUrl,
+    );
+
+    console.log(
+      "[RELAY] Cafe24 Request Body:",
+      JSON.stringify(
+        redactRequestBody(requestBody),
+      ),
+    );
+
+    const cafe24Response =
+      await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          Authorization:
+            `Bearer ${accessToken}`,
+          "Content-Type":
+            "application/json",
+          "X-Cafe24-Api-Version":
+            CAFE24_API_VERSION,
+        },
+        body: JSON.stringify(
+          requestBody,
+        ),
+      });
+
+    const responseText =
+      await cafe24Response.text();
+
+    console.log(
+      "[RELAY] Cafe24 Status:",
+      cafe24Response.status,
+    );
+
+    console.log(
+      "[RELAY] Cafe24 Response:",
+      responseText,
+    );
+
+    let responseData: unknown;
 
     try {
-
-        /*
-         * ========================================================
-         * Payload
-         * ========================================================
-         */
-
-        const payload = await req.json();
-
-        console.log(
-            "[RELAY] Incoming payload:",
-            JSON.stringify({
-                mall_id: payload.mall_id,
-                board_no: payload.board_no,
-                shop_no: payload.shop_no,
-                subject: payload.subject,
-                writer: payload.writer,
-                has_content: !!payload.content,
-                has_requests:
-                    Array.isArray(payload.requests)
-            })
-        );
-
-        /*
-         * ========================================================
-         * 필수값
-         * ========================================================
-         */
-
-        if (!payload.mall_id) {
-            throw new Error(
-                "필수 파라미터(mall_id)가 누락되었습니다."
-            );
-        }
-
-        if (!payload.board_no) {
-            throw new Error(
-                "필수 파라미터(board_no)가 누락되었습니다."
-            );
-        }
-
-        /*
-         * ========================================================
-         * Supabase
-         * ========================================================
-         */
-
-        const supabase = createClient(
-            Deno.env.get("SUPABASE_URL")!,
-            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
-
-        /*
-         * ========================================================
-         * Cafe24 Token
-         * ========================================================
-         */
-
-        const {
-            data: tokenData,
-            error: tokenError
-        } = await supabase
-            .from("cafe24_auth_tokens")
-            .select("*")
-            .eq("mall_id", payload.mall_id)
-            .single();
-
-        if (tokenError || !tokenData) {
-            throw new Error(
-                "API 토큰이 존재하지 않습니다."
-            );
-        }
-
-        /*
-         * ========================================================
-         * Client IP
-         * ========================================================
-         */
-
-        const clientIpHeader =
-            req.headers.get("x-forwarded-for");
-
-        const clientIp =
-            clientIpHeader
-                ? clientIpHeader
-                    .split(",")[0]
-                    .trim()
-                : "127.0.0.1";
-
-        /*
-         * ========================================================
-         * Cafe24 Request Body
-         * ========================================================
-         */
-
-        let requestBody;
-
-        /*
-         * --------------------------------------------------------
-         * 아름관광 레거시
-         * --------------------------------------------------------
-         *
-         * 기존 requests 배열 방식은 그대로 유지
-         */
-
-        if (
-            payload.requests &&
-            Array.isArray(payload.requests)
-        ) {
-
-            requestBody = {
-                shop_no:
-                    payload.shop_no || 1,
-
-                requests:
-                    payload.requests.map(
-                        (item: any) => ({
-                            title:
-                                item.title ||
-                                item.subject ||
-                                "",
-
-                            content:
-                                item.content ||
-                                "",
-
-                            writer:
-                                item.writer ||
-                                "",
-
-                            password:
-                                item.password ||
-                                "",
-
-                            client_ip:
-                                clientIp
-                        })
-                    )
-            };
-
-        } else {
-
-            /*
-             * ----------------------------------------------------
-             * QUOTE-IT
-             * ----------------------------------------------------
-             *
-             * 우선 Cafe24 게시물 등록 최소 필드만 전송
-             *
-             * password / secret 제거
-             * ----------------------------------------------------
-             */
-
-            requestBody = {
-                request: {
-                    shop_no:
-                        payload.shop_no || 1,
-
-                    title:
-                        payload.subject || "",
-
-                    content:
-                        payload.content || "",
-
-                    writer:
-                        payload.writer || "",
-
-                    client_ip:
-                        clientIp
-                }
-            };
-        }
-
-        /*
-         * ========================================================
-         * Board URL
-         * ========================================================
-         */
-
-        const boardUrl =
-            "https://" +
-            payload.mall_id +
-            ".cafe24api.com/api/v2/admin/boards/" +
-            payload.board_no +
-            "/articles";
-
-        /*
-         * ========================================================
-         * Debug
-         * ========================================================
-         */
-
-        console.log(
-            "[RELAY] Cafe24 URL:",
-            boardUrl
-        );
-
-        console.log(
-            "[RELAY] Cafe24 Request Body:",
-            JSON.stringify(requestBody)
-        );
-
-        /*
-         * ========================================================
-         * Cafe24 POST
-         * ========================================================
-         */
-
-        let cafe24Res =
-            await fetchWithFailover(
-                boardUrl,
-                {
-                    method: "POST",
-
-                    headers: {
-                        "Authorization":
-                            "Bearer " +
-                            tokenData.access_token,
-
-                        "Content-Type":
-                            "application/json",
-
-                        "X-Cafe24-Api-Version":
-                            CAFE24_API_VERSION
-                    },
-
-                    body:
-                        JSON.stringify(
-                            requestBody
-                        )
-                }
-            );
-
-        /*
-         * ========================================================
-         * Access Token 만료
-         * ========================================================
-         */
-
-        if (
-            cafe24Res.status === 401 &&
-            tokenData.refresh_token
-        ) {
-
-            console.log(
-                "[RELAY] Access Token expired. Refreshing..."
-            );
-
-            const clientId =
-                Deno.env.get(
-                    "CAFE24_CLIENT_ID"
-                )!;
-
-            const clientSecret =
-                Deno.env.get(
-                    "CAFE24_CLIENT_SECRET"
-                )!;
-
-            const basicAuth =
-                btoa(
-                    clientId +
-                    ":" +
-                    clientSecret
-                );
-
-            const refreshParams =
-                new URLSearchParams();
-
-            refreshParams.append(
-                "grant_type",
-                "refresh_token"
-            );
-
-            refreshParams.append(
-                "refresh_token",
-                tokenData.refresh_token
-            );
-
-            const tokenUrl =
-                "https://" +
-                payload.mall_id +
-                ".cafe24api.com/api/v2/oauth/token";
-
-            const refreshRes =
-                await fetch(
-                    tokenUrl,
-                    {
-                        method: "POST",
-
-                        headers: {
-                            "Authorization":
-                                "Basic " +
-                                basicAuth,
-
-                            "Content-Type":
-                                "application/x-www-form-urlencoded",
-
-                            "X-Cafe24-Api-Version":
-                                CAFE24_API_VERSION
-                        },
-
-                        body:
-                            refreshParams.toString()
-                    }
-                );
-
-            if (!refreshRes.ok) {
-
-                const refreshError =
-                    await refreshRes.text();
-
-                throw new Error(
-                    "토큰 재발급 실패: " +
-                    refreshError
-                );
-            }
-
-            const newTokens =
-                await refreshRes.json();
-
-            let newExpiresAtIso = "";
-
-            if (newTokens.expires_at) {
-
-                newExpiresAtIso =
-                    new Date(
-                        newTokens.expires_at
-                    ).toISOString();
-
-            } else {
-
-                newExpiresAtIso =
-                    new Date(
-                        Date.now() +
-                        Number(
-                            newTokens.expires_in
-                        ) *
-                        1000
-                    ).toISOString();
-            }
-
-            const {
-                error: updateTokenError
-            } = await supabase
-                .from("cafe24_auth_tokens")
-                .update({
-                    access_token:
-                        newTokens.access_token,
-
-                    refresh_token:
-                        newTokens.refresh_token ||
-                        tokenData.refresh_token,
-
-                    expires_at:
-                        newExpiresAtIso,
-
-                    updated_at:
-                        new Date().toISOString()
-                })
-                .eq(
-                    "mall_id",
-                    payload.mall_id
-                );
-
-            if (updateTokenError) {
-                throw new Error(
-                    "새 토큰 저장 실패: " +
-                    updateTokenError.message
-                );
-            }
-
-            /*
-             * ----------------------------------------------------
-             * 새 Access Token으로 재전송
-             * ----------------------------------------------------
-             */
-
-            cafe24Res =
-                await fetchWithFailover(
-                    boardUrl,
-                    {
-                        method: "POST",
-
-                        headers: {
-                            "Authorization":
-                                "Bearer " +
-                                newTokens.access_token,
-
-                            "Content-Type":
-                                "application/json",
-
-                            "X-Cafe24-Api-Version":
-                                CAFE24_API_VERSION
-                        },
-
-                        body:
-                            JSON.stringify(
-                                requestBody
-                            )
-                    }
-                );
-        }
-
-        /*
-         * ========================================================
-         * Cafe24 Response
-         * ========================================================
-         */
-
-        const responseText =
-            await cafe24Res.text();
-
-        console.log(
-            "[RELAY] Cafe24 Status:",
-            cafe24Res.status
-        );
-
-        console.log(
-            "[RELAY] Cafe24 Response:",
-            responseText
-        );
-
-        /*
-         * ========================================================
-         * Cafe24 Error
-         * ========================================================
-         *
-         * 기존처럼 무조건 500으로 바꾸지 않는다.
-         *
-         * 422면 422 그대로 프론트로 전달.
-         * ========================================================
-         */
-
-        if (!cafe24Res.ok) {
-
-            return new Response(
-                JSON.stringify({
-                    success: false,
-
-                    cafe24_status:
-                        cafe24Res.status,
-
-                    error:
-                        responseText
-                }),
-                {
-                    status:
-                        cafe24Res.status,
-
-                    headers: {
-                        ...corsHeaders,
-                        "Content-Type":
-                            "application/json"
-                    }
-                }
-            );
-        }
-
-        /*
-         * ========================================================
-         * Success
-         * ========================================================
-         */
-
-        return new Response(
-            JSON.stringify({
-                success: true,
-                cafe24_status:
-                    cafe24Res.status
-            }),
-            {
-                status: 200,
-                headers: {
-                    ...corsHeaders,
-                    "Content-Type":
-                        "application/json"
-                }
-            }
-        );
-
-    } catch (error: any) {
-
-        console.error(
-            "[RELAY] Unexpected Error:",
-            error
-        );
-
-        return new Response(
-            JSON.stringify({
-                success: false,
-
-                error:
-                    error?.message ||
-                    "알 수 없는 오류"
-            }),
-            {
-                status: 500,
-                headers: {
-                    ...corsHeaders,
-                    "Content-Type":
-                        "application/json"
-                }
-            }
-        );
+      responseData =
+        JSON.parse(responseText);
+    } catch {
+      responseData = {
+        raw: responseText,
+      };
     }
+
+    if (!cafe24Response.ok) {
+      return jsonResponse(
+        {
+          success: false,
+          cafe24_status:
+            cafe24Response.status,
+          error: responseData,
+        },
+        cafe24Response.status,
+      );
+    }
+
+    return jsonResponse({
+      success: true,
+      cafe24_status:
+        cafe24Response.status,
+      data: responseData,
+    });
+  } catch (error) {
+    console.error(
+      "[RELAY] Error:",
+      error,
+    );
+
+    return jsonResponse(
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : String(error),
+      },
+      500,
+    );
+  }
 });
