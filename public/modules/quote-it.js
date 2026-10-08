@@ -548,21 +548,20 @@
         "}",
 
         "@media(max-width:640px){",
-
         ".overlay{",
         "padding:12px;",
         "}",
-
         ".modal{",
         "padding:44px 24px 30px;",
         "max-height:calc(100vh - 24px);",
         "}",
-
         "h2{",
         "font-size:clamp(30px,9vw,40px);",
         "margin-bottom:30px;",
         "}",
+        "}", // 🚨 중요: 여기에 반응형 쿼리를 닫는 괄호가 반드시 있어야 합니다!
 
+        // 반응형 쿼리 밖(전역)에 보안 안내 UI 스타일을 배치합니다.
         ".security-notice {",
         "  display: flex;",
         "  align-items: flex-start;",
@@ -574,7 +573,7 @@
         "  border-radius: 6px;",
         "}",
         ".security-notice svg {",
-        "  width: 18px;",
+        "  width: 18px;", // 여기서 크기를 강제 고정합니다.
         "  height: 18px;",
         "  flex-shrink: 0;",
         "  fill: #475569;",
@@ -594,7 +593,6 @@
         "  font-size: 12px;",
         "  color: #64748b;",
         "}",
-
         "</style>"
       );
 
