@@ -102,15 +102,28 @@ serve(async (req: Request) => {
       );
     }
 
-    const clientIpHeader =
-      req.headers.get("x-forwarded-for");
+    const clientIpHeader = req.headers.get("x-forwarded-for");
+    let clientIp = clientIpHeader ? clientIpHeader.split(",")[0].trim() : "127.0.0.1";
 
-    const clientIp =
-      clientIpHeader
-        ? clientIpHeader.split(",")[0].trim()
-        : "127.0.0.1";
-
-    let requestBody;
+    // 카페24는 IPv4만 허용하므로, IPv6 형식이 들어오면 기본값으로 치환
+    if (clientIp.includes(":")) {
+      clientIp = "127.0.0.1";
+    }
+    // 2. 완벽한 규격의 페이로드 조립
+    const requestBody = {
+      shop_no: payload.shop_no || 1,
+      requests: [
+        {
+          title: payload.subject || "제목 없음",
+          content: payload.content || "내용 없음",
+          writer: payload.writer || "익명",
+          password: payload.password || "1234", // 비회원 비밀글 필수
+          secret: "T",                          // 비밀글 강제
+          client_ip: clientIp,                  // 🚨 422 에러 해결의 핵심 (필수)
+          input_channel: "P"
+        }
+      ]
+    };
 
     /*
      * ------------------------------------------------------------
