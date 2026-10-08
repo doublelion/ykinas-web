@@ -563,6 +563,23 @@
         "margin-bottom:30px;",
         "}",
 
+        ".security-notice {",
+        "  display: flex;",
+        "  align-items: center;",
+        "  gap: 8px;",
+        "  padding: 12px 16px;",
+        "  background: #f0f4f8;", // 신뢰감을 주는 연한 블루
+        "  border-radius: 4px;",
+        "  margin-bottom: 22px;",
+        "  font-size: 13px;",
+        "  color: #334155;",
+        "}",
+        ".security-notice svg {",
+        "  width: 16px;",
+        "  height: 16px;",
+        "  fill: #475569;",
+        "}",
+
         "}",
 
         "</style>"
@@ -817,7 +834,24 @@
         );
 
       }
+      // Dynamic Fields 루프(for문)가 끝난 후, Submit 버튼 삽입 전에 아래 코드 추가
 
+      html.push(
+        // 🔒 자물쇠 아이콘(SVG) 및 안내 문구 영역
+        "<div class=\"security-notice\">",
+        "  <svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\">",
+        "    <path d=\"M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z\"/>",
+        "  </svg>",
+        "  <div>",
+        "    <strong>100% 비밀글로 안전하게 접수됩니다.</strong><br/>",
+        "    <span style=\"font-size:11.5px; color:#64748b;\">※ 열람 비밀번호는 '연락처 뒷 4자리 + !!' 로 자동 설정됩니다.</span>",
+        "  </div>",
+        "</div>",
+
+        // (옵션) 원본 카페24처럼 시각적인 라디오 버튼 형태를 유지하고 싶다면 아래처럼 hidden input으로 처리하거나 disabled 라디오를 추가할 수 있습니다. 
+        // 백엔드에서 무조건 'T'로 처리하므로 굳이 폼 데이터로 넘길 필요는 없습니다.
+        "<input type=\"hidden\" name=\"secure\" value=\"T\">"
+      );
 
       // =====================================================================
       // Submit
