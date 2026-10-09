@@ -782,7 +782,7 @@
         "  </svg>",
         "  <div class=\"qi-security-notice-text\">",
         "    <strong>100% 비밀글로 안전하게 접수됩니다.</strong>",
-        "    <span>※ 열람 비밀번호는 <br><strong>'Qt + 연락처 뒷 4자리 + !!*'</strong> 로<br>자동 설정됩니다.</span>",
+        "    <br><span>※ 열람 비밀번호는 <br><strong>'Qt + 연락처 뒷 4자리 + !!*'</strong> 로<br>자동 설정됩니다.</span>",
         "  </div>",
         "</div>"
       );
