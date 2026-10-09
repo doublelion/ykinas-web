@@ -337,7 +337,8 @@
           "position:relative;" +
           "width:100%;" +
           "max-width:600px;" +
-          "max-height:calc(100vh - 40px);" +
+          "max-height:calc(100vh - 40px);" + // [유지] 구형 브라우저 Fallback
+          "max-height:calc(100dvh - 40px);" + // [추가] 모바일 동적 뷰포트 완벽 대응
           "overflow-y:auto;" +
           "padding:48px;" +
           "background:#f9f8f6;" +
@@ -489,11 +490,11 @@
         "}",
         "@media(max-width:640px){",
         ".qi-overlay{",
-        "padding:12px;",
-        "}",
+        "padding:16px;", // [수정] 모바일 좌우 여백을 약간 늘려 안정감 부여        "}",
         ".qi-modal{",
-        "padding:44px 24px 30px;",
-        "max-height:calc(100vh - 24px);",
+        "padding:44px 24px calc(40px + env(safe-area-inset-bottom));", // [수정] 하단 여백 대폭 추가 및 iOS 하단 바(Safe Area) 침범 방지
+        "max-height:calc(100vh - 32px);", // [추가] 구형 브라우저 Fallback
+        "max-height:calc(100dvh - 32px);", // [수정] 스크롤 잠김 현상을 해결하는 핵심 (dvh)
         "}",
         "h2{",
         "font-size:clamp(30px,9vw,40px);",
