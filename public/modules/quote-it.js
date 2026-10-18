@@ -507,7 +507,7 @@
         "max-height:calc(100dvh - 32px);", // [수정] 스크롤 잠김 현상을 해결하는 핵심 (dvh)
         "}",
         "h2{",
-        "font-size:clamp(25px,9vw,40px);",
+        "font-size:clamp(30px,8vw,40px);",
         "margin-bottom:30px;",
         "}",
         "}",
