@@ -4,7 +4,6 @@ import Button from '../components/Button';
 import ProductDetailModal from '../components/ProductDetailModal'; // 새로 추가할 모달 컴포넌트
 import '../style/Portfolio.scss';
 
-// [최적화] React.memo를 사용하여 불필요한 재렌더링 방지
 const PortfolioItem = memo(({ project, expandedId, setExpandedId, openModal }) => {
   const isExpanded = expandedId === project.id;
   const descriptionRef = useRef(null);
@@ -47,6 +46,14 @@ const PortfolioItem = memo(({ project, expandedId, setExpandedId, openModal }) =
             project.tags?.split(',').map((tag, idx) => <span key={idx} className="tag">{tag.trim()}</span>)
           )}
         </div>
+
+        <button 
+          className="btn-more" 
+          style={{ marginTop: '20px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          onClick={() => openModal(project)}
+        >
+          상세페이지 보기 <span style={{ fontSize: '1.4rem' }}>➔</span>
+        </button>
       </div>
     </article>
   );
