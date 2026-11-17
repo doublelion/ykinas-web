@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { supabase } from '../supabaseClient';
 import Button from '../components/Button';
-import ProductDetailModal from '../components/ProductDetailModal'; // 새로 추가할 모달 컴포넌트
+import ProductDetailModal from '../components/ProductDetailModal';
 import '../style/Portfolio.scss';
 
 const PortfolioItem = memo(({ project, expandedId, setExpandedId, openModal }) => {
@@ -20,8 +20,6 @@ const PortfolioItem = memo(({ project, expandedId, setExpandedId, openModal }) =
       <div className="item-image" style={{ cursor: 'pointer' }}>
         {project.badge && <span className="badge-premium">{project.badge}</span>}
         <img src={project.img_url} alt={project.title} loading="lazy" />
-
-        {/* ✅ 프로젝트 이름에 따라 클릭 액션(모달 or 새창 링크) 완벽 분리 */}
         <div
           className="overlay"
           onClick={() => project.title === '뷰티테라피(BeautyTherapy)' ? openModal(project) : window.open(project.link_url, '_blank')}
@@ -32,7 +30,6 @@ const PortfolioItem = memo(({ project, expandedId, setExpandedId, openModal }) =
       <div className="item-info">
         <span className="category">{project.category}</span>
         <h3>{project.title}</h3>
-
         <div className={`desc-wrap ${isExpanded ? 'expanded' : ''}`}>
           <p className="desc-text" ref={descriptionRef}>
             {project.desc}
@@ -43,7 +40,6 @@ const PortfolioItem = memo(({ project, expandedId, setExpandedId, openModal }) =
             </button>
           )}
         </div>
-
         <div className="tags">
           {Array.isArray(project.tags) ? (
             project.tags.map((tag, idx) => <span key={idx} className="tag">{tag}</span>)
@@ -51,7 +47,6 @@ const PortfolioItem = memo(({ project, expandedId, setExpandedId, openModal }) =
             project.tags?.split(',').map((tag, idx) => <span key={idx} className="tag">{tag.trim()}</span>)
           )}
         </div>
-
         {project.title === '뷰티테라피(BeautyTherapy)' && (
           <button
             className="btn-more"
@@ -72,7 +67,9 @@ function Portfolio() {
   const [hasMore, setHasMore] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
 
-  // [기능 추가] 모달 상태 관리
+  // [개선] 현재 페이지 상태 추가
+  const [page, setPage] = useState(0);
+
   const [selectedProject, setSelectedProject] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -86,9 +83,10 @@ function Portfolio() {
     { id: 'DETAIL', name: 'DETAIL PAGE' }
   ], []);
 
-  const fetchProjects = useCallback(async (isInitial = false) => {
+  // [개선] projects.length 대신 currentPage 매개변수 사용 및 의존성 배열 정리
+  const fetchProjects = useCallback(async (currentPage, isInitial = false) => {
     try {
-      const start = isInitial ? 0 : projects.length;
+      const start = currentPage * ITEMS_PER_PAGE;
       const end = start + ITEMS_PER_PAGE - 1;
 
       let query = supabase.from('projects').select('*', { count: 'exact' });
@@ -98,18 +96,27 @@ function Portfolio() {
         .order('sort_order', { ascending: true })
         .range(start, end);
 
-      if (error) throw error; // [최적화] 예외 처리 추가
+      if (error) throw error;
 
       setProjects(prev => isInitial ? data : [...prev, ...data]);
-      setHasMore(count > (isInitial ? (data?.length || 0) : projects.length + (data?.length || 0)));
+      setHasMore(count > start + (data?.length || 0));
     } catch (err) {
       console.error('Supabase 데이터 로드 실패:', err.message);
     }
-  }, [filter, projects.length]);
+  }, [filter]); // 필터가 바뀔 때만 함수 재생성
 
+  // [개선] 초기 데이터 로드 및 필터 변경 시 실행
   useEffect(() => {
-    fetchProjects(true);
+    setPage(0); // 필터가 바뀌면 페이지 초기화
+    fetchProjects(0, true);
   }, [filter, fetchProjects]);
+
+  // [개선] 더보기 버튼 클릭 핸들러
+  const handleLoadMore = () => {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchProjects(nextPage, false);
+  };
 
   const handleOpenModal = useCallback((project) => {
     setSelectedProject(project);
@@ -149,11 +156,11 @@ function Portfolio() {
 
       {hasMore && (
         <div className="portfolio-footer">
-          <button className="btn-loadmore" onClick={() => fetchProjects(false)}>LOAD MORE</button>
+          {/* [개선] Load More 클릭 시 handleLoadMore 호출 */}
+          <button className="btn-loadmore" onClick={handleLoadMore}>LOAD MORE</button>
         </div>
       )}
 
-      {/* 모달 렌더링 */}
       {isModalOpen && selectedProject && (
         <ProductDetailModal
           project={selectedProject}
