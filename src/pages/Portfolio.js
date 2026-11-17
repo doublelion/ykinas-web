@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { supabase } from '../supabaseClient';
 import Button from '../components/Button';
+import ProductDetailModal from './ProductDetailModal'; // 새로 추가할 모달 컴포넌트
 import '../style/Portfolio.scss';
 
-// 개별 아이템의 텍스트 길이를 체크하기 위한 서브 컴포넌트
-const PortfolioItem = ({ project, expandedId, setExpandedId }) => {
+// [최적화] React.memo를 사용하여 불필요한 재렌더링 방지
+const PortfolioItem = memo(({ project, expandedId, setExpandedId, openModal }) => {
   const isExpanded = expandedId === project.id;
   const descriptionRef = useRef(null);
   const [showBtn, setShowBtn] = useState(false);
@@ -17,16 +18,11 @@ const PortfolioItem = ({ project, expandedId, setExpandedId }) => {
 
   return (
     <article className="portfolio-item">
-      <div className="item-image">
-        {/* ✅ badge 데이터가 있을 경우 렌더링 (예: 'UI/UX', 'PROMO') */}
-        {project.badge && (
-          <span className="badge-premium">{project.badge}</span>
-        )}
+      <div className="item-image" onClick={() => openModal(project)} style={{ cursor: 'pointer' }}>
+        {project.badge && <span className="badge-premium">{project.badge}</span>}
         <img src={project.img_url} alt={project.title} loading="lazy" />
         <div className="overlay">
-          <a href={project.link_url} target="_blank" rel="noreferrer">
-            <Button text="자세히 보기" />
-          </a>
+          <span className="btn-fake"><Button text="프로젝트 보기" /></span>
         </div>
       </div>
       <div className="item-info">
@@ -54,13 +50,18 @@ const PortfolioItem = ({ project, expandedId, setExpandedId }) => {
       </div>
     </article>
   );
-};
+});
 
 function Portfolio() {
   const [projects, setProjects] = useState([]);
   const [filter, setFilter] = useState('ALL');
   const [hasMore, setHasMore] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
+
+  // [기능 추가] 모달 상태 관리
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const ITEMS_PER_PAGE = 6;
 
   const categories = useMemo(() => [
@@ -71,23 +72,34 @@ function Portfolio() {
   ], []);
 
   const fetchProjects = useCallback(async (isInitial = false) => {
-    const start = isInitial ? 0 : projects.length;
-    const end = start + ITEMS_PER_PAGE - 1;
+    try {
+      const start = isInitial ? 0 : projects.length;
+      const end = start + ITEMS_PER_PAGE - 1;
 
-    let query = supabase.from('projects').select('*', { count: 'exact' });
-    if (filter !== 'ALL') query = query.ilike('category', `%${filter.trim()}%`);
+      let query = supabase.from('projects').select('*', { count: 'exact' });
+      if (filter !== 'ALL') query = query.ilike('category', `%${filter.trim()}%`);
 
-    const { data, count } = await query
-      .order('sort_order', { ascending: true })
-      .range(start, end);
+      const { data, count, error } = await query
+        .order('sort_order', { ascending: true })
+        .range(start, end);
 
-    setProjects(prev => isInitial ? data : [...prev, ...data]);
-    setHasMore(count > (isInitial ? (data?.length || 0) : projects.length + (data?.length || 0)));
+      if (error) throw error; // [최적화] 예외 처리 추가
+
+      setProjects(prev => isInitial ? data : [...prev, ...data]);
+      setHasMore(count > (isInitial ? (data?.length || 0) : projects.length + (data?.length || 0)));
+    } catch (err) {
+      console.error('Supabase 데이터 로드 실패:', err.message);
+    }
   }, [filter, projects.length]);
 
   useEffect(() => {
     fetchProjects(true);
-  }, [filter]);
+  }, [filter, fetchProjects]);
+
+  const handleOpenModal = useCallback((project) => {
+    setSelectedProject(project);
+    setIsModalOpen(true);
+  }, []);
 
   return (
     <section className="ykinas-portfolio">
@@ -115,19 +127,23 @@ function Portfolio() {
             project={project}
             expandedId={expandedId}
             setExpandedId={setExpandedId}
+            openModal={handleOpenModal}
           />
         ))}
       </div>
 
       {hasMore && (
         <div className="portfolio-footer">
-          <button className="btn-loadmore" onClick={() => fetchProjects()}>LOAD MORE</button>
+          <button className="btn-loadmore" onClick={() => fetchProjects(false)}>LOAD MORE</button>
         </div>
       )}
-      {!hasMore && projects.length > 0 && (
-        <div className="portfolio-footer">
-          <p className="end-msg">모든 프로젝트를 불러왔습니다.</p>
-        </div>
+
+      {/* 모달 렌더링 */}
+      {isModalOpen && selectedProject && (
+        <ProductDetailModal
+          project={selectedProject}
+          onClose={() => setIsModalOpen(false)}
+        />
       )}
     </section>
   );
