@@ -38,17 +38,17 @@ const DetailSection = ({ imgUrl, gridClass }) => {
 };
 
 const ProductDetailModal = ({ project, onClose }) => {
-  // 실제 프로젝트에서는 project.id를 기반으로 분할된 WebP 이미지 배열을 DB나 스토리지에서 가져옵니다.
+  // DB
   const dummyDetailImages = [
-    { id: 1, url: 'https://[본인프로젝트URL]/storage/v1/object/public/portfolio/product_detail/scal_prep_01.webp', type: 'span-2' },
-    { id: 2, url: 'https://[본인프로젝트URL]/storage/v1/object/public/portfolio/product_detail/scal_prep_02.webp', type: 'normal' },
-    { id: 3, url: 'https://[본인프로젝트URL]/storage/v1/object/public/portfolio/product_detail/scal_prep_03.webp', type: 'tall' },
-    { id: 4, url: 'https://[본인프로젝트URL]/storage/v1/object/public/portfolio/product_detail/scal_prep_04.webp', type: 'normal' },
-    { id: 5, url: 'https://[본인프로젝트URL]/storage/v1/object/public/portfolio/product_detail/scal_prep_05.webp', type: 'span-2-tall' },
-    { id: 6, url: 'https://[본인프로젝트URL]/storage/v1/object/public/portfolio/product_detail/scal_prep_06.webp', type: 'normal' },
-    { id: 7, url: 'https://[본인프로젝트URL]/storage/v1/object/public/portfolio/product_detail/scal_prep_07.webp', type: 'tall' },
-    { id: 8, url: 'https://[본인프로젝트URL]/storage/v1/object/public/portfolio/product_detail/scal_prep_08.webp', type: 'normal' },
-    { id: 9, url: 'https://[본인프로젝트URL]/storage/v1/object/public/portfolio/product_detail/scal_prep_09.webp', type: 'span-2' },
+    { id: 1, url: 'https://ipgzyckubwakijerxcpc.supabase.co/storage/v1/object/public/portfolio/product_detail/scal_prep_01.webp', type: 'span-2' },
+    { id: 2, url: 'https://ipgzyckubwakijerxcpc.supabase.co/storage/v1/object/public/portfolio/product_detail/scal_prep_02.webp', type: 'normal' },
+    { id: 3, url: 'https://ipgzyckubwakijerxcpc.supabase.co/storage/v1/object/public/portfolio/product_detail/scal_prep_03.webp', type: 'tall' },
+    { id: 4, url: 'https://ipgzyckubwakijerxcpc.supabase.co/storage/v1/object/public/portfolio/product_detail/scal_prep_04.webp', type: 'normal' },
+    { id: 5, url: 'https://ipgzyckubwakijerxcpc.supabase.co/storage/v1/object/public/portfolio/product_detail/scal_prep_05.webp', type: 'span-2-tall' },
+    { id: 6, url: 'https://ipgzyckubwakijerxcpc.supabase.co/storage/v1/object/public/portfolio/product_detail/scal_prep_06.webp', type: 'normal' },
+    { id: 7, url: 'https://ipgzyckubwakijerxcpc.supabase.co/storage/v1/object/public/portfolio/product_detail/scal_prep_07.webp', type: 'tall' },
+    { id: 8, url: 'https://ipgzyckubwakijerxcpc.supabase.co/storage/v1/object/public/portfolio/product_detail/scal_prep_08.webp', type: 'normal' },
+    { id: 9, url: 'https://ipgzyckubwakijerxcpc.supabase.co/storage/v1/object/public/portfolio/product_detail/scal_prep_09.webp', type: 'span-2' },
   ];
 
   // 모달 오픈 시 배경 스크롤 방지

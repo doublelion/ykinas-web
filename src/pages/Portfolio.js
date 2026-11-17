@@ -47,13 +47,15 @@ const PortfolioItem = memo(({ project, expandedId, setExpandedId, openModal }) =
           )}
         </div>
 
-        <button 
-          className="btn-more" 
-          style={{ marginTop: '20px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-          onClick={() => openModal(project)}
-        >
-          상세페이지 보기 <span style={{ fontSize: '1.4rem' }}>➔</span>
-        </button>
+        {project.title === '뷰티테라피(BeautyTherapy)' && (
+          <button 
+            className="btn-more" 
+            style={{ textDecoration: 'none', marginTop: '20px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            onClick={() => openModal(project)}
+          >
+            상세페이지 보기 <span style={{ fontSize: '1.4rem' }}>➔</span>
+          </button>
+        )}
       </div>
     </article>
   );
