@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from 'react';
 import { supabase } from '../supabaseClient';
 import Button from '../components/Button';
-import ProductDetailModal from './ProductDetailModal'; // 새로 추가할 모달 컴포넌트
+import ProductDetailModal from '../components/ProductDetailModal'; // 새로 추가할 모달 컴포넌트
 import '../style/Portfolio.scss';
 
 // [최적화] React.memo를 사용하여 불필요한 재렌더링 방지
