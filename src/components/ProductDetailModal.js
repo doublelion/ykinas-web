@@ -106,7 +106,7 @@ const ProductDetailModal = ({ project, onClose }) => {
           <button className="btn-close" onClick={onClose}>✕</button>
         </header>
 
-        <div className="scroll-indicator-pc">
+        <div className="scroll-indicator">
           <div className="mouse-icon"><span className="wheel"></span></div>
           <span>Scroll & Drag to View</span>
         </div>

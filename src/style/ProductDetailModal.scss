@@ -27,66 +27,76 @@
   position: relative; // 인디케이터 절대 정렬을 위해 추가
 }
 
-.scroll-indicator-pc {
-  display: none; // 모바일에서는 숨김
+/* =======================================
+   스크롤 유도 인디케이터 (PC 상단 / 모바일 좌측 하단)
+   ======================================= */
+.scroll-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: absolute;
+  z-index: 20;
+  color: var(--text-color);
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  background: var(--card-bg);
+  border: 1px solid var(--border-line);
+  padding: 8px 16px;
+  border-radius: 30px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: pulseGlow 2.5s infinite ease-in-out;
+
+  /* ✅ 모바일: 우측 하단 채널톡을 피해 좌측 하단에 고정 */
+  bottom: 24px;
+  left: 20px;
 
   @media (min-width: 768px) {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    position: absolute;
-    bottom: 40px;
-    right: 40px;
-    z-index: 20;
-    color: var(--text-color);
+    /* ✅ PC: 상단 헤더의 타이틀과 닫기 버튼 사이로 이동 */
+    bottom: auto;
+    left: auto;
+    top: 26px;
+    right: 80px;
     font-size: 1.4rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    pointer-events: none; // 클릭 방해 방지
-    background: rgba(var(--bg-color-rgb), 0.5);
-    padding: 12px 24px;
-    border-radius: 30px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    animation: pulseGlow 2.5s infinite ease-in-out;
+    padding: 10px 20px;
+  }
 
-    .mouse-icon {
-      width: 22px;
-      height: 34px;
-      border: 2px solid var(--text-color);
-      border-radius: 12px;
-      position: relative;
+  .mouse-icon {
+    width: 20px;
+    height: 30px;
+    border: 2px solid var(--text-color);
+    border-radius: 12px;
+    position: relative;
 
-      .wheel {
-        width: 4px;
-        height: 8px;
-        background: var(--text-color);
-        border-radius: 2px;
-        position: absolute;
-        top: 6px;
-        left: 50%;
-        transform: translateX(-50%);
-        animation: scrollWheel 1.5s infinite;
-      }
+    .wheel {
+      width: 4px;
+      height: 8px;
+      background: var(--text-color);
+      border-radius: 2px;
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      animation: scrollWheel 1.5s infinite;
     }
   }
 }
 
-// 마우스 휠이 굴러가는 애니메이션
 @keyframes scrollWheel {
   0% {
-    top: 6px;
+    top: 4px;
     opacity: 1;
   }
 
   100% {
-    top: 18px;
+    top: 14px;
     opacity: 0;
   }
 }
 
-// 좌우로 부드럽게 점멸하며 가로 방향을 유도하는 애니메이션
 @keyframes pulseGlow {
 
   0%,
@@ -166,12 +176,14 @@
     overflow-y: hidden;
     overflow-x: auto;
     scrollbar-width: none;
+
     &::-webkit-scrollbar {
       display: none;
     }
-    
+
     /* ✅ 드래그 조작을 직관적으로 보여주는 커서 스타일 추가 */
     cursor: grab;
+
     &.active {
       cursor: grabbing;
     }
