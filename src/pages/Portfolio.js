@@ -17,10 +17,15 @@ const PortfolioItem = memo(({ project, expandedId, setExpandedId, openModal }) =
 
   return (
     <article className="portfolio-item">
-      <div className="item-image" onClick={() => openModal(project)} style={{ cursor: 'pointer' }}>
+      <div className="item-image" style={{ cursor: 'pointer' }}>
         {project.badge && <span className="badge-premium">{project.badge}</span>}
         <img src={project.img_url} alt={project.title} loading="lazy" />
-        <div className="overlay">
+
+        {/* ✅ 프로젝트 이름에 따라 클릭 액션(모달 or 새창 링크) 완벽 분리 */}
+        <div
+          className="overlay"
+          onClick={() => project.title === '뷰티테라피(BeautyTherapy)' ? openModal(project) : window.open(project.link_url, '_blank')}
+        >
           <span className="btn-fake"><Button text="프로젝트 보기" /></span>
         </div>
       </div>
@@ -48,8 +53,8 @@ const PortfolioItem = memo(({ project, expandedId, setExpandedId, openModal }) =
         </div>
 
         {project.title === '뷰티테라피(BeautyTherapy)' && (
-          <button 
-            className="btn-more" 
+          <button
+            className="btn-more"
             style={{ textDecoration: 'none', marginTop: '20px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             onClick={() => openModal(project)}
           >
@@ -77,7 +82,8 @@ function Portfolio() {
     { id: 'ALL', name: 'ALL' },
     { id: 'COMMERCE', name: 'E-COMMERCE' },
     { id: 'CORPORATE', name: 'CORPORATE' },
-    { id: 'APP', name: 'APP' }
+    { id: 'APP', name: 'APP' },
+    { id: 'DETAIL', name: 'DETAIL PAGE' }
   ], []);
 
   const fetchProjects = useCallback(async (isInitial = false) => {
