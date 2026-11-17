@@ -159,19 +159,21 @@
   flex: 1;
   background: var(--bg-color);
   -webkit-overflow-scrolling: touch;
-
-  /* 모바일(세로) vs PC(가로) 스크롤 분기 */
   overflow-y: auto;
   overflow-x: hidden;
 
   @media (min-width: 768px) {
     overflow-y: hidden;
     overflow-x: auto;
-    /* 미관을 위해 PC 환경 스크롤바 숨김 */
     scrollbar-width: none;
-
     &::-webkit-scrollbar {
       display: none;
+    }
+    
+    /* ✅ 드래그 조작을 직관적으로 보여주는 커서 스타일 추가 */
+    cursor: grab;
+    &.active {
+      cursor: grabbing;
     }
   }
 
