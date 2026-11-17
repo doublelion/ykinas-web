@@ -11,7 +11,7 @@
   -webkit-backdrop-filter: blur(12px);
   display: flex;
   justify-content: center;
-  align-items: flex-end; // 모바일에서 Bottom Sheet 느낌을 위해
+  align-items: flex-end;
   z-index: 9999;
   animation: fadeIn 0.3s $ease-ykinas forwards;
 
@@ -33,7 +33,7 @@
   animation: slideUp 0.5s $ease-ykinas forwards;
 
   @media (min-width: 768px) {
-    max-width: 900px; // 최대 너비 제한으로 가독성 확보
+    max-width: 90vw; // 뷰어를 넓게 사용하여 가로 스크롤 개방감 확보
     height: 90vh;
     border-radius: 20px;
   }
@@ -76,64 +76,55 @@
 
 .modal-content-scroll {
   flex: 1;
+  background: var(--bg-color);
+  -webkit-overflow-scrolling: touch;
+
+  /* 모바일(세로) vs PC(가로) 스크롤 분기 */
   overflow-y: auto;
   overflow-x: hidden;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  background: var(--card-bg);
 
-  /* 에디토리얼 비정형 격자 시스템 (모바일 퍼스트) */
-  .editorial-layout {
-    display: grid;
-    grid-template-columns: 1fr; // 모바일은 기본 1열
-    gap: 16px;
-    padding: 16px;
-    grid-auto-flow: dense; // 빈 공간을 자동으로 채우는 핵심 속성
+  @media (min-width: 768px) {
+    overflow-y: hidden;
+    overflow-x: auto;
+    /* 미관을 위해 PC 환경 스크롤바 숨김 */
+    scrollbar-width: none;
 
-    @media (min-width: 768px) {
-      grid-template-columns: repeat(2, 1fr); // PC/태블릿은 2열 베이스
-      gap: 24px;
-      padding: 32px;
+    &::-webkit-scrollbar {
+      display: none;
     }
   }
 
-  .editorial-grid-item {
-    position: relative;
-    border-radius: 12px;
-    overflow: hidden;
-    background: var(--bg-color);
-    min-height: 300px;
-    opacity: 0;
-    transform: translateY(30px);
-    transition: all 0.8s $ease-ykinas;
+  .horizontal-layout {
+    display: flex;
+    flex-direction: column; // 모바일에선 세로로 쭉 이어짐
+    gap: 0;
 
-    &.revealed {
-      opacity: 1;
-      transform: translateY(0);
+    @media (min-width: 768px) {
+      flex-direction: row; // PC에선 가로로 배치
+      height: 100%;
+      width: max-content;
+      will-change: transform; // 브라우저에 GPU 연산 우선권 부여
     }
+  }
+
+  .detail-grid-item {
+    width: 100%;
 
     img {
       width: 100%;
-      height: 100%;
-      object-fit: cover;
+      height: auto;
       display: block;
     }
 
-    /* 그리드 확장 클래스 (PC 환경에서만 다채롭게 동작) */
     @media (min-width: 768px) {
-      &.span-2 {
-        grid-column: span 2;
-      }
+      height: 100%;
+      width: auto;
 
-      &.tall {
-        grid-row: span 2;
-        min-height: 600px;
-      }
-
-      &.span-2-tall {
-        grid-column: span 2;
-        grid-row: span 2;
-        min-height: 800px;
+      img {
+        height: 100%;
+        width: auto; // 높이에 맞춰 너비 자동 비율 조절
+        max-width: none; // 부모 컨테이너 제약 해제
+        object-fit: contain;
       }
     }
   }
